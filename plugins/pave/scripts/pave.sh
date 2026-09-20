@@ -3,6 +3,7 @@
 #
 #   pave.sh add <folder>...    register service folders with the hub
 #   pave.sh stale [service]     report what needs discovery or analysis
+#   pave.sh feature <args...>   resolve a feature id and create its folder
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -95,9 +96,54 @@ cmd_stale() {
   python3 "$here/pave-stale.py" "$hub" "$@"
 }
 
+# feature <ticket-id|description...>
+# Resolves the feature id, creates the folder skeleton, reports both.
+# The id is a handle, never a summary: a ticket reference if one was given,
+# otherwise feat-N. A kebab-cased sentence is not something anyone types twice.
+cmd_feature() {
+  [ $# -ge 1 ] || die "usage: pave.sh feature <ticket-id|description...>"
+  local hub; hub="$(find_hub)"
+  local fdir="$hub/features"
+  mkdir -p "$fdir"
+
+  local id title
+  # A ticket reference: letters, hyphen, digits. Case preserved as typed.
+  if printf '%s' "$1" | grep -qE '^[A-Za-z][A-Za-z0-9_]*-[0-9]+$'; then
+    id="$1"; shift; title="$*"
+  else
+    local n=0 m
+    for d in "$fdir"/feat-*; do
+      [ -d "$d" ] || continue
+      m="${d##*/feat-}"
+      case "$m" in (*[!0-9]*|"") continue ;; esac
+      [ "$m" -gt "$n" ] && n="$m"
+    done
+    id="feat-$((n+1))"; title="$*"
+  fi
+
+  local path="$fdir/$id" status="new"
+  [ -d "$path" ] && status="exists"
+
+  # Re-design: recover the title from the existing spec rather than losing it.
+  if [ "$status" = "exists" ] && [ -z "$title" ] && [ -f "$path/spec.md" ]; then
+    title="$(grep -m1 '^# ' "$path/spec.md" 2>/dev/null | sed 's/^# //')"
+  fi
+
+  mkdir -p "$path/contracts" "$path/tasks" "$path/artifacts"
+
+  printf 'id: %s\n' "$id"
+  printf 'title: %s\n' "$title"
+  printf 'status: %s\n' "$status"
+  printf 'path: %s\n' "$path"
+  [ -z "$title" ] && printf 'note: no description given - ask what this feature is\n'
+  [ "$status" = "exists" ] && printf 'note: re-design - say so before re-deriving\n'
+  return 0
+}
+
 case "${1:-}" in
   add) shift; cmd_add "$@" ;;
   stale) shift; cmd_stale "$@" ;;
-  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n       pave.sh stale [service]\n' ;;
+  feature) shift; cmd_feature "$@" ;;
+  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n       pave.sh stale [service]\n       pave.sh feature <ticket-id|description...>\n' ;;
   *) die "unknown command: $1" ;;
 esac

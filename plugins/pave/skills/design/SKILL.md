@@ -2,6 +2,7 @@
 name: design
 description: Plan a feature across every service it touches. Finds the blast radius, writes the spec and architecture, freezes the contracts, and produces one self-contained task document per unit of work. Use before building any feature that spans more than one service.
 effort: high
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 argument-hint: "[TICKET-123] <description> | <existing feature id>"
 ---
 
@@ -13,61 +14,50 @@ This is the phase the whole plugin exists for, and the one the feature lives or
 dies on. Everything downstream executes what is decided here; nothing
 downstream is allowed to redesign it. Spend the effort here.
 
-## 0. Work out the feature id
+## 0. Resolve the feature id
 
-**The feature id is the folder name under `features/`.** There is no second
-identifier: it names the folder, it is what `/pave:build` and `/pave:review`
-take, and it is what task documents carry in frontmatter.
-
-It exists to be **short and retypable**. Every later step is addressed by it,
-usually from a fresh session that remembers nothing — `/pave:build DGF-8888`
-has to work with nothing to look up.
-
-### Two rules
-
-**First word is a ticket reference** — letters, hyphen, digits, like
-`DGF-8888` or `PROJ-12` — then that alone is the id.
-
-**Otherwise** generate `feat-N`, where N is one higher than the highest
-existing `feat-` folder in `features/`.
+Run the script. It parses the argument, picks the id, creates the folder and
+tells you what it decided:
 
 ```
-/pave:design DGF-8888 build checkout        →  features/DGF-8888/
-/pave:design build checkout                 →  features/feat-1/
-/pave:design let's build a feature that…    →  features/feat-2/
+"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh feature $ARGUMENTS
 ```
 
-Never derive the id from the description. A description makes an unusable
-folder name — `lets-build-a-feature-to-allow-users-to-checkout-with…` is not
-something anyone types twice — and generating one removes the judgement call
-about how long is too long. The id is a handle, not a summary.
-
-Never invent a ticket reference. A fabricated `FEAT-001` looks like a pointer
-into a real system; `feat-1` obviously does not, which is the point.
-
-### The title carries the meaning
-
-The id says nothing about the work, so the description must survive. Use it as
-the `# heading` of `spec.md` and the feature `README.md`, and as the **Title**
-column of the portfolio table. Otherwise `features/` is a list of handles
-nobody can read.
-
-If there is no description and the feature does not already exist, **ask what
-it is.** Do not open an empty folder with a generated name.
-
-### If the id already exists
-
-Re-design it, and say so on the line before you start:
-
 ```
-DGF-8888 exists — re-designing it. Everything will be re-derived.
+id: DGF-8888
+title: build checkout
+status: new
+path: /Users/long/platform/features/DGF-8888
 ```
 
-That is the intended way to revisit a feature, so it needs no confirmation
-prompt — but it is never silent, because that line is how a mistake gets
-noticed. Both gates still stand between a re-design and anything being built.
+**The feature id is the folder name.** There is no second identifier — it is
+what `/pave:build` and `/pave:review` take, and what task documents carry in
+frontmatter. It exists to be short and retypable, because every later step is
+addressed by it from sessions that remember nothing.
 
-Say the id and the title back before continuing.
+A ticket reference becomes the id; otherwise the script allocates `feat-N`.
+The id is never derived from the description: a kebab-cased sentence is not
+something anyone types twice, and generating one removes the judgement about
+how long is too long.
+
+### Act on what it reports
+
+| Field | Meaning |
+|---|---|
+| `status: new` | First design of this feature |
+| `status: exists` | **Re-design.** Say so before re-deriving anything — see below |
+| `note: no description` | Nothing says what this feature is. **Ask.** Do not design into an empty folder |
+
+**The title carries the meaning.** The id says nothing about the work, so use
+the title as the `# heading` of `spec.md` and the feature `README.md`, and as
+the **Title** column of the portfolio table. Otherwise `features/` is a list
+of handles nobody can read.
+
+On a re-design the script recovers the title from the existing `spec.md`, so
+`/pave:design DGF-8888` on its own is enough — nothing needs retyping.
+
+Say the id and title back before continuing. Everything downstream is
+addressed by them.
 
 ## Re-designing an existing feature
 

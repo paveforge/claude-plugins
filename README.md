@@ -197,7 +197,8 @@ refers to the feature:
 /pave:design build checkout              →  features/feat-1/
 ```
 
-A leading ticket reference becomes the id; otherwise Pave generates `feat-N`.
+A leading ticket reference becomes the id; otherwise `scripts/pave.sh`
+allocates the next `feat-N`.
 Ids are deliberately short rather than descriptive — `/pave:build DGF-8888`
 has to work from a fresh session with nothing to look up, and a kebab-cased
 sentence is not something anyone types twice. The description becomes the
