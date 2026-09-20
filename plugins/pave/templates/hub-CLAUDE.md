@@ -7,7 +7,8 @@ reachable through `additionalDirectories` and are modified only by build agents.
 ## Layout
 
 - `config.yaml` - team policy. Committed, shared.
-- `workspace.yaml` - your repos. Local, gitignored, source of truth.
+- `workspace.yaml` - your services. Local, gitignored, source of truth.
+  Hand edits here are never overwritten.
 - `conventions/` - how code is written, by language and service. Yours to edit.
 - `features/` - the durable record of what was decided.
 - `artifacts/` - disposable. Delete anything here and it regenerates.
@@ -19,15 +20,17 @@ reachable through `additionalDirectories` and are modified only by build agents.
 
 | | When |
 |---|---|
-| `/pave:init` | First time, and whenever repos are added or move |
-| `/pave:analyse` | First time, then on demand as services drift |
+| `/pave:init` | Once, to create this hub |
+| `/pave:add <folder>` | Whenever a service joins the platform |
+| `/pave:analyse` | After adding services, then as they drift |
 | `/pave:design` | Every new feature - two approval gates |
 | `/pave:build` | Once the plan is approved |
 | `/pave:review` | On demand |
 
-`init` records how to build each repo. `analyse` records what each service
-does. Design needs both: without the second it writes concrete tasks that
-contradict code which already exists.
+`init` creates the hub. `add` records where a service is. `analyse` works out
+what it is - language, build commands, contracts - and what it does. Design
+needs all of it: without the last part it writes concrete tasks that contradict
+code which already exists.
 
 You never have to remember `analyse` - design spawns analysts itself for any
 service whose knowledge is missing or stale. Running it explicitly refreshes

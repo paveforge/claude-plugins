@@ -1,138 +1,178 @@
 ---
 name: analyse
-description: Learn what the services actually do. Spawns one analyst per service to read its domain model, flows and integrations, and writes an indexed knowledge base the design phase can load selectively. Use after /pave:init, when services have drifted, or when design finds knowledge missing.
+description: Work out what the registered services are and what they do. Discovers each one's language, build commands and contracts, then reads its domain model and writes an indexed knowledge base. Use after /pave:add, and when services drift.
 effort: medium
-argument-hint: "[service name, or blank for all stale and missing]"
+argument-hint: "[service name, or blank for everything missing or stale]"
 ---
 
 # Pave — analyse
 
-Build the knowledge base that design reads.
+Turn registered folders into knowledge.
 
-`/pave:init` answers *how do I build this repo* — language, commands, contracts.
-It says nothing about what a service **does**. Without that, design writes
-confident, concrete tasks that contradict code which already exists: a
-`Reservation` entity in a service that has had `StockHold` for two years.
-Concrete and wrong is worse than vague.
+`/pave:add` recorded where the services are. This phase answers both of the
+remaining questions:
 
-This phase is the fix, and it is re-run when services drift rather than per
-feature.
+| Question | Answered by | Written to |
+|---|---|---|
+| How do I build this repo? | `explorer` | `workspace.yaml` |
+| What does this service **do**? | `analyst` | `artifacts/knowledge/` |
+
+The second is the one that is easy to skip and expensive to miss. Without it,
+design writes confident, concrete tasks that contradict code which already
+exists — a `Reservation` entity in a service that has had `StockHold` for two
+years. Concrete and wrong is worse than vague, because a builder will
+faithfully build it.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml` and `workspace.yaml`. If `workspace.yaml`
-is missing, stop and say to run `/pave:init`.
+Locate the hub. Read `config.yaml` and `workspace.yaml`.
+
+If no services are registered, stop and say to run `/pave:add <folder>` first.
 
 ## 1. Decide what to analyse
 
 - `/pave:analyse <service>` — just that one, always
 - `/pave:analyse` — everything missing or stale
 
-A service with no knowledge folder is **missing** and is always analysed.
-A service that has one is checked for staleness.
+A service with no `language` in `workspace.yaml` needs discovery. A service
+with no knowledge folder needs analysis. A service with both is checked for
+staleness.
 
 **Staleness is path-scoped, not time-based.** Each service README records the
-`commit` it was analysed at and the `source_paths` the analysis was based on.
-A service is stale when those paths have moved:
+`commit` it was analysed at and the `source_paths` the analysis rested on. A
+service is stale when those paths have moved:
 
 ```
-git -C <repo> diff --name-only <commit>..HEAD -- <source_paths>
+git -C <path> diff --name-only <commit>..HEAD -- <source_paths>
 ```
 
 Empty output means the knowledge is still valid however old it is. A month of
-commits to CI config, READMEs or unrelated packages invalidates nothing. Report
-what is stale and why before spawning anything.
+commits to CI config, READMEs or unrelated packages invalidates nothing.
 
-**Prune what no longer exists.** A knowledge folder for a service that is gone
-from `workspace.yaml` keeps appearing in the index, and design will happily
-plan against a service nobody can build. Remove the folder and say so.
+**Prune what is gone.** A knowledge folder for a service no longer in
+`workspace.yaml` keeps appearing in the index, and design will happily plan
+against a service nobody can build. Remove it and say so.
 
-## 2. Fan out
+Report what needs doing, and why, before spawning anything.
 
-One `analyst` per service, in parallel up to `execution.max_parallel`, using
-`agents.analyst.model` from `config.yaml`.
+## 2. Discover — what each repo is
 
-Each analyst writes only its own folder under
+Spawn one `explorer` per service needing discovery, in parallel up to
+`execution.max_parallel`, using `agents.explorer.model`.
+
+Never scan a repo yourself in the main context. One large repo will fill it,
+and you still have the rest of the phase to run.
+
+Discovery order, first hit wins:
+
+1. **CI workflows** (`.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`) —
+   the best source. A manifest says what language a repo is; CI says how *this
+   team* builds and tests *this repo*, which is the question that matters.
+2. **Task runner** — `Makefile`, `justfile`, `Taskfile.yml`, `package.json`
+   scripts
+3. **Manifest** — `go.mod`, `package.json`, `pyproject.toml`, `Cargo.toml`,
+   `pom.xml`, `build.gradle`, `*.csproj`, `Gemfile`, `composer.json`,
+   `mix.exs`, `pubspec.yaml`
+4. **README**
+5. **Report it as unknown** — never invent a command
+
+Record per service: `kind` (service | library | app | infra), `language`,
+`commands`, `contracts`, `consumes` where imports make it clear, the repo's own
+`CLAUDE.md` if it has one, and `repo_root` — the git root, so that two services
+sharing one are recognised as a monorepo and `execution.monorepo_strategy`
+applies to them.
+
+### Filling in workspace.yaml
+
+**Fill empty fields. Never overwrite a field that has a value.**
+
+`workspace.yaml` is the user's source of truth and they are invited to correct
+it. A hand-written `test: make test-integration` must survive every future run,
+or the correction has to be made again each time and will eventually be lost
+without anyone noticing.
+
+Where discovery disagrees with a value already there, leave the file alone and
+report it:
+
+```
+payment-service  test: file says `make test-integration`, CI says `go test ./...`
+                 Kept yours. Edit workspace.yaml if that is wrong.
+```
+
+Anything discovery could not determine stays absent, and is reported as a gap
+for the user to fill.
+
+## 3. Analyse — what each service does
+
+Spawn one `analyst` per service, in parallel up to `execution.max_parallel`,
+using `agents.analyst.model`.
+
+Each writes only its own folder under
 `artifacts/knowledge/services/<service>/`, its README from
-`templates/knowledge-service-README.md`. One writer per directory, same rule
-as the builders — parallel agents never share a file.
+`templates/knowledge-service-README.md`. One writer per directory, the same
+rule as the builders.
 
-Give each analyst its repo path, its `path` within the repo, its language, its
-entry from `workspace.yaml`, and **the current commit sha of that repo** — the
-analyst has no Bash and cannot read it itself, and without it the staleness
-check above has nothing to compare against.
+Give each analyst its path, its language, its entry from `workspace.yaml`, and
+**the current commit sha of its repo** — the analyst has no Bash and cannot
+read it itself, and without it the staleness check has nothing to compare
+against.
 
 Require a short summary back. Detail belongs in the files; four analysts
 returning full narratives will exhaust this session's context.
 
-## 3. Regenerate the index
+## 4. Draft the conventions
+
+For each language found, spawn one `analyst` to sample the repos using it and
+draft `conventions/<language>.md`. Tell the user these are drafts to correct.
+
+The `analyst`, not the `explorer`. Inferring a house style from source files is
+pattern work, and a convention file drafted too shallowly is worse than none —
+every builder follows it.
+
+Seed once. **Never rewrite an existing convention file**; it is the user's the
+moment they touch it, which is why `conventions/` sits outside `artifacts/`.
+
+Skip a repo that has its own `CLAUDE.md` — record the path in `workspace.yaml`
+and builders read it directly rather than following a duplicate.
+
+## 5. Regenerate the index
 
 `artifacts/knowledge/README.md` is the only file design loads unconditionally,
 so it must be small and it must be generated — never hand-written, never
 appended to.
 
-**Rebuild it from every service README, not only the ones you just analysed.**
+**Rebuild it from every service README, not only the ones just analysed.**
 `/pave:analyse <service>` regenerates the whole index from all of them.
 Building it from one analyst's output would erase every other service from the
-capabilities, terms and events tables — and design would then plan as though
+capabilities, terms and events tables, and design would then plan as though
 those services did not exist.
 
 Build it from `templates/knowledge-README.md`, filled from the frontmatter of
-every service README:
+every service README.
 
-```markdown
-# Knowledge index
-
-<!-- Generated by /pave:analyse. Do not edit - rewritten on every run. -->
-
-Analysed 6 services · 2026-09-20
-
-## Capabilities
-| Capability | Service | Read |
-|---|---|---|
-| inventory reservation | stock-service | domain.md, flows.md |
-| payment authorisation | payment-service | domain.md |
-
-## Terms
-| Term | Owner | Also used by |
-|---|---|---|
-| StockHold | stock-service | order-service |
-
-## Events
-| Event | Producer | Consumers |
-|---|---|---|
-| OrderCheckedOut | order-service | stock-service, notification-service |
-
-## Services
-| Service | Analysed | Commit | Uncertain |
-|---|---|---|---|
-| stock-service | 2026-09-20 | a1b2c3d | 1 |
-```
-
-The Events table is the dependency graph. There is no graph database here, but
-adjacency written down as a generated table answers the same questions and
+The **Events** table is the dependency graph. There is no graph database here,
+but adjacency written down as a generated table answers the same questions and
 costs nothing to load.
 
-The Terms table earns its place on its own. The failure this whole phase
-exists to prevent is a vocabulary miss — design inventing a concept the
-platform already names. Having the glossary in the always-loaded index catches
-it before a task document is written.
+The **Terms** table earns its place on its own. The failure this phase exists
+to prevent is a vocabulary miss — design inventing a concept the platform
+already names. Having the glossary in the always-loaded index catches it before
+a task document is written.
 
 Where two services define the same term differently, record both and mark it
 ambiguous. Do not pick a winner; that is a finding, and design needs to see it.
 
-## 4. Report
+## 6. Report
 
-State which services were analysed, which were skipped as current, and list
-every `uncertain` entry the analysts raised. Those are the points design must
-verify against code rather than trust.
+State which services were discovered, which were analysed, which were skipped
+as current, every conflict you left alone, every gap discovery could not fill,
+and every `uncertain` entry the analysts raised. Those last ones are the points
+design must verify against code rather than trust.
 
-Do not report a service as analysed if its analyst returned blocked,
-incomplete, or nothing at all. Leave its previous knowledge in place if it had
-any, do not update its `commit`, and say it still needs analysing — otherwise
-the next run sees a current `commit` and skips a service that was never read.
+**Do not report a service as done if its agent returned blocked, incomplete or
+nothing at all.** Leave its previous state, do not update its `commit`, and say
+it still needs analysing — otherwise the next run sees a current `commit` and
+skips a service that was never read. A repo that could not be reached is the
+same case.
 
-A repo that could not be reached is the same case: report it, do not index it
-as current.
-
-Then say what to run next: `/pave:design <feature>`.
+Then say what is next: `/pave:design <feature>`.

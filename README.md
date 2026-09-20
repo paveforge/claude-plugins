@@ -40,8 +40,11 @@ claude
 ```
 
 ```
-/pave:init                             # point it at your repos
-/pave:analyse                          # learn what each service does
+/pave:init                             # create the hub here
+/pave:add ../be-user-service           # register each service
+/pave:add ../be-order-service
+/pave:add ../be-pricing-service
+/pave:analyse                          # work out what they are, and what they do
 /pave:design build checkout            # → two approval gates
 /pave:build build-checkout             # fan out, one agent per service
 /pave:review build-checkout            # did the agents follow the plan?
@@ -57,65 +60,82 @@ and a teammate generates their own with `/pave:init`.
 
 | Command | When you run it |
 |---|---|
-| `/pave:init` | First time, and whenever repos are added or move |
-| `/pave:analyse` | First time, then as services drift |
+| `/pave:init` | Once, to create the hub |
+| `/pave:add <folder>` | Whenever a service joins the platform |
+| `/pave:analyse` | After adding services, then as they drift |
 | `/pave:design` | Every new feature |
 | `/pave:build` | Once the plan is approved |
 | `/pave:review` | On demand |
 
 ---
 
-## `/pave:init` — set up the hub
+## `/pave:init` — create the hub
 
-**What it does.** Finds or creates the hub folder, scans your service repos,
-and records how to build each one.
+**What it does.** Creates the hub folder's scaffolding: `config.yaml`,
+an empty `workspace.yaml`, `CLAUDE.md`, `conventions/` and a `.pave-hub`
+marker that lets every other command find the hub from anywhere.
 
-Discovery reads CI config first, then a task runner, then the manifest, then
-the README. That order is deliberate: a manifest tells you a repo is Go; CI
-tells you how *this team* builds and tests *this repo*, which is the question
-that matters.
+It does not look for repos, guess what anything is, or scan. Each step does one
+thing you can check before moving on.
 
-**What it asks you.** Your repo paths, then a summary to confirm — split into
-what it found confidently, what it guessed, and what it saw but did not
-include. That last group is where a legacy service with no CI would otherwise
-vanish silently.
-
-**What it produces.** `workspace.yaml` (your repos), `config.yaml` (team
-policy, only if absent), the hub `CLAUDE.md`, draft convention files per
-language, and a VS Code multi-root workspace.
-
-**Re-running is safe.** It diffs against the existing `workspace.yaml`, shows
-what would change — marking anything that would overwrite a hand edit — and
-backs up to `workspace-old.yaml` before writing.
+**What it asks you.** Where the hub goes — this folder, or somewhere else. It
+never guesses. It also offers `git init` if the folder isn't a repository,
+since the config split depends on version control.
 
 ---
 
-## `/pave:analyse` — learn what the services do
+## `/pave:add` — register a service
 
-**What it does.** Spawns one agent per service to read its domain model,
-business flows, integrations and data ownership, and writes an indexed
-knowledge base.
+```
+/pave:add ../be-order-service
+/pave:add ../storefront/packages/events     # a monorepo package
+```
 
-**Why it exists.** `init` records how to *build* each repo. It says nothing
-about what a service *means*. Without that, design writes confident, concrete
-tasks that contradict code which already exists — a `Reservation` entity in a
-service that has had `StockHold` for two years. Concrete and wrong is worse
-than vague, because an agent will faithfully build it.
+**What it does.** Records the folder's absolute path in `workspace.yaml` and
+adds it to `additionalDirectories` in `.claude/settings.json` — that second
+part is what actually grants Claude access to the repo.
 
-**What it produces.** `artifacts/knowledge/`, with a per-service folder and one
-generated index of capabilities, domain terms and events. Design loads that
-index — and only that — then opens the specific files it points at. A
-four-service feature in a twelve-service platform reads one index, four
-summaries and a handful of deep files.
+That's all it records: name and path. Not the language, not the build commands.
+`/pave:analyse` finds those, and having two commands discover the same things
+would mean two answers.
+
+**What it asks you.** Nothing, unless something is wrong — the folder doesn't
+exist, isn't a git repository, is inside the hub, or collides with a name
+already registered.
+
+---
+
+## `/pave:analyse` — work out what they are
+
+**What it does.** Two passes over the registered services.
+
+**Discovery** reads CI config first, then a task runner, then the manifest,
+then the README, and records the language, build/test/lint commands, contracts
+and git root. That order is deliberate: a manifest tells you a repo is Go; CI
+tells you how *your team* builds *this repo*, which is the question that
+matters.
+
+**Analysis** then reads each service's domain model, business flows,
+integrations and data ownership, and writes an indexed knowledge base.
+
+**Why the second pass exists.** Discovery records how to *build* a repo. It
+says nothing about what a service *means*. Without that, design writes
+confident, concrete tasks that contradict code which already exists — a
+`Reservation` entity in a service that has had `StockHold` for two years.
+Concrete and wrong is worse than vague, because an agent will faithfully build
+it.
+
+**It never overwrites your edits.** `workspace.yaml` is yours to correct. If
+you fix a test command by hand, analyse fills empty fields around it and leaves
+yours alone, reporting the disagreement instead of silently winning.
 
 **Staleness is path-scoped, not age-based.** Each service records the commit
 and the source directories its analysis rested on. A month of commits to CI
 config invalidates nothing; a change under `internal/domain` invalidates
 exactly one service.
 
-**You rarely run it by hand.** Design spawns analysts itself for any service
-whose knowledge is missing or stale. Running it explicitly refreshes the whole
-platform at once.
+**You rarely run it by hand after the first time.** Design spawns analysts
+itself for any service whose knowledge is missing or stale.
 
 ---
 
@@ -209,7 +229,7 @@ so a fix touches three items rather than redoing twenty.
 ```
 platform/
 ├── config.yaml              team policy — commit this
-├── workspace.yaml           your repos — gitignored, local to you
+├── workspace.yaml           your services — gitignored, local to you
 ├── CLAUDE.md
 ├── conventions/             how code is written, by language and service
 │   ├── README.md
@@ -229,8 +249,9 @@ platform/
 ```
 
 `config.yaml` holds nothing machine-specific, so it commits and the team shares
-it. `workspace.yaml` holds the repo paths, which differ per developer. That
-split is what lets everyone share one policy with their own local layout.
+it. `workspace.yaml` holds absolute paths, which differ per developer — a
+teammate clones the hub and builds their own with `/pave:add`. That split is
+what lets everyone share one policy with their own local layout.
 
 ---
 

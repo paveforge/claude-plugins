@@ -1,47 +1,42 @@
-# Your repos. Source of truth - edit freely, Pave reads what is here.
-# Seeded by /pave:init; re-running backs this up to workspace-old.yaml first.
+# Your services. Source of truth - edit freely, Pave reads what is here.
 # Local to your machine. Not committed.
 #
-# Paths are ABSOLUTE. This file never leaves your machine, so relative paths
-# would buy nothing and cost an ambiguity: skills run from inside a service
-# repo as well as from the hub, and a relative path means different things
-# from each.
-
-generated_at: 2026-01-01T00:00:00Z
-
-repos:
-  - path: /Users/you/order-service
-    default_branch: main
-    services: [order-service]
-  - path: /Users/you/storefront
-    default_branch: main
-    services: [web-checkout, shared-events]   # monorepo: two services, one repo
-
-ignored:                    # init will not ask about these again
-  - /Users/you/infra
+# /pave:add registers a service: name and path, nothing else.
+# /pave:analyse fills in the rest.
+#
+# Fields you write by hand are never overwritten. Where discovery disagrees
+# with a value that is already here, yours is kept and the difference is
+# reported. Delete a field to have it discovered again.
+#
+# Paths are absolute. This file never leaves your machine, and skills run
+# from inside service repos as well as from the hub, so a relative path
+# would mean different things depending on where you were standing.
 
 services:
-  - name: order-service
-    repo: /Users/you/order-service
-    path: .
-    kind: service           # service | library | app | infra
+
+  - name: be-order-service
+    path: /Users/long/be-order-service
+    # --- below here: filled by /pave:analyse ---
+    repo_root: /Users/long/be-order-service   # two services sharing one = monorepo
+    kind: service                             # service | library | app | infra
     language: go
-    claude_md: /Users/you/order-service/CLAUDE.md   # repo has its own; agents read it
+    claude_md: /Users/long/be-order-service/CLAUDE.md   # if the repo has its own
     commands:
       build: make build
       test:  go test ./...
       lint:  golangci-lint run
       codegen: buf generate
     contracts:
-      - kind: protobuf      # protobuf | openapi | graphql | json-schema | avro | prose
+      - kind: protobuf    # protobuf | openapi | graphql | json-schema | avro | prose
         path: proto/order/v1/order.proto
         role: producer
-    consumes: [stock-service]
+    consumes: [be-pricing-service]
 
-  - name: shared-events
-    repo: /Users/you/storefront
-    path: packages/events
-    kind: library           # publishes a version; consumers bump the pin
+  # A monorepo package: /pave:add ../storefront/packages/events
+  - name: events
+    path: /Users/long/storefront/packages/events
+    repo_root: /Users/long/storefront         # shared with other services here
+    kind: library                             # publishes a version; consumers bump the pin
     language: typescript
     commands:
       build:   pnpm --filter events build
@@ -49,6 +44,6 @@ services:
       publish: pnpm --filter events publish
     contracts:
       - kind: json-schema
-        path: packages/events/schemas/
+        path: schemas/
         role: producer
     consumes: []
