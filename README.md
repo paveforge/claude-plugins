@@ -193,9 +193,14 @@ stronger model than your session if `config.yaml` asks for it.
 `/pave:review` refer to it afterwards:
 
 ```
-/pave:design DFG-7584 build checkout   →  features/DFG-7584-build-checkout/
+/pave:design DGF-8888 build checkout   →  features/DGF-8888/
 /pave:design build checkout            →  features/build-checkout/
 ```
+
+A leading ticket reference becomes the id on its own, so later steps are short
+to type from memory — `/pave:build DGF-8888` works in a fresh session that
+remembers nothing. The description becomes the feature's title in `spec.md`
+and the portfolio table, so a folder of bare ticket numbers stays readable.
 
 The feature id **is** the folder name — there is no second identifier. It is
 what `/pave:build` and `/pave:review` take, and what task documents carry. A

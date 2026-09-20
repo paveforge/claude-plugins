@@ -2,7 +2,7 @@
 name: design
 description: Plan a feature across every service it touches. Finds the blast radius, writes the spec and architecture, freezes the contracts, and produces one self-contained task document per unit of work. Use before building any feature that spans more than one service.
 effort: high
-argument-hint: "[TICKET-123] <feature description> | <existing feature id>"
+argument-hint: "[TICKET-123] <description> | <existing feature id>"
 ---
 
 # Pave — design
@@ -19,32 +19,54 @@ downstream is allowed to redesign it. Spend the effort here.
 identifier: it names the folder, it is what `/pave:build` and `/pave:review`
 take as their argument, and it is what task documents carry in frontmatter.
 
-Settle it before writing anything.
+It needs to be **unique and short enough to retype from memory**. Every later
+step is addressed by it, often from a fresh session that remembers nothing —
+`/pave:build DGF-8888` has to work without you looking anything up.
 
-**Does the whole argument match a directory in `features/`?**
+### Deriving it
 
-| | |
-|---|---|
-| **Yes** | Re-design that feature. See below. |
-| **No** | A new feature. Derive the id: |
+**If the first word is a ticket reference** — letters, a hyphen, digits, such
+as `DGF-8888` or `PROJ-12` — that alone is the id. The rest of the argument is
+the feature's description and belongs in `spec.md`, not in the folder name.
 
-Kebab-case the description — lowercase, spaces to hyphens, punctuation
-dropped — and keep any leading ticket reference as it is written, so it stays
-greppable against the tracker.
+**Otherwise** the id is the description, kebab-cased: lowercase, spaces to
+hyphens, punctuation dropped.
 
 ```
-/pave:design DFG-7584 build checkout   →  features/DFG-7584-build-checkout/
+/pave:design DGF-8888 build checkout   →  features/DGF-8888/
+                                          title: "Build checkout"
+
 /pave:design build checkout            →  features/build-checkout/
+                                          title: "Build checkout"
 ```
 
-A ticket reference is part of the id, not a separate field. If the user gives
-one it is in the folder name; if they do not, there is nothing to record.
-**Never invent one** — a fabricated `FEAT-001` looks like a reference to a
-real system and is worse than having none.
+Never invent a ticket reference. A fabricated `FEAT-001` looks like a pointer
+into a real system and is worse than a plain description.
 
-**If the derived id already exists**, stop and ask. It is either the re-design
-you meant — in which case say so and continue — or a collision that would
-silently overwrite an approved plan. Do not guess which.
+### The title is not optional
+
+When the id is a ticket reference the folder name says nothing about the work,
+so the description has to survive. Write it as the `# heading` of `spec.md` and
+the feature `README.md`, and carry it into the portfolio table. A `features/`
+directory of bare ticket numbers that nobody can read is a filing cabinet, not
+a plan.
+
+If a ticket id was given with **no** description, and the feature does not
+exist yet, ask what it is. Do not open a ticket-shaped folder with nothing in
+it.
+
+### If the id already exists
+
+Re-design it, and **say so on the line before you start**:
+
+```
+DGF-8888 exists — re-designing it. Everything will be re-derived.
+```
+
+That is the intended way to revisit a feature, so it does not need a
+confirmation prompt, but it must never be silent: the same line is how you
+notice a genuine name collision, and both gates still stand between the
+re-design and anything being built.
 
 Say the id back before continuing. Everything downstream is addressed by it.
 

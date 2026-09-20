@@ -1,3 +1,6 @@
+<!-- The heading is the feature's title. When the folder is a ticket id it
+     is the only human-readable name the feature has. -->
+
 # <Feature Name>
 
 ## Why
