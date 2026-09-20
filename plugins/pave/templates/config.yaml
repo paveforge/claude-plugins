@@ -1,0 +1,31 @@
+# Pave policy. Shared by the team - commit this file.
+# Contains nothing machine-specific. Your repo paths live in workspace.yaml.
+
+# Model capability order, weakest to strongest. Pave compares models against
+# this list, so when a new model appears you add it here rather than waiting
+# for a plugin update.
+model_ranking: [haiku, sonnet, opus, fable]
+
+# Who does each piece of work, and how strong they should be.
+# Every entry is enforced: the model is passed when the agent is spawned.
+agents:
+  analyst:  { model: sonnet, effort: medium }   # reads business logic
+  builder:  { model: sonnet, effort: medium }   # executes one task document
+  explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
+  reviewer: { model: sonnet, effort: low    }   # one per task: plan vs code
+
+  # Design takes the HIGHER of this and your session model, by model_ranking.
+  # On sonnet with opus configured you get opus; on fable you keep fable.
+  designer: { model: opus, effort: high }       # planning decides the feature
+
+execution:
+  mode: parallel                 # parallel | sequential
+  monorepo_strategy: sequential  # sequential | worktree | shared-tree
+  max_parallel: 4
+
+branch:
+  pattern: feature/{feature-slug}
+
+contracts:
+  land_contracts: true           # each builder copies the frozen contracts
+                                 # into its repo and runs codegen before working

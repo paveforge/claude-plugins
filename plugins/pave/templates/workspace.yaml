@@ -1,0 +1,63 @@
+# Your services. Source of truth - edit freely, Pave reads what is here.
+# Local to your machine. Not committed.
+#
+# /pave:add registers a service: name and path, nothing else.
+# /pave:analyse fills in the rest.
+#
+# Fields you write by hand are never overwritten. Where discovery disagrees
+# with a value that is already here, yours is kept and the difference is
+# reported. Delete a field to have it discovered again.
+#
+# Paths are absolute. This file never leaves your machine, and skills run
+# from inside service repos as well as from the hub, so a relative path
+# would mean different things depending on where you were standing.
+
+services:
+
+  - name: be-order-service
+    path: /Users/long/be-order-service
+    # --- below here: filled by /pave:analyse ---
+    repo_root: /Users/long/be-order-service   # two services sharing one = monorepo
+    kind: service                             # service | library | app | infra
+    language: go
+    claude_md: /Users/long/be-order-service/CLAUDE.md   # if the repo has its own
+    commands:
+      build: make build
+      test:  go test ./...
+      lint:  golangci-lint run
+      codegen: buf generate
+    contracts:
+      - kind: protobuf    # protobuf | openapi | graphql | json-schema | avro | prose
+        path: proto/order/v1/order.proto
+        role: producer
+    consumes: [be-pricing-service]
+
+  # A monorepo package: /pave:add ../storefront/packages/events
+  - name: events
+    path: /Users/long/storefront/packages/events
+    repo_root: /Users/long/storefront         # shared with other services here
+    kind: library                             # publishes a version; consumers bump the pin
+    language: typescript
+    commands:
+      build:   pnpm --filter events build
+      test:    pnpm --filter events test
+      publish: pnpm --filter events publish
+    contracts:
+      - kind: json-schema
+        path: schemas/
+        role: producer
+    consumes: []
+
+  # Not everything is a compiled service. build/test/lint are slots for
+  # "does this work", whatever that means here.
+  - name: platform-infra
+    path: /Users/long/platform-infra
+    repo_root: /Users/long/platform-infra
+    kind: infra                               # must exist before its consumers
+    language: terraform
+    commands:
+      build: terraform validate
+      test:  terraform plan -detailed-exitcode
+      lint:  tflint
+    contracts: []
+    consumes: []
