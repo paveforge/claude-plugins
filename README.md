@@ -101,9 +101,15 @@ invalidates exactly one service.
 
 Build agents tick their own checkboxes and report their own success. `review`
 is the independent check on those claims: every ticked item has to be findable
-in the code, and both sides of every frozen contract have to honour it. It
-reads code and runs nothing — the builders already ran the commands and CI
-runs them again.
+in the code, and every frozen contract has to be honoured. It reads code and
+runs nothing — the builders already ran the commands and CI runs them again.
+
+It fans out one reviewer per task, all at once. Each gets a single task
+document and one repo, and nothing else: no spec, no architecture, no sibling
+tasks. Comparing a document to code does not need the whole picture, and a
+narrow input is what keeps the comparison accurate. Contracts decompose the
+same way — both sides are checked against the same frozen file, so conforming
+to it means conforming to each other.
 
 It does not ask whether the feature works, or whether the plan was right. That
 restraint keeps it cheap and keeps the approval gates meaningful. A gap in the

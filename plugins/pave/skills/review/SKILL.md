@@ -1,95 +1,81 @@
 ---
 name: review
-description: Check that the build agents did exactly what the plan said. Reads each task document against the code, marks tasks that deviate as failed, and writes a report. Use on demand after /pave:build, before merging.
-effort: high
+description: Check that the build agents did exactly what the plan said. Spawns one reviewer per task to compare its task document against the code, marks tasks that deviate as failed, and writes a report. Use on demand after /pave:build, before merging.
+effort: low
 argument-hint: "<feature slug>"
 ---
 
 # Pave — review
 
-Check the execution against the plan. Nothing else.
+Compare the plan against the execution. Nothing else.
 
 Build agents tick their own checkboxes and report their own success. This
-phase is the independent check on those claims: **did the agent actually do
-what the task document said, or did it claim work it did not do?**
+phase is the independent check on those claims: **did each agent actually do
+what its task document said, or did it claim work it did not do?**
+
+This skill is an orchestrator. It spawns the reviewers, collects what they
+found, and records the outcome. The comparing happens in the agents.
 
 ## What this phase is not
 
 It does not verify the feature works. It does not ask whether the design was
-right, whether the approach was sound, or whether a case was missed.
+right or whether a case was missed.
 
-That restraint is the point, and it makes the phase cheap. Two consequences
-follow, and both are deliberate:
+That restraint is the point, and it is what makes the phase cheap. Two
+consequences, both deliberate:
 
 **A gap in the plan is not a review failure.** If the plan said A, B and C and
-every agent faithfully did A, B and C, this review passes — even if the
-feature needs D. A missing case is a planning problem, so it goes in the report
-as a comment and **the user decides**, by running `/pave:design <slug>` to
-re-plan and then `/pave:build` again. Never mark a task failed because you
-disagree with the plan.
+every agent did A, B and C, this passes — even if the feature needs D. A
+missing case is a planning problem, so it goes in the report as a comment and
+**the user decides**, by running `/pave:design <slug>` to re-design and then
+`/pave:build`. Never mark a task failed because the plan was wrong.
 
 **Improvements never change status.** Note them, clearly marked non-blocking.
-An agent that followed the plan exactly did its job, whatever you would have
-written instead.
 
-## Before starting
+## 1. Fan out, one reviewer per task
 
-Locate the hub. Read `config.yaml`, then the feature's `spec.md`,
-`architecture.md`, `contracts/` and every task document.
+Spawn a `reviewer` for **every task** in the feature, in parallel up to
+`execution.max_parallel`, passing `agents.reviewer.model`.
 
-Spawn the `reviewer` agent with `model` set to `agents.reviewer.model`. It
-reads the code and reports; you record the outcome. Review follows the config
-exactly — unlike design, it does not upgrade to match a stronger session.
+Review follows `config.yaml` exactly. Unlike design, it does not upgrade to
+match a stronger session — comparing a document to code is not a phase that
+gets better with a stronger model, and there is one reviewer per task, so the
+cost multiplies.
 
-For a large feature, spawn one reviewer per service and do the contract
-checking yourself once they return. Each reads only its own repo.
+Give each reviewer:
 
-## 1. Claims against code
+- Its **one** task document
+- The repo path for that task's service
+- The frozen contract files that task names
 
-Give each reviewer its task documents, its repo path, and the frozen contracts
-it touches. It takes every **ticked** item and finds it in the repo.
-Not in the agent's report, not in the commit message — in the code.
+Nothing else. A reviewer does not need the spec, the architecture, the other
+task documents, or any notion of the feature as a whole. It is answering one
+narrow question about one document, and keeping its input narrow is what keeps
+it accurate.
 
-- The entity exists, with the fields the task named
-- The migration exists, with the constraints the task named
-- The endpoint is routed and reachable, not just written
-- The behaviour the task described is actually implemented, not stubbed
-- A claimed test exists and asserts what the item said
+Contracts decompose the same way. Both sides are checked against the same
+frozen file, so if the producer conforms to it and the consumer conforms to
+it, they conform to each other — no reviewer needs to see both.
 
-Read the code. Run nothing — the builders already ran the commands and CI will
-run them again. You are checking that the work is real, which is a reading
-problem, not an execution one.
+## 2. Record the outcome
 
-An item you cannot find is a deviation. An item that exists but does something
-different from what the task specified is also a deviation.
+**If every reviewer reports clean**, the feature stays `done`. Write the
+report with any non-blocking comments and stop.
 
-## 2. Contracts against consumers
+**For each reviewer reporting a deviation:**
 
-Still conformance, and the highest-value check here: the plan froze an
-interface, so did both sides honour it?
+1. **Uncheck** the specific items it named, in that task document. This is
+   what makes the re-run precise — the agent fixes three items rather than
+   redoing a task of twenty.
+2. Set that task document to `status: failed`.
+3. Leave conforming tasks untouched at `done`.
 
-- The producer implemented the frozen contract, not something adjacent
-- Each consumer calls what the contract defines, and handles what it must
-- Generated stubs match the contract file in every repo
-- No contract was edited locally in a repo after gate 2 — the freeze is what
-  let the services be built in parallel, and a local edit means other services
-  were built against something that no longer matches
+If any task failed, set the feature to `failed`.
 
-## 3. Record the outcome
+Record exactly what the reviewers reported. Do not soften a finding, and do
+not add one of your own — you did not read the code.
 
-**If every ticked item is real and the contracts hold**, the feature stays
-`done`. Write the report with any non-blocking comments and stop.
-
-**If anything deviates:**
-
-1. **Uncheck** the specific items that were not real, in their task documents.
-   This is what makes the re-run precise — the agent fixes three items rather
-   than redoing a task of twenty.
-2. Set those task documents to `status: failed`.
-3. Set the feature to `failed`.
-4. Leave conforming tasks untouched at `done`.
-
-## 4. Report
+## 3. Report
 
 Write `features/<slug>/artifacts/review-report.md`, **organised per task**:
 
@@ -106,12 +92,14 @@ Claimed and not found:
       stripe client is called directly from usecase/authorize.go:41.
 
 ## 01-stock-reservation — OK
+## 03-order-checkout — OK
+## 04-notification-confirm — OK
 
 ## Comments (non-blocking)
 - order-service: Checkout orchestration would read better split in two.
   Follows the plan exactly; noted only.
 - The plan has no path for a payment authorised after the reservation
-  expired. Not a deviation - the plan does not mention it. Re-plan with
+  expired. Not a deviation - the plan does not mention it. Re-design with
   `/pave:design build-checkout` if you want it covered.
 ```
 
@@ -119,5 +107,5 @@ Per-task sections are not cosmetic. A re-run builder reads only its own
 section, exactly as it reads only its own task document.
 
 Then summarise in the session: what failed, in which service, and whether the
-route forward is `/pave:build` (execution drift) or `/pave:design <slug>`
-(the plan needs to change). Lead with what failed.
+route forward is `/pave:build` (execution drift) or `/pave:design <slug>` (the
+design needs to change). Lead with what failed.

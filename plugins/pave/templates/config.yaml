@@ -15,7 +15,7 @@ agents:
   analyst:  { model: sonnet, effort: medium }   # reads business logic
   builder:  { model: sonnet, effort: medium }   # executes one task document
   explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
-  reviewer: { model: opus,   effort: high   }   # checks execution against plan
+  reviewer: { model: sonnet, effort: low    }   # one per task: plan vs code
 
   # Design takes the HIGHER of this and your session model, by model_ranking.
   # On sonnet with opus configured you get opus; on fable you keep fable.
