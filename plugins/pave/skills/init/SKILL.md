@@ -28,12 +28,28 @@ live there; the service repos stay untouched except by build agents.
 Create the folder if it does not exist. Write `.pave-hub` (an empty marker) at
 its root so other skills can locate it by walking up from anywhere.
 
+### The hub should be a git repository
+
+The whole config split depends on it: `config.yaml` is committed and shared,
+`workspace.yaml` is gitignored and local to each person. Without git, neither
+happens — the `.gitignore` does nothing and there is nothing to share.
+
+If the hub folder is not a git repository, say so and offer to run `git init`.
+If the user declines, continue, but tell them plainly that `config.yaml` and
+`conventions/` cannot be shared with the team until the hub is version
+controlled, and skip the "what to commit" advice at the end. Do not write a
+`.gitignore` that has no effect.
+
 ## 2. config.yaml — generate only if absent
 
 | State | Action |
 |---|---|
-| Absent | Write it from `templates/config.yaml` |
+| Absent | Write it from `templates/config.yaml`, with `hub.name` set to the hub folder's name |
 | Present | **Leave completely untouched** |
+
+Set `hub.name` from the folder rather than leaving the template's placeholder.
+It names the generated workspace file, and `platform.code-workspace` sitting
+inside a folder called `be-central` is confusing from the first minute.
 
 `config.yaml` is team policy and is committed. A teammate who clones the hub
 already has it; init must never rewrite their settings. If they want different
@@ -41,8 +57,27 @@ defaults they edit the file.
 
 ## 3. Discover
 
-Repo paths live in `workspace.yaml`, not `config.yaml`. If `workspace.yaml` is
-absent, ask for them now. If it exists, use the paths it records and ask
+Repo paths live in `workspace.yaml`, not `config.yaml`.
+
+**Look for repos the user has already opened before asking them to type
+anything.** If a multi-root editor workspace is open — a `.code-workspace`
+file, or several folders in the sidebar — its other folders are almost
+certainly the service repos. Offer them:
+
+```
+You have 3 other folders open alongside this hub:
+  ../be-user-service
+  ../be-order-service
+  ../be-pricing-service
+
+Use these as the service repos?  [Y / edit / n]
+```
+
+Asking someone to type three paths they already added to their editor is the
+kind of friction that makes a setup step feel worse than doing it by hand.
+
+Fall back to asking outright if no workspace is open, or if the user edits the
+list. If `workspace.yaml` already exists, use the paths it records and ask
 whether anything has been added.
 
 Check each path exists before scanning it. A path that has moved is a finding
@@ -141,7 +176,10 @@ folder on every run.
 ## 6. Write
 
 - `workspace.yaml` — from `templates/workspace.yaml`
-- `artifacts/<hub.name>.code-workspace` — hub plus every repo, multi-root
+- `artifacts/<hub.name>.code-workspace` — hub plus every repo, multi-root.
+  **Skip this if a multi-root workspace is already open** with the hub and the
+  repos in it. The user built that layout by hand to get here; generating a
+  second file describing it is clutter, not help. Say you skipped it and why.
 - `.claude/settings.json` — `additionalDirectories` pointing at every repo
   path. Without this the build agents cannot read or write the service repos.
   **If the file exists, merge into it.** Add missing directories and leave
@@ -151,7 +189,8 @@ folder on every run.
 - `conventions/README.md` — from `templates/conventions-README.md`, if absent
 - `conventions/<language>.md` — drafted, see below, if absent
 - `features/README.md` — from `templates/features-README.md`, empty table, if absent
-- `.gitignore` — ensure it contains `workspace.yaml` and `workspace-old.yaml`
+- `.gitignore` — if the hub is a git repository, ensure it contains
+  `workspace.yaml` and `workspace-old.yaml`
 
 ## 7. Draft the conventions
 
@@ -180,10 +219,14 @@ duplicate conventions the team already wrote.
 State where the hub is, how many services are registered, which files were
 created versus left alone, and what to run next.
 
-Say what to commit: `config.yaml`, `CLAUDE.md`, `conventions/` and `.pave-hub`
-are shared with the team. `workspace.yaml` is not — it is gitignored, and a
-teammate generates their own by running this command. That split is what lets
-everyone share one policy with different local paths.
+If the hub is a git repository, say what to commit: `config.yaml`,
+`CLAUDE.md`, `conventions/` and `.pave-hub` are shared with the team.
+`workspace.yaml` is not — it is gitignored, and a teammate generates their own
+by running this command. That split is what lets everyone share one policy
+with different local paths.
+
+If it is not, say that instead: the hub works locally, but nothing can be
+shared until it is version controlled.
 
 Next is `/pave:analyse`, not `/pave:design`. Init recorded how to *build* each
 repo; nothing yet knows what any service *does*, and design writes confident,

@@ -2,7 +2,7 @@
 # Contains nothing machine-specific. Your repo paths live in workspace.yaml.
 
 hub:
-  name: platform
+  name: <set from the hub folder name at init>
 
 # Model capability order, weakest to strongest. Pave compares models against
 # this list, so when a new model appears you add it here rather than waiting
