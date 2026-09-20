@@ -76,6 +76,12 @@ Fall back to asking outright if no workspace is open, or if the user edits the
 list. If `workspace.yaml` already exists, use the paths it records and ask
 whether anything has been added.
 
+**Record absolute paths.** `workspace.yaml` never leaves this machine, so
+relative paths buy nothing and cost a real ambiguity — skills run from inside
+a service repo as well as from the hub, and `../order-service` resolves
+differently from each. Expand whatever the user types, or the workspace
+folders offer, to absolute before writing.
+
 Check each path exists before scanning it. A path that has moved is a finding
 for the summary, not a crash.
 
