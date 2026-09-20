@@ -2,6 +2,7 @@
 # Pave helper. Deterministic hub operations that need no model.
 #
 #   pave.sh add <folder>...    register service folders with the hub
+#   pave.sh stale [service]     report what needs discovery or analysis
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -84,8 +85,19 @@ PY
   return 0
 }
 
+# stale [service]
+# Reports per-service state. Decides nothing - /pave:analyse reads this and
+# chooses what to spawn.
+cmd_stale() {
+  local hub; hub="$(find_hub)"
+  have_python || die "python3 is required for 'stale'"
+  local here; here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  python3 "$here/pave-stale.py" "$hub" "$@"
+}
+
 case "${1:-}" in
   add) shift; cmd_add "$@" ;;
-  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n' ;;
+  stale) shift; cmd_stale "$@" ;;
+  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n       pave.sh stale [service]\n' ;;
   *) die "unknown command: $1" ;;
 esac

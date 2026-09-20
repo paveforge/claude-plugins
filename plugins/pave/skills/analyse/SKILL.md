@@ -3,6 +3,7 @@ name: analyse
 description: Work out what the registered services are and what they do. Discovers each one's language, build commands and contracts, then reads its domain model and writes an indexed knowledge base. Use after /pave:add, and when services drift.
 effort: medium
 argument-hint: "[service name, or blank for everything missing or stale]"
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 ---
 
 # Pave — analyse
@@ -31,29 +32,44 @@ If no services are registered, stop and say to run `/pave:add <folder>` first.
 
 ## 1. Decide what to analyse
 
-- `/pave:analyse <service>` — just that one, always
-- `/pave:analyse` — everything missing or stale
-
-A service with no `language` in `workspace.yaml` needs discovery. A service
-with no knowledge folder needs analysis. A service with both is checked for
-staleness.
-
-**Staleness is path-scoped, not time-based.** Each service README records the
-`commit` it was analysed at and the `source_paths` the analysis rested on. A
-service is stale when those paths have moved:
+Run the script. It checks every registered service and reports what each one
+needs:
 
 ```
-git -C <path> diff --name-only <commit>..HEAD -- <source_paths>
+"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh stale $ARGUMENTS
 ```
 
-Empty output means the knowledge is still valid however old it is. A month of
-commits to CI config, READMEs or unrelated packages invalidates nothing.
+```
+undiscovered svc-d       no language in workspace.yaml
+missing      svc-c       no knowledge folder
+stale        svc-b       1 file(s) changed under internal/domain
+orphan       old-svc     knowledge folder, no such service in workspace.yaml
+current      svc-a       unchanged since 0818f6e
+```
 
-**Prune what is gone.** A knowledge folder for a service no longer in
-`workspace.yaml` keeps appearing in the index, and design will happily plan
-against a service nobody can build. Remove it and say so.
+| State | Do |
+|---|---|
+| `undiscovered` | §2 discovery, then §3 analysis |
+| `missing` | §3 analysis |
+| `stale` | §3 analysis |
+| `orphan` | Delete the knowledge folder and say so |
+| `current` | Nothing |
+| `unreachable` | Report it. Do not analyse, do not guess |
+
+Given a service name, the script checks only that one. Given none, it checks
+everything.
+
+**Staleness is path-scoped, not time-based**, which is what the script
+implements: a service is stale only when the source directories its analysis
+rested on have changed. A month of commits to CI config, READMEs or unrelated
+packages invalidates nothing, and re-reading a service that has not moved is
+pure cost.
 
 Report what needs doing, and why, before spawning anything.
+
+An `orphan` matters more than it looks. A knowledge folder for a service no
+longer registered keeps appearing in the index, and design will happily plan
+against a service nobody can build.
 
 ## 2. Discover — what each repo is
 

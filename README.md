@@ -142,6 +142,18 @@ and the source directories its analysis rested on. A month of commits to CI
 config invalidates nothing; a change under `internal/domain` invalidates
 exactly one service.
 
+That check runs in `scripts/pave.sh`, which you can also run directly:
+
+```
+pave.sh stale
+
+undiscovered svc-d       no language in workspace.yaml
+missing      svc-c       no knowledge folder
+stale        svc-b       1 file(s) changed under internal/domain
+orphan       old-svc     knowledge folder, no such service in workspace.yaml
+current      svc-a       unchanged since 0818f6e
+```
+
 **You rarely run it by hand after the first time.** Design spawns analysts
 itself for any service whose knowledge is missing or stale.
 
