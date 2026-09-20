@@ -186,43 +186,52 @@ than the fan-out saved.
 Write one document per unit of work into `features/<slug>/tasks/`, named
 `NN-<slug>.md`, from `templates/task.md`.
 
+This is the most important output of the phase. Everything downstream executes
+these documents without question: a builder does what the document says, and
+review checks only whether it did. Anything the document leaves open, an agent
+invents — and nothing downstream will catch it, because the plan never asked
+for it.
+
+So the test for every line is: **could a competent stranger do this without
+asking a question?**
+
 **Each task names exactly one target service** and must stand alone. The agent
 that executes it never saw this conversation and cannot read its sibling
-documents. Everything it needs is in its own file or it will guess.
+documents.
 
-**Every task traces to the design.** The tasks are an output of `architecture.md`
-and the contracts, not a separate act of invention. A task that does not follow
-from the design is a defect — either the design is incomplete, in which case fix
-the design and re-derive, or the task does not belong. Write them all in one
-pass, seeing the whole feature, so the set is consistent: what one service
-emits, another handles; what one stops sending, another stops expecting.
+**Every task traces to the design.** The tasks are an output of
+`architecture.md` and the contracts, not a separate act of invention. A task
+that does not follow from the design is a defect — either the design is
+incomplete, in which case fix the design and re-derive, or the task does not
+belong. Write them all in one pass, seeing the whole feature, so the set is
+consistent: what one service emits, another handles; what one stops sending,
+another stops expecting.
 
-No phase scaffolding — no "Domain & Models" headings. List the actual tasks the
-service must do. Without a scaffold to hide behind, each line has to be:
+### How many tasks
 
-- **Concrete** — names the file, type, endpoint or migration, not "add validation"
-- **Verifiable** — you can tell from the repo whether it is done
-- **Owned by one service**
+One task is **one coherent unit of work in one service that could be committed
+on its own**. Split where the work has a natural seam — the API and the
+background sweeper that expires its rows are two tasks; they are reviewed
+separately and could land separately.
 
-```markdown
-- [ ] `Reservation` entity: SKU, qty, checkout_session_id, expires_at, Expired state
-- [ ] Migration `reservations` + unique index on (checkout_session_id, sku)
-- [ ] `Reserve` idempotent by checkout_session_id - returns existing on replay
-```
+Never split by architectural layer. "Domain", then "repository", then
+"handlers" is three tasks that cannot be committed or reviewed independently,
+and it reintroduces the phase scaffolding this design removed.
 
-not
+A service with thirty items in one task should have been two or three tasks.
+A service with two items in three tasks should have been one.
 
-```markdown
-- [ ] Phase 1: Domain & Models
-```
+### What an item looks like
 
-Ordering is top to bottom. An agent that wants to write models before handlers
-will do that anyway; it does not need to be told.
+An item is **one focused change you can state in a single sentence without
+using "and"**. That is the sizing rule: if the sentence needs an "and", it is
+two items.
 
-**Ground every task in code that exists.** A task touching existing behaviour
-names the type, file or flow it extends, taken from that service's knowledge
-files. A task that is genuinely new says so. This is what separates specific
-from specific-and-wrong, and it is the whole reason `/pave:analyse` runs.
+Each item must be:
+
+- **Concrete** — names the file, type, endpoint or migration
+- **Independently checkable** — review ticks and verifies items one at a time
+- **Grounded** — names the existing code it extends, from the knowledge files
 
 ```markdown
 - [ ] Extend `StockHold` (internal/domain/hold.go) with expires_at + Expired state
@@ -231,12 +240,71 @@ from specific-and-wrong, and it is the whole reason `/pave:analyse` runs.
 not
 
 ```markdown
-- [ ] Add a Reservation entity with a TTL
+- [ ] Add a Reservation entity with a TTL        # invents a concept that exists
+- [ ] Phase 1: Domain & Models                   # scaffolding, not work
+- [ ] Add validation                             # not checkable
+- [ ] Add the entity and wire up the handler     # "and" - two items
 ```
 
+Ordering is top to bottom. An agent that wants to write models before handlers
+will do that anyway; it does not need to be told.
+
+### Specify the unhappy paths
+
+**This is where agents invent, and where review cannot save you.** If an item
+describes behaviour, state what happens when it fails, repeats, or hits a
+boundary. Put it as nested lines under the item:
+
+```markdown
+- [ ] `Reserve` is idempotent by checkout_session_id
+      - replay with the same id returns the existing hold, does not decrement stock
+      - insufficient stock → `ErrInsufficientStock`, no partial hold created
+      - hold already expired → treat as a new reservation
+```
+
+The checkbox stays one sentence, so it is reviewable. The nested lines are the
+specification the builder implements and the reviewer compares against — they
+are what turns "it exists" into "it does what we said".
+
+An item that changes behaviour and states no failure behaviour is not ready.
+The agent will pick something reasonable, review will pass it because the plan
+never said otherwise, and you will find out in production.
+
+### Say what the tests must prove
+
+A behavioural item names its test expectation, or has an explicit test item
+next to it. Otherwise "done" is the agent's opinion, and review can only check
+that *some* test exists.
+
+```markdown
+- [ ] Test: concurrent Reserve on the same SKU never oversells
+```
+
+### Bound the scope, including behaviour
+
+"Out of scope" is not only about other services. Say what the agent must not
+do inside its own repo — the most common autonomous failure is a correct
+change wrapped in three unrequested ones.
+
+```markdown
+## Out of scope
+- Do not modify order-service or payment-service. Agents are working there now.
+- Do not refactor the existing allocation logic; it is used elsewhere.
+- Do not upgrade dependencies or reformat files you did not otherwise change.
+```
+
+### Acceptance must be checkable from the repo
+
+`/pave:review` reads code and runs nothing, so "done when" has to be visible in
+the repository or in the verification commands. "Checkout completes in under
+two seconds" cannot be reviewed; "the sweeper releases holds past expires_at,
+covered by a test" can.
+
+### Carry the mechanics
+
 Pull `build`, `test` and `lint` for the target service out of `workspace.yaml`
-into the document's Verification section. The agent must not have to rediscover
-how to build the repo.
+into the Verification section. The agent must not have to rediscover how to
+build the repo.
 
 Mark a cross-service `depends_on` only where one genuinely exists — a library
 that must publish before consumers bump it, a migration others read, infra that
@@ -259,6 +327,11 @@ it. For **every** task document:
 | Out of scope | Not stated |
 | Self-contained | Refers to another task document, or to this conversation |
 | Grounded | Touches existing behaviour without naming the code it extends |
+| Sized | An item needing "and" to state, or a task split by architectural layer |
+| Unhappy paths | A behavioural item states no failure, replay or boundary behaviour |
+| Tested | A behavioural item names no test expectation |
+| Scope bounded | Out of scope does not cover behaviour inside the repo |
+| Checkable | "Done when" cannot be verified by reading the repo |
 
 On failure, name the gap and stop. Do not fan out. Do not let `/pave:build`
 proceed and fix it later — that is the cheap model making design decisions,

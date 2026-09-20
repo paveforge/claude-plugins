@@ -6,12 +6,27 @@ depends_on: []
 branch: feature/<feature-slug>
 ---
 
-# <What this task achieves>
+# <What this task achieves, as an outcome>
+
+<!--
+  One coherent unit of work in one service, that could be committed on its
+  own. Split by natural seam - the API and the sweeper that expires its rows
+  are two tasks. Never split by architectural layer.
+
+  The test for every line below: could a competent stranger do this without
+  asking a question? The agent executing it has not seen the design
+  discussion and cannot read the other task documents.
+-->
 
 ## Objective & Context
-**Goal:** <1-2 sentences on what we are building and why>
-**Out of scope:** <services and areas not to touch. Name them explicitly -
-agents are working in those repos in parallel.>
+**Goal:** <1-2 sentences: what we are building here, and why>
+
+## Out of scope
+<!-- Behaviour as well as services. The most common autonomous failure is a
+     correct change wrapped in three unrequested ones. -->
+- Do not modify <service>, <service>. Agents are working in those repos now.
+- Do not refactor <existing thing>; <why>.
+- Do not upgrade dependencies or reformat files you did not otherwise change.
 
 ## Architecture & Data Contracts
 **Data structures / schema:** <entities, migrations, DTOs>
@@ -26,13 +41,29 @@ Do not edit the contract or its generated files.
 | consumes | <service> | <contract> | stub landed; being built in parallel |
 
 ## Tasks
-- [ ] <concrete, verifiable, one service - names the file, type, endpoint or migration>
-- [ ] <not "add validation">
+
+<!--
+  An item is one focused change, stateable in one sentence without "and".
+  Name the existing code it extends. Under any item that changes behaviour,
+  nest what happens when it fails, repeats, or hits a boundary - that is
+  where an agent would otherwise invent, and review cannot catch an invention
+  the plan never ruled out.
+-->
+
+- [ ] <Extend `Type` (path/to/file) with ...>
+      - <replay / duplicate → what happens>
+      - <invalid input → which error, and what is not left behind>
+      - <boundary or already-applied case → what happens>
+- [ ] <Migration `name` + the constraint that enforces the rule above>
+- [ ] Test: <what it must prove, stated as a property>
 
 ## Verification
 Build `<command>` · Test `<command>` · Lint `<command>`
-**Done when:** <criteria for this service>
+
+**Done when:** <criteria visible by reading the repo. /pave:review runs
+nothing, so anything that needs the app running cannot be checked here.>
 
 ## If the contract is wrong
 Stop and report to the hub. Do not change the contract locally - other
-services are building against it.
+services are building against it, and a local fix turns one contract error
+into several divergent guesses.
