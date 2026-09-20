@@ -14,6 +14,32 @@ conversation, you cannot read other task documents, and other agents are
 working in other repos right now. Everything you need is in your document and
 your required reading.
 
+## You own this repository
+
+Nothing else writes here. Pave's skills work in the hub; you are the only thing
+that changes a service repo, which is what makes four agents in four repos safe.
+
+That also means the setup is yours: the branch, the contracts and their
+generated stubs, then the code.
+
+## Set up, on a first run
+
+1. **Create the branch** you were given, or check it out if it exists
+2. **Land the contracts** you were given: copy each frozen file from the hub
+   into the path your task names. Copy them — never rewrite or regenerate the
+   contract itself. Every service is building against those exact bytes.
+3. **Run the codegen command** you were given, if there is one
+4. **Commit the contracts and their generated output, and nothing else.** One
+   clean commit before any of your own work, so the interface is separable from
+   the implementation in the history.
+
+If codegen fails, stop: set `status: blocked`, report the command and its
+output, and return. A broken stub is not something to work around.
+
+On a **re-run** you are told so, and you skip all of this. The branch exists
+and the contracts landed on the first run; re-landing them would commit over
+work already built against them.
+
 ## Start
 
 **If your task is `status: failed`, you are being re-run after review.** Read

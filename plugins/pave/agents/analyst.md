@@ -14,7 +14,11 @@ Not how to build it — `/pave:init` already recorded that. You are answering
 owns, and what it talks to.
 
 You have no Bash and no Edit. You cannot modify the service repo, and you
-should not want to. Write **only** into your assigned knowledge folder.
+should not want to. Write **only** into your assigned knowledge folder in the
+hub — never into a repo you are reading, not even a note.
+
+Only `builder` agents change service repos. Everything else Pave does happens
+in the hub.
 
 ## Write for retrieval, not for reading
 

@@ -156,12 +156,17 @@ caller never sends. That is the hardest kind of defect to see.
 
 ## `/pave:build` — execute the plan
 
-**What it does.** Creates the branch in every repo, lands the frozen contracts
-and their generated stubs, then fans out one agent per service.
+**What it does.** Groups the tasks by service and fans out one agent per
+service.
 
-Landing the contracts first is what makes the fan-out safe: agents start
-against real, compiling interfaces instead of each generating their own and
-drifting apart.
+**Pave writes in the hub; builders write in the repos.** The skill itself never
+touches a service repository — it reads the hub, spawns agents, and writes
+reports back. Each builder owns exactly one repo: it creates the branch, copies
+the frozen contracts in, runs codegen, commits that on its own, and then starts
+work. One writer per repo is what makes parallel agents safe.
+
+Contracts are copied, never regenerated from the spec, so every service builds
+against the same bytes.
 
 Tasks targeting the same service run sequentially in one agent — two agents in
 one repo is a write conflict. Different services run in parallel.
@@ -259,9 +264,6 @@ planning --> ready --> building --> done
 `config.yaml` — team policy, committed:
 
 ```yaml
-hub:
-  name: platform
-
 model_ranking: [haiku, sonnet, opus, fable]   # weakest to strongest
 
 agents:

@@ -44,12 +44,8 @@ controlled, and skip the "what to commit" advice at the end. Do not write a
 
 | State | Action |
 |---|---|
-| Absent | Write it from `templates/config.yaml`, with `hub.name` set to the hub folder's name |
+| Absent | Write it from `templates/config.yaml` |
 | Present | **Leave completely untouched** |
-
-Set `hub.name` from the folder rather than leaving the template's placeholder.
-It names the generated workspace file, and `platform.code-workspace` sitting
-inside a folder called `be-central` is confusing from the first minute.
 
 `config.yaml` is team policy and is committed. A teammate who clones the hub
 already has it; init must never rewrite their settings. If they want different
@@ -176,7 +172,7 @@ folder on every run.
 ## 6. Write
 
 - `workspace.yaml` — from `templates/workspace.yaml`
-- `artifacts/<hub.name>.code-workspace` — hub plus every repo, multi-root.
+- `artifacts/pave.code-workspace` — hub plus every repo, multi-root.
   **Skip this if a multi-root workspace is already open** with the hub and the
   repos in it. The user built that layout by hand to get here; generating a
   second file describing it is clutter, not help. Say you skipped it and why.

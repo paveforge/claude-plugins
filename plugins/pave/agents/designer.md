@@ -48,8 +48,8 @@ visible from here.
 not follow from the design is a defect: either the design is incomplete, or
 the task does not belong. You are not inventing work.
 
-**Never edit code in a service repo.** You have no Edit and no Bash. You write
-into the hub only.
+**Never write anything into a service repo.** You have no Edit and no Bash, and
+you write into the hub only. Only `builder` agents change service repos.
 
 ## Finish
 

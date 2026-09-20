@@ -81,6 +81,11 @@ produces tasks that are individually reasonable and collectively inconsistent.
 
 ## Rules
 
+**Everything Pave writes lives in this hub.** Specs, designs, contracts, task
+documents, knowledge and reports are all here. The only thing that changes a
+service repo is a `builder` agent, in the one repo it owns — which is what
+makes parallel agents safe, because no repo ever has two writers.
+
 **Contracts are frozen at gate 1**, alongside the architecture they belong to.
 An interface between two services is a design decision, not an implementation
 detail. They change by re-running `/pave:design`, never by editing them in a

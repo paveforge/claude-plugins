@@ -7,7 +7,7 @@ argument-hint: "<feature slug>"
 
 # Pave — build
 
-Branch, land the contracts, then fan out.
+Fan out, and let each agent own its repo.
 
 Build executes. It does not design. Every decision was made at the gates; this
 phase turns frozen task documents into code.
@@ -33,39 +33,22 @@ Set the feature to `building` before spawning anything. A run that dies
 mid-way leaves a status that says so, instead of one that claims the feature
 is still waiting to start.
 
-## 1. Branches
+## Pave writes in the hub. Builders write in the repos.
 
-Sequential, from this session, before anything else.
+**This skill never touches a service repository.** It reads the hub, spawns
+agents, collects what they report, and writes reports back into the hub. Every
+change inside a repo — the branch, the contracts, the generated stubs, the code
+— is made by a `builder` agent in the repo it owns.
 
-For each repo with a task in this feature, create the branch from
-`branch.pattern` in `config.yaml` — the same name in every repo. **If it
-already exists, check it out; do not recreate it.** A re-run after review lands
-on branches that are already there and full of work.
+That is not tidiness. Parallel agents are safe because each one owns exactly
+one repo and nothing else writes there. An orchestrator reaching in to commit
+something is a second writer, and it is a second writer holding a git index
+that four agents are about to use.
 
-This happens whether or not contracts are being landed. A feature can touch
-four services without introducing a single new contract, and those agents still
-need somewhere to commit.
+So contract landing, which used to happen here, happens in each builder before
+it starts work.
 
-## 2. Land the contracts
-
-**Skip this entirely on a re-run.** Contracts froze at gate 1 and landed on the
-first run; re-landing them would commit over work that is already built against
-them. Only a fresh `ready` feature lands contracts.
-
-For each repo with a task in this feature:
-
-1. Copy the frozen contract files from `features/<slug>/contracts/`
-2. Run the service's `codegen` command from `workspace.yaml`
-3. Commit the contract and its generated output — **nothing else**
-
-This is what makes the fan-out safe. Agents start against real, compiling
-interfaces instead of each generating their own from a spec and drifting apart.
-If `contracts.land_before_fanout` is false, skip it and expect drift.
-
-Stop if codegen fails. A broken stub multiplied across four parallel agents is
-four broken builds.
-
-## 3. Decide what to build
+## 1. Decide what to build
 
 Build exactly the tasks the entry table selected. **Never rebuild a task that
 is `done`** — it has been verified, and rebuilding it risks undoing work while
@@ -75,7 +58,7 @@ On the `failed` path, give each builder the review report alongside its task
 document. Review has already unchecked the specific items that were not real,
 so the agent fixes those rather than starting over.
 
-## 4. Group tasks
+## 2. Group tasks
 
 Read the frontmatter of every task document. Group by `service`.
 
@@ -99,7 +82,10 @@ Respect `depends_on`. Anything it blocks waits for its blocker to reach `done`.
 If a cycle would leave tasks waiting on each other forever, stop and report it
 — that is a design defect, and waiting will not resolve it.
 
-## 5. Fan out
+If `contracts.land_before_fanout` is false, tell the builders not to land
+contracts and expect drift.
+
+## 3. Fan out
 
 Spawn one `builder` agent per group, passing `agents.builder.model` from
 `config.yaml` as the `model` argument. This is where the model choice actually
@@ -115,6 +101,12 @@ Give each agent, and nothing else:
   4. the repo's own `CLAUDE.md` — if `workspace.yaml` records one
 - Its repo path, its `path` within that repo (a monorepo service does not
   live at the root), its branch name, and its build/test/lint commands
+- **The contracts it must land**: the frozen files from
+  `features/<slug>/contracts/` that its task names, and the service's `codegen`
+  command from `workspace.yaml`. On a re-run say they are already landed.
+
+Tell it whether this is a first run or a re-run. A re-run lands nothing and
+creates no branch — both exist already, full of work.
 
 Name the convention files explicitly as required reading. Do not paste their
 contents — the agent reads the files, so an edit to `go.md` takes effect on the
@@ -124,7 +116,7 @@ next run with nothing to regenerate.
 document and returns a summary. Four agents returning full narratives into this
 session will exhaust the context exactly when it is needed for integration.
 
-## 6. Track
+## 4. Track
 
 Task status lives in each task document's frontmatter: `pending` →
 `in-progress` → `done`, or `blocked`. One agent owns one document; nothing else
@@ -139,7 +131,7 @@ Leave the status the agent left, record it in the report, and never infer
 success from silence. A crashed builder that gets marked `done` sends unwritten
 code to review, which will find nothing wrong with work that does not exist.
 
-## 7. Handle escalation
+## 5. Handle escalation
 
 An agent that finds the contract wrong or insufficient must stop and report,
 never improvise. Three siblings are building against that contract; a local fix
@@ -161,7 +153,7 @@ The same applies to anything ambiguous. If build agents routinely need to think
 their way out of gaps, that is a defect in `design`, not a reason to raise the
 build model.
 
-## 8. Report
+## 6. Report
 
 Write `features/<slug>/artifacts/build-report.md` from
 `templates/build-report.md`.
@@ -188,7 +180,7 @@ reads code and runs nothing, so this report is the only record that the
 commands ever passed. A failing command means the task is not done — if a row
 says fail and its task says done, stop and find out which is wrong.
 
-## 9. Set status
+## 7. Set status
 
 Derive it from the tasks, in this order — the first row that matches wins:
 
