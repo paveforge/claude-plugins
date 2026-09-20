@@ -4,6 +4,9 @@ feature: <feature-slug>
 status: pending            # pending | in-progress | done | blocked | failed
 depends_on: []
 branch: feature/<feature-slug>
+derives_from:              # the design this task projects. No source = invented.
+  - architecture.md#<section>
+  - contracts/<file>
 ---
 
 # <What this task achieves, as an outcome>
@@ -12,6 +15,10 @@ branch: feature/<feature-slug>
   One coherent unit of work in one service, that could be committed on its
   own. Split by natural seam - the API and the sweeper that expires its rows
   are two tasks. Never split by architectural layer.
+
+  This document is a projection of the design, not a second act of it.
+  Nothing here should be true for the first time; everything traces to a
+  decision listed in derives_from.
 
   The test for every line below: could a competent stranger do this without
   asking a question? The agent executing it has not seen the design
@@ -62,6 +69,20 @@ Build `<command>` · Test `<command>` · Lint `<command>`
 
 **Done when:** <criteria visible by reading the repo. /pave:review runs
 nothing, so anything that needs the app running cannot be checked here.>
+
+## If something is not specified
+
+**This document is the complete specification. If it does not say, it was not
+decided - so stop, do not infer.**
+
+A missing error case or an unstated boundary has an answer that looks
+obviously right from inside this repo, and picking it feels like doing the job
+well. Nothing downstream will catch it: review checks only whether you did
+what this document said, and if it said nothing, your invention passes and
+ships unexamined.
+
+Set `status: blocked`, say which item is underspecified and what this document
+would need to say, and return.
 
 ## If the contract is wrong
 Stop and report to the hub. Do not change the contract locally - other

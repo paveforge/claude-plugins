@@ -199,13 +199,48 @@ asking a question?**
 that executes it never saw this conversation and cannot read its sibling
 documents.
 
-**Every task traces to the design.** The tasks are an output of
-`architecture.md` and the contracts, not a separate act of invention. A task
-that does not follow from the design is a defect — either the design is
-incomplete, in which case fix the design and re-derive, or the task does not
-belong. Write them all in one pass, seeing the whole feature, so the set is
+### Derivation is the whole job
+
+The tasks are a **projection** of `architecture.md` and the contracts into
+per-service briefs. They are not a second act of design, and nothing in them
+should be true for the first time.
+
+Write them all in one pass, seeing the whole feature, so the set is
 consistent: what one service emits, another handles; what one stops sending,
 another stops expecting.
+
+**Cite the source.** Every task names, in frontmatter, the design sections and
+contracts it comes from:
+
+```yaml
+derives_from:
+  - architecture.md#reservation-expiry
+  - architecture.md#state-ownership
+  - contracts/stock.v1.proto
+```
+
+This is not bookkeeping. A builder cannot see `architecture.md` — its task
+document is its whole world — so it has no way to tell a designed decision
+from something the task-writer invented. The citation is what lets a human at
+gate 2 check, and it forces the question while you write: *where does this
+come from?* **If you cannot cite a source for an item, you are inventing it.**
+Either the design is incomplete — go back and fix it, then re-derive — or the
+item does not belong.
+
+**Check coverage in both directions.** Grounding each task in the design is
+only half of it:
+
+| Direction | Question | Failure |
+|---|---|---|
+| Task → design | Does every item trace to a decision? | Invented work |
+| Design → task | Does every decision have an item? | Silently dropped work |
+
+The second is the one that gets missed, and it is the more expensive. After
+the tasks are written, walk `architecture.md` decision by decision and every
+contract message field by field, and find the task that implements each. A
+decision with no task will not be built, nothing downstream will notice, and
+review will pass the feature — because review asks whether the plan was
+followed, and the plan never asked.
 
 ### How many tasks
 
@@ -327,6 +362,8 @@ it. For **every** task document:
 | Out of scope | Not stated |
 | Self-contained | Refers to another task document, or to this conversation |
 | Grounded | Touches existing behaviour without naming the code it extends |
+| Traceable | No `derives_from`, or an item with no design decision behind it |
+| Complete | A decision in `architecture.md` or a contract with no task implementing it |
 | Sized | An item needing "and" to state, or a task split by architectural layer |
 | Unhappy paths | A behavioural item states no failure, replay or boundary behaviour |
 | Tested | A behavioural item names no test expectation |

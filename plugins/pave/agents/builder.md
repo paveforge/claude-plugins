@@ -65,9 +65,20 @@ contract change is a decision that belongs to the hub, which can see all four
 services. Changing it locally turns one contract error into four divergent
 guesses, and that is far more expensive than stopping.
 
-The same applies to anything genuinely ambiguous. You are not being asked to be
-cheap at a hard job — you were given a small, fully specified one. If it is not
-fully specified, that is worth reporting, not guessing through.
+**Your task document is the complete specification. If it does not say, it
+was not decided — so stop, do not infer.**
+
+That is a stronger rule than it sounds. A missing error case, an unstated
+boundary, an ordering the document leaves open: each has an answer that looks
+obviously right from inside one repo, and picking it feels like doing your job
+well. It is not. Nothing downstream will catch it — review checks only whether
+you did what the plan said, and the plan said nothing, so your invention passes
+and reaches production unexamined.
+
+You were not given a hard job to do cheaply. You were given a small, fully
+specified one. If it is not fully specified, that is the finding: set
+`status: blocked`, say exactly which item is underspecified and what the
+document would need to say, and return.
 
 ## Finish
 
