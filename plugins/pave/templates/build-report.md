@@ -73,12 +73,13 @@ built against it and would break.>
 
 ## Contracts landed
 
-Committed before any agent spawned, so every service built against the
-same frozen interface.
+Copied from the hub by each builder into its own repo, as its first commit,
+before any of its own work. Copied and never regenerated, so every service
+built against the same bytes.
 
-| Contract | Repos | Codegen | Commit |
+| Contract | Service | Codegen | Commit |
 |---|---|---|---|
-| `<contract file>` | <services> | <command> | `<sha>` |
+| `<contract file>` | <service> | <command> | `<sha>` |
 
 ## Decisions taken
 

@@ -282,7 +282,7 @@ branch:
   pattern: feature/{feature-slug}
 
 contracts:
-  land_before_fanout: true
+  land_contracts: true
 ```
 
 Every model is enforced when its agent is spawned. **Design is the exception:

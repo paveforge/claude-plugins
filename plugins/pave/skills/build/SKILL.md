@@ -1,6 +1,6 @@
 ---
 name: build
-description: Execute an approved feature plan. Lands the frozen contracts in each repo, then fans out one agent per service to work through its task documents. Use after /pave:design has passed both gates.
+description: Execute an approved feature plan. Fans out one agent per service, each landing the frozen contracts in its own repo and working through its task documents. Use after /pave:design has passed both gates.
 effort: medium
 argument-hint: "<feature slug>"
 ---
@@ -82,7 +82,7 @@ Respect `depends_on`. Anything it blocks waits for its blocker to reach `done`.
 If a cycle would leave tasks waiting on each other forever, stop and report it
 — that is a design defect, and waiting will not resolve it.
 
-If `contracts.land_before_fanout` is false, tell the builders not to land
+If `contracts.land_contracts` is false, tell the builders not to land
 contracts and expect drift.
 
 ## 3. Fan out

@@ -27,4 +27,5 @@ branch:
   pattern: feature/{feature-slug}
 
 contracts:
-  land_before_fanout: true       # generate and commit stubs before agents spawn
+  land_contracts: true           # each builder copies the frozen contracts
+                                 # into its repo and runs codegen before working
