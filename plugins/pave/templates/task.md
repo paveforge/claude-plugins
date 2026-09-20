@@ -1,9 +1,9 @@
 ---
 service: <service-name>
-feature: <feature-slug>
+feature: <feature-id>
 status: pending            # pending | in-progress | done | blocked | failed
 depends_on: []
-branch: feature/<feature-slug>
+branch: feature/<feature-id>
 derives_from:              # the design this task projects. No source = invented.
   - architecture.md#<section>
   - contracts/<file>

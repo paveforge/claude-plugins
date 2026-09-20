@@ -2,7 +2,7 @@
 name: review
 description: Check that the build agents did exactly what the plan said. Spawns one reviewer per task to compare its task document against the code, marks tasks that deviate as failed, and writes a report. Use on demand after /pave:build, before merging.
 effort: low
-argument-hint: "<feature slug>"
+argument-hint: "<feature id>"
 ---
 
 # Pave — review
@@ -27,14 +27,14 @@ consequences, both deliberate:
 **A gap in the plan is not a review failure.** If the plan said A, B and C and
 every agent did A, B and C, this passes — even if the feature needs D. A
 missing case is a planning problem, so it goes in the report as a comment and
-**the user decides**, by running `/pave:design <slug>` to re-design and then
+**the user decides**, by running `/pave:design <feature-id>` to re-design and then
 `/pave:build`. Never mark a task failed because the plan was wrong.
 
 **Improvements never change status.** Note them, clearly marked non-blocking.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml` and `features/<slug>/`.
+Locate the hub. Read `config.yaml`, `workspace.yaml` and `features/<feature-id>/`.
 
 | Feature status | Review |
 |---|---|
@@ -104,7 +104,7 @@ not add one of your own — you did not read the code.
 
 ## 3. Report
 
-Write `features/<slug>/artifacts/review-report.md` from
+Write `features/<feature-id>/artifacts/review-report.md` from
 `templates/review-report.md`.
 
 Its structure exists to serve two readers at once:
@@ -129,6 +129,6 @@ reaches a re-run agent becomes work it does, and the builder's authority is
 the task document, not a reviewer's opinion.
 
 Then summarise in the session: what failed, in which service, and the single
-command to run next — `/pave:build <slug>` for execution drift, or
-`/pave:design <slug>` when the design itself needs to change. Lead with what
+command to run next — `/pave:build <feature-id>` for execution drift, or
+`/pave:design <feature-id>` when the design itself needs to change. Lead with what
 failed.

@@ -1,8 +1,3 @@
----
-feature: <slug>
-feature_id: <TICKET-123, or omit when there is none>
----
-
 # <Feature Name>
 
 ## Why

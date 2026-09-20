@@ -24,7 +24,7 @@ execution:
   max_parallel: 4
 
 branch:
-  pattern: feature/{feature-slug}
+  pattern: feature/{feature-id}
 
 contracts:
   land_contracts: true           # each builder copies the frozen contracts

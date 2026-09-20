@@ -1,5 +1,5 @@
 ---
-feature: <slug>
+feature: <feature-id>
 reviewed_at: <timestamp>
 commit: <head sha of the feature branch when reviewed>
 verdict: <passed | failed>
@@ -81,7 +81,7 @@ section.
 
 - **Plan gap** <Something the plan does not cover. Not a deviation, because
   the plan never asked for it. To cover it:
-  `/pave:design <slug>` - re-designs the whole feature.>
+  `/pave:design <feature-id>` - re-designs the whole feature.>
 
 <!--
   This separation is load-bearing. Suggestions must never reach a re-run

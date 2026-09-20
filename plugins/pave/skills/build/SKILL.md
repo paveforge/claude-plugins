@@ -2,7 +2,7 @@
 name: build
 description: Execute an approved feature plan. Fans out one agent per service, each landing the frozen contracts in its own repo and working through its task documents. Use after /pave:design has passed both gates.
 effort: medium
-argument-hint: "<feature slug>"
+argument-hint: "<feature id>"
 ---
 
 # Pave — build
@@ -14,7 +14,7 @@ phase turns frozen task documents into code.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`, and `features/<slug>/`.
+Locate the hub. Read `config.yaml`, `workspace.yaml`, and `features/<feature-id>/`.
 
 | Feature status | Build |
 |---|---|
@@ -102,7 +102,7 @@ Give each agent, and nothing else:
 - Its repo path, its `path` within that repo (a monorepo service does not
   live at the root), its branch name, and its build/test/lint commands
 - **The contracts it must land**: the frozen files from
-  `features/<slug>/contracts/` that its task names, and the service's `codegen`
+  `features/<feature-id>/contracts/` that its task names, and the service's `codegen`
   command from `workspace.yaml`. On a re-run say they are already landed.
 
 Tell it whether this is a first run or a re-run. A re-run lands nothing and
@@ -122,7 +122,7 @@ Task status lives in each task document's frontmatter: `pending` →
 `in-progress` → `done`, or `blocked`. One agent owns one document; nothing else
 writes to it.
 
-After each agent returns, rewrite `features/<slug>/README.md` and
+After each agent returns, rewrite `features/<feature-id>/README.md` and
 `features/README.md` from the task frontmatter and checkbox state. Never
 hand-maintain either — they are derived, so they cannot drift.
 
@@ -155,7 +155,7 @@ build model.
 
 ## 6. Report
 
-Write `features/<slug>/artifacts/build-report.md` from
+Write `features/<feature-id>/artifacts/build-report.md` from
 `templates/build-report.md`.
 
 It is triaged by **who must act**, not by service or chronology. Someone
@@ -191,7 +191,7 @@ Derive it from the tasks, in this order — the first row that matches wins:
 | Every task `done` | `done` |
 
 `building` as an end state is the partial run: some tasks finished, nothing
-escalated, work remains. Re-running `/pave:build <slug>` picks up where it
+escalated, work remains. Re-running `/pave:build <feature-id>` picks up where it
 stopped. Say so plainly rather than reporting a partial run as a success.
 
 Never set `done` while a task is unfinished. It is the one status that tells

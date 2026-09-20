@@ -4,8 +4,8 @@
 
 <One-line goal, from spec.md>
 
-**Ticket** <feature_id, or -> · **Status** <planning | ready | building | done | failed | blocked> ·
-**Branch** `feature/<slug>` · **Last run** <timestamp> · `<skill>`
+**Status** <planning | ready | building | done | failed | blocked> ·
+**Branch** `feature/<feature-id>` · **Last run** <timestamp> · `<skill>`
 
 | # | Task | Service | Status | Done |
 |---|---|---|---|---|

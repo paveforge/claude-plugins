@@ -1,5 +1,5 @@
 ---
-feature: <slug>
+feature: <feature-id>
 built_at: <timestamp>
 branch: <branch name, same in every repo>
 verdict: <complete | partial | blocked>

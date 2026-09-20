@@ -78,7 +78,7 @@ Review checks execution against the plan, not whether the feature works. A
 gap in the plan is not a review failure: it is a comment, and you decide
 whether to re-design.
 
-`/pave:design <slug>` re-designs the whole feature rather than patching the
+`/pave:design <feature-id>` re-designs the whole feature rather than patching the
 gap. You cannot know that only one case was missed, and a patched design
 produces tasks that are individually reasonable and collectively inconsistent.
 

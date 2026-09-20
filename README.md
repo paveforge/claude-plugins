@@ -197,17 +197,18 @@ stronger model than your session if `config.yaml` asks for it.
 /pave:design build checkout            →  features/build-checkout/
 ```
 
-A leading ticket reference is kept as the feature's `feature_id` and recorded
-in `spec.md`, so the hub links back to your tracker. Without one, the slug is
-just the description. Pave never invents a ticket id.
+The feature id **is** the folder name — there is no second identifier. It is
+what `/pave:build` and `/pave:review` take, and what task documents carry. A
+ticket reference is simply part of it, which keeps the hub greppable against
+your tracker. Pave never invents one.
 
 If the argument matches an existing feature directory, that's a re-design of
-that feature. If a *new* feature's slug collides with an existing one, it stops
+that feature. If a *new* feature's id collides with an existing one, it stops
 and asks rather than overwriting an approved plan.
 
 **What it asks you.** To confirm the blast radius, then both gates.
 
-**Re-designing.** `/pave:design <slug>` on an existing feature re-derives the
+**Re-designing.** `/pave:design <feature-id>` on an existing feature re-derives the
 whole thing rather than patching the gap. You cannot know that only one case
 was missed, and a patched design produces tasks that are each individually
 reasonable and collectively inconsistent — a service handling a state its
@@ -313,11 +314,11 @@ planning --> ready --> building --> done
 | Status | Means | What to do |
 |---|---|---|
 | `planning` | Design in progress | — |
-| `ready` | Both gates passed, not built | `/pave:build <slug>` |
-| `building` | Being built, or a run left work | `/pave:build <slug>` resumes |
-| `done` | Every task built | `/pave:review <slug>` if you want it checked |
-| `failed` | Review found claims that were not real | `/pave:build <slug>` re-runs those tasks |
-| `blocked` | An agent escalated | Read the build report; usually `/pave:design <slug>` |
+| `ready` | Both gates passed, not built | `/pave:build <feature-id>` |
+| `building` | Being built, or a run left work | `/pave:build <feature-id>` resumes |
+| `done` | Every task built | `/pave:review <feature-id>` if you want it checked |
+| `failed` | Review found claims that were not real | `/pave:build <feature-id>` re-runs those tasks |
+| `blocked` | An agent escalated | Read the build report; usually `/pave:design <feature-id>` |
 
 ---
 
@@ -341,7 +342,7 @@ execution:
   max_parallel: 4
 
 branch:
-  pattern: feature/{feature-slug}
+  pattern: feature/{feature-id}
 
 contracts:
   land_contracts: true

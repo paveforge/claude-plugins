@@ -2,7 +2,7 @@
 name: design
 description: Plan a feature across every service it touches. Finds the blast radius, writes the spec and architecture, freezes the contracts, and produces one self-contained task document per unit of work. Use before building any feature that spans more than one service.
 effort: high
-argument-hint: "[TICKET-123] <feature description> | <existing feature slug>"
+argument-hint: "[TICKET-123] <feature description> | <existing feature id>"
 ---
 
 # Pave — design
@@ -13,46 +13,40 @@ This is the phase the whole plugin exists for, and the one the feature lives or
 dies on. Everything downstream executes what is decided here; nothing
 downstream is allowed to redesign it. Spend the effort here.
 
-## 0. Work out the feature slug
+## 0. Work out the feature id
 
-The slug names the folder every artefact goes into, so settle it before
-writing anything. It is also how `/pave:build` and `/pave:review` refer to the
-feature.
+**The feature id is the folder name under `features/`.** There is no second
+identifier: it names the folder, it is what `/pave:build` and `/pave:review`
+take as their argument, and it is what task documents carry in frontmatter.
+
+Settle it before writing anything.
 
 **Does the whole argument match a directory in `features/`?**
 
 | | |
 |---|---|
 | **Yes** | Re-design that feature. See below. |
-| **No** | A new feature. Derive the slug: |
+| **No** | A new feature. Derive the id: |
 
-1. If the first word looks like a ticket reference — letters, a hyphen, digits,
-   such as `DFG-7584` or `PROJ-12` — keep it as the `feature_id` and put it at
-   the front of the slug, uppercase preserved.
-2. Kebab-case the rest of the description: lowercase, spaces to hyphens, drop
-   punctuation.
+Kebab-case the description — lowercase, spaces to hyphens, punctuation
+dropped — and keep any leading ticket reference as it is written, so it stays
+greppable against the tracker.
 
 ```
 /pave:design DFG-7584 build checkout   →  features/DFG-7584-build-checkout/
-                                          feature_id: DFG-7584
-
 /pave:design build checkout            →  features/build-checkout/
-                                          feature_id: (none)
 ```
 
-Record `feature_id` in `spec.md` frontmatter when there is one. It is the link
-back to whatever tracker the work came from, and without it nobody reading the
-hub six months later can find the ticket.
+A ticket reference is part of the id, not a separate field. If the user gives
+one it is in the folder name; if they do not, there is nothing to record.
+**Never invent one** — a fabricated `FEAT-001` looks like a reference to a
+real system and is worse than having none.
 
-**Never invent a ticket id** when the user did not give one. A fabricated
-`FEAT-001` looks like a real reference to a real system and is worse than
-having none.
+**If the derived id already exists**, stop and ask. It is either the re-design
+you meant — in which case say so and continue — or a collision that would
+silently overwrite an approved plan. Do not guess which.
 
-**If the derived slug already exists**, stop and ask. It is either the
-re-design you meant — in which case say so and continue — or a name collision
-that would silently overwrite an approved plan. Do not guess which.
-
-Say the slug back before continuing. Everything downstream is addressed by it.
+Say the id back before continuing. Everything downstream is addressed by it.
 
 ## Re-designing an existing feature
 
@@ -192,7 +186,7 @@ A service the user adds here is worth more than three you inferred.
 
 ## 2. Spec
 
-Write `features/<slug>/spec.md` from `templates/spec.md`: what and why,
+Write `features/<feature-id>/spec.md` from `templates/spec.md`: what and why,
 user-visible behaviour, acceptance criteria for the feature **as a whole**.
 
 Feature-level acceptance matters and is easy to skip. In a per-service model
@@ -201,7 +195,7 @@ its own criteria while the seams are broken. Write it here or no one will.
 
 ## 3. Architecture
 
-Write `features/<slug>/architecture.md` from `templates/architecture.md`. This
+Write `features/<feature-id>/architecture.md` from `templates/architecture.md`. This
 file is the source every task is derived from, so it has to be sufficient on
 its own.
 
@@ -247,7 +241,7 @@ read it.
 
 ## 4. Contracts — frozen, and generated
 
-Write the contracts into `features/<slug>/contracts/`.
+Write the contracts into `features/<feature-id>/contracts/`.
 
 Every contract states: exactly one producer, its named consumers, a
 compatibility stance (additive-only, versioned path, new topic), and whether
@@ -284,8 +278,8 @@ re-running design, never by an agent in a repo.
 
 ## 5. Task documents
 
-Write one document per unit of work into `features/<slug>/tasks/`, named
-`NN-<slug>.md`, from `templates/task.md`.
+Write one document per unit of work into `features/<feature-id>/tasks/`, named
+`NN-<feature-id>.md`, from `templates/task.md`.
 
 This is the most important output of the phase. Everything downstream executes
 these documents without question: a builder does what the document says, and
@@ -488,9 +482,9 @@ The contracts were settled at gate 1, so this gate asks one question only:
 **After approval, not before.** A feature marked `ready` that nobody approved
 would let `/pave:build` run against a rejected plan.
 
-- `features/<slug>/README.md` — from `templates/feature-README.md`, one row per
+- `features/<feature-id>/README.md` — from `templates/feature-README.md`, one row per
   task, built from task frontmatter
 - `features/README.md` — from `templates/features-README.md`, one row per
   feature, status `ready`
 
-Then say what to run next: `/pave:build <slug>`.
+Then say what to run next: `/pave:build <feature-id>`.
