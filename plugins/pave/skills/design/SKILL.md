@@ -2,7 +2,7 @@
 name: design
 description: Plan a feature across every service it touches. Finds the blast radius, writes the spec and architecture, freezes the contracts, and produces one self-contained task document per unit of work. Use before building any feature that spans more than one service.
 effort: high
-argument-hint: "<feature description> | <existing feature slug>"
+argument-hint: "<feature description> | <existing feature slug to re-design>"
 ---
 
 # Pave — design
@@ -13,19 +13,31 @@ This is the phase the whole plugin exists for, and the one the feature lives or
 dies on. Everything downstream executes what is decided here; nothing
 downstream is allowed to redesign it. Spend the effort here.
 
-## Re-planning an existing feature
+## Re-designing an existing feature
 
-Given an existing feature slug instead of a description, re-open that
-feature's planning. This is the route back when review or a build agent showed
-the **plan** was wrong rather than the execution — a missed case, a contract
-that cannot express what is needed.
+Given an existing feature slug instead of a description, re-design that
+feature. This is the route back when the **design** was wrong rather than the
+execution — a missed case, a contract that cannot express what is needed.
 
-Read what is there, change only what must change, and run both gates again.
-Contracts are re-frozen at gate 2, so anything already built against a changed
-contract needs its task marked `pending`. Set the feature back to `planning`
-while you work.
+**Re-design the whole feature. Do not patch it.**
 
-The user decides when this is the right move. Do not re-plan because a build
+The temptation is to find the one case that was missed, add a task for it and
+leave everything else alone. Resist it: you cannot know that only one case was
+missed. A patched design produces tasks that are each individually reasonable
+and collectively inconsistent — a service handling a state its caller never
+sends, an error path nobody raises — and that is the hardest kind of defect to
+see, because every task looks fine on its own.
+
+So run the whole phase again: re-read the knowledge, re-derive the blast
+radius, re-examine the architecture, and rewrite every task from it. Keep what
+still holds — this is re-deriving, not discarding — but derive it, do not
+assume it.
+
+Set the feature to `planning` while you work. Contracts are re-frozen at gate
+2, so any task already built against a contract that changed goes back to
+`pending`.
+
+The user decides when this is the right move. Do not re-design because a build
 agent found something awkward.
 
 ## Before starting
@@ -153,6 +165,13 @@ Write one document per unit of work into `features/<slug>/tasks/`, named
 **Each task names exactly one target service** and must stand alone. The agent
 that executes it never saw this conversation and cannot read its sibling
 documents. Everything it needs is in its own file or it will guess.
+
+**Every task traces to the design.** The tasks are an output of `architecture.md`
+and the contracts, not a separate act of invention. A task that does not follow
+from the design is a defect — either the design is incomplete, in which case fix
+the design and re-derive, or the task does not belong. Write them all in one
+pass, seeing the whole feature, so the set is consistent: what one service
+emits, another handles; what one stops sending, another stops expecting.
 
 No phase scaffolding — no "Domain & Models" headings. List the actual tasks the
 service must do. Without a scaffold to hide behind, each line has to be:
