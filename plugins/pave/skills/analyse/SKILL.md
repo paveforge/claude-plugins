@@ -86,11 +86,32 @@ Discovery order, first hit wins:
    team* builds and tests *this repo*, which is the question that matters.
 2. **Task runner** — `Makefile`, `justfile`, `Taskfile.yml`, `package.json`
    scripts
-3. **Manifest** — `go.mod`, `package.json`, `pyproject.toml`, `Cargo.toml`,
-   `pom.xml`, `build.gradle`, `*.csproj`, `Gemfile`, `composer.json`,
-   `mix.exs`, `pubspec.yaml`
+3. **Manifest** — whatever declares the project. Common ones:
+   `go.mod`, `package.json`, `pyproject.toml`, `requirements.txt`,
+   `Cargo.toml`, `pom.xml`, `build.gradle`, `*.csproj`, `Gemfile`,
+   `composer.json`, `mix.exs`, `pubspec.yaml`, `*.cabal`, `dune-project`
+   — and for infrastructure: `*.tf`, `Pulumi.yaml`, `Chart.yaml`,
+   `kustomization.yaml`, `ansible.cfg`, `Dockerfile`, `*.bicep`
 4. **README**
 5. **Report it as unknown** — never invent a command
+
+That list is a hint, not a definition. It will be out of date the day someone
+adopts a tool nobody here has heard of. Treat an unrecognised project as a
+discovery problem to report, never as a reason to assume — and a repo that
+does not match anything still has CI, a task runner or a README, which are the
+sources that actually matter.
+
+### `commands` mean whatever the repo does, not compilation
+
+`build`, `test` and `lint` are slots, not literal compiler invocations. A
+Terraform repo's are `terraform validate`, `terraform plan` and `tflint`; a
+Helm chart's are `helm template`, `helm test` and `helm lint`; a docs site's
+may be a static build and a link checker. Record what the repo's own CI runs to
+decide whether a change is good.
+
+Leave a slot absent when the repo genuinely has no equivalent. An absent
+command is a fact a builder can work with; an invented one is a command that
+fails in CI and nobody can explain.
 
 Record per service: `kind` (service | library | app | infra), `language`,
 `commands`, `contracts`, `consumes` where imports make it clear, the repo's own

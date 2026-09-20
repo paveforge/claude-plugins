@@ -47,3 +47,17 @@ services:
         path: schemas/
         role: producer
     consumes: []
+
+  # Not everything is a compiled service. build/test/lint are slots for
+  # "does this work", whatever that means here.
+  - name: platform-infra
+    path: /Users/long/platform-infra
+    repo_root: /Users/long/platform-infra
+    kind: infra                               # must exist before its consumers
+    language: terraform
+    commands:
+      build: terraform validate
+      test:  terraform plan -detailed-exitcode
+      lint:  tflint
+    contracts: []
+    consumes: []

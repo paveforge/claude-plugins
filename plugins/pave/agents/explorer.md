@@ -25,9 +25,15 @@ First hit wins. Stop climbing once you have an answer.
    Those are different questions, and the second is the one that matters.
 
 2. **Task runner** — `Makefile`, `justfile`, `Taskfile.yml`, `package.json` scripts
-3. **Manifest** — `go.mod`, `package.json`, `pyproject.toml`, `requirements.txt`,
-   `Cargo.toml`, `pom.xml`, `build.gradle`, `*.csproj`, `Gemfile`,
-   `composer.json`, `mix.exs`, `pubspec.yaml`
+3. **Manifest** — whatever declares the project: `go.mod`, `package.json`,
+   `pyproject.toml`, `requirements.txt`, `Cargo.toml`, `pom.xml`,
+   `build.gradle`, `*.csproj`, `Gemfile`, `composer.json`, `mix.exs`,
+   `pubspec.yaml`, and for infrastructure `*.tf`, `Pulumi.yaml`, `Chart.yaml`,
+   `kustomization.yaml`, `ansible.cfg`, `Dockerfile`
+
+   The list is a hint, not a definition — it will be out of date the day
+   someone adopts a tool you have not seen. An unrecognised project is
+   something to report, never something to assume about.
 4. **README**
 5. **Report it as unknown** — never invent a command. A guessed test command
    that silently passes is worse than no command at all.
@@ -41,6 +47,11 @@ Per service:
   A library rolls out differently from a service, so this field matters.
 - `language`
 - `commands` — build, test, lint, codegen, publish. Only what you found.
+  These are slots meaning "does this work", not literal compilation: for
+  Terraform they are `validate`, `plan` and `tflint`; for a Helm chart
+  `template`, `test` and `lint`. Leave a slot absent when the repo has no
+  equivalent — an absent command is a fact a builder can work with, an
+  invented one fails in CI and nobody can explain why.
 - `contracts` — `.proto`, `openapi.yaml`/`swagger.json`, `*.graphql`, JSON
   Schema, Avro. Note producer or consumer.
 - `consumes` — other services, where imports or client code make it clear

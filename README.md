@@ -26,9 +26,14 @@ Freezing the contracts is what makes the next step safe: the services stop
 depending on each other's in-flight code, so they can be built at the same time
 by separate agents, each working from a self-contained task document.
 
-It is language-agnostic. Build commands are discovered per repo — CI config
+It is stack-agnostic. Build commands are discovered per repo — CI config
 first, since that says how *your team* builds *this repo* — so nothing in the
-plugin assumes a stack or an architecture.
+plugin assumes a language, a framework or an architecture.
+
+`build`, `test` and `lint` are slots meaning "does this work", not literal
+compilation: a Terraform repo's are `validate`, `plan` and `tflint`, and a
+Helm chart's are `template`, `test` and `lint`. Services, libraries, apps and
+infrastructure are all first-class.
 
 ---
 
