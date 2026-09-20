@@ -46,16 +46,40 @@ Locate the hub by walking up for `.pave-hub`. Read `config.yaml` and
 `workspace.yaml`. If either is missing, stop and tell the user to run
 `/pave:init`.
 
-Check the session model against `agents.designer.model`. If the session is on a
-weaker model, say so and ask whether to continue:
+## Choosing the model
 
-```
-config.yaml sets agents.designer.model: opus, this session is on sonnet.
-Planning quality decides the whole feature. Continue anyway? [y/N]
-```
+Design runs on the **stronger** of your session model and
+`agents.designer.model`, compared using `model_ranking` in `config.yaml`.
 
-Say it once and respect the answer. Do not switch models — that decision is
-the user's.
+| Session | Configured | Runs on | How |
+|---|---|---|---|
+| sonnet | opus | opus | Spawn the `designer` agent at opus |
+| fable | opus | fable | Stay in this session |
+| opus | opus | opus | Stay in this session |
+
+Design is the one phase that upgrades rather than obeying, because everything
+downstream executes what it produces without question. A weaker plan is not a
+cheaper plan — it is a more expensive one, paid later by four build agents
+faithfully implementing it.
+
+**If your session is at or above the configured model, do the work here.**
+That keeps the whole phase conversational, which is what it wants to be.
+
+**If your session is below it, spawn the `designer` agent** with `model` set
+to the configured value, twice:
+
+1. After the blast radius is confirmed → it writes `spec.md` and
+   `architecture.md` → present them at gate 1
+2. After gate 1 is approved → it writes `contracts/` and every task document →
+   present them at gate 2
+
+You keep the conversation, the blast-radius confirmation and both gates. It
+does the thinking. Pass it the relevant section of this skill, the knowledge
+files to read, and the approved artefacts — it starts fresh each time and
+knows nothing you do not tell it.
+
+**If you cannot determine your session model, spawn.** That fails safe: you
+get at least what was configured, never less.
 
 ## 1. Blast radius — from the knowledge index
 

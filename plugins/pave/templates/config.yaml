@@ -4,21 +4,22 @@
 hub:
   name: platform
 
-# Who does each piece of work, and how strong they should be.
-agents:
+# Model capability order, weakest to strongest. Pave compares models against
+# this list, so when a new model appears you add it here rather than waiting
+# for a plugin update.
+model_ranking: [haiku, sonnet, opus, fable]
 
-  # Spawned as subagents - this model is enforced at spawn.
+# Who does each piece of work, and how strong they should be.
+# Every entry is enforced: the model is passed when the agent is spawned.
+agents:
   analyst:  { model: sonnet, effort: medium }   # reads business logic
   builder:  { model: sonnet, effort: medium }   # executes one task document
   explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
+  reviewer: { model: opus,   effort: high   }   # checks execution against plan
 
-  # Run in your session, because they stop to talk to you.
-  # Pave warns when your session model is below this. It cannot switch for you.
+  # Design takes the HIGHER of this and your session model, by model_ranking.
+  # On sonnet with opus configured you get opus; on fable you keep fable.
   designer: { model: opus, effort: high }       # planning decides the feature
-  reviewer: { model: opus, effort: high }
-
-# The orchestrating skills themselves (analyse, build) take no entry - they
-# check staleness, run codegen and group tasks, and run on your session model.
 
 execution:
   mode: parallel                 # parallel | sequential

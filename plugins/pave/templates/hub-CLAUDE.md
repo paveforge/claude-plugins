@@ -33,6 +33,13 @@ You never have to remember `analyse` - design spawns analysts itself for any
 service whose knowledge is missing or stale. Running it explicitly refreshes
 the whole platform at once.
 
+## Models
+
+Every agent's model comes from `config.yaml` and is enforced when it is
+spawned. Design is the exception: it runs on the stronger of your session
+model and the configured one, ranked by `model_ranking`. On sonnet with opus
+configured you get opus; on fable you keep fable.
+
 ## Status
 
 ```

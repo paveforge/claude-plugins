@@ -37,12 +37,17 @@ written instead.
 Locate the hub. Read `config.yaml`, then the feature's `spec.md`,
 `architecture.md`, `contracts/` and every task document.
 
-Check the session model against `agents.reviewer.model` and warn once if it is
-lower.
+Spawn the `reviewer` agent with `model` set to `agents.reviewer.model`. It
+reads the code and reports; you record the outcome. Review follows the config
+exactly — unlike design, it does not upgrade to match a stronger session.
+
+For a large feature, spawn one reviewer per service and do the contract
+checking yourself once they return. Each reads only its own repo.
 
 ## 1. Claims against code
 
-For every task document, take every **ticked** item and find it in the repo.
+Give each reviewer its task documents, its repo path, and the frozen contracts
+it touches. It takes every **ticked** item and finds it in the repo.
 Not in the agent's report, not in the commit message — in the code.
 
 - The entity exists, with the fields the task named

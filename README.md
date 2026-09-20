@@ -116,6 +116,12 @@ fix touches three items rather than redoing twenty.
 
 ### Why it works
 
+Models come from `config.yaml` and are enforced at spawn. Design is the one
+exception: it runs on the *stronger* of your session model and the configured
+one. On sonnet with opus configured you get opus; on fable you keep fable —
+a weaker plan is not a cheaper plan, it is a more expensive one paid later by
+build agents faithfully implementing it.
+
 The design phase is the expensive one and gets the strong model. The build
 agents get a cheaper one — not because they are doing the same job with less
 care, but because their job is genuinely smaller: contracts are frozen, tasks
