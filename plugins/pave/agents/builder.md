@@ -1,5 +1,5 @@
 ---
-name: service-builder
+name: builder
 description: Executes one Pave task document in one service repo. Works through the task list, verifies with the repo's own commands, and reports a short summary. Use when Pave fans out an approved feature plan.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
@@ -15,6 +15,12 @@ working in other repos right now. Everything you need is in your document and
 your required reading.
 
 ## Start
+
+**If your task is `status: failed`, you are being re-run after review.** Read
+the review report section for your task first. It names exactly which claimed
+items were not actually in the code, and those items have been unchecked. Fix
+those, leave everything already done alone, and do not restart the task from
+scratch.
 
 1. Read your task document in full, including its frontmatter
 2. Read every file named as required reading — conventions, and the repo's own

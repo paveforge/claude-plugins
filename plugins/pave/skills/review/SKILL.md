@@ -1,88 +1,118 @@
 ---
 name: review
-description: Verify a built feature across every service it touched - contracts against consumers, tests, and rollout safety. Use after /pave:build, before merging anything.
+description: Check that the build agents did exactly what the plan said. Reads each task document against the code, marks tasks that deviate as failed, and writes a report. Use on demand after /pave:build, before merging.
 effort: high
 argument-hint: "<feature slug>"
 ---
 
 # Pave — review
 
-Check the seams. Four green services do not make a working feature.
+Check the execution against the plan. Nothing else.
 
-Every agent verified its own work against its own task document. Nobody checked
-that the pieces fit. That is this phase, and it is the last gate before the
-feature is called done.
+Build agents tick their own checkboxes and report their own success. This
+phase is the independent check on those claims: **did the agent actually do
+what the task document said, or did it claim work it did not do?**
+
+## What this phase is not
+
+It does not verify the feature works. It does not ask whether the design was
+right, whether the approach was sound, or whether a case was missed.
+
+That restraint is the point, and it makes the phase cheap. Two consequences
+follow, and both are deliberate:
+
+**A gap in the plan is not a review failure.** If the plan said A, B and C and
+every agent faithfully did A, B and C, this review passes — even if the
+feature needs D. A missing case is a planning problem, so it goes in the report
+as a comment and **the user decides**, by running `/pave:design <slug>` to
+re-plan and then `/pave:build` again. Never mark a task failed because you
+disagree with the plan.
+
+**Improvements never change status.** Note them, clearly marked non-blocking.
+An agent that followed the plan exactly did its job, whatever you would have
+written instead.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`,
-`features/<slug>/spec.md`, `architecture.md`, `contracts/` and every task
-document.
+Locate the hub. Read `config.yaml`, then the feature's `spec.md`,
+`architecture.md`, `contracts/` and every task document.
 
-Check the session model against `phases.review.model` and warn once if it is
-lower. A contract mismatch that slips through costs more than the tokens saved
-catching it.
+Check the session model against `agents.reviewer.model` and warn once if it is
+lower.
 
-## 1. Contracts against consumers
+## 1. Claims against code
 
-For each contract, compare what the producer actually implemented against what
-each consumer actually calls. Read both sides in the repos — not the spec, and
-not the generated stubs alone.
+For every task document, take every **ticked** item and find it in the repo.
+Not in the agent's report, not in the commit message — in the code.
 
-Look for:
+- The entity exists, with the fields the task named
+- The migration exists, with the constraints the task named
+- The endpoint is routed and reachable, not just written
+- The behaviour the task described is actually implemented, not stubbed
+- A claimed test exists and asserts what the item said
 
-- A producer that implemented something other than the frozen contract
-- A consumer calling a field or method that does not exist, or ignoring one it must handle
-- Generated stubs out of sync with the contract file, in any repo
-- A contract edited locally in a repo. It was frozen at gate 2; a local edit is
-  the failure mode the freeze exists to prevent, and it means other services
-  are building against something that no longer matches
-- Version or compatibility stance violated — a breaking change on an
-  additive-only contract
+Read the code. Run nothing — the builders already ran the commands and CI will
+run them again. You are checking that the work is real, which is a reading
+problem, not an execution one.
 
-## 2. Tasks against code
+An item you cannot find is a deviation. An item that exists but does something
+different from what the task specified is also a deviation.
 
-For each task document, verify the checked items are actually done in the repo.
-An agent ticking its own homework is not evidence. Spot-check the concrete
-claims — the migration exists, the endpoint is routed, the idempotency is real.
+## 2. Contracts against consumers
 
-Report unchecked items and anything checked that you cannot find.
+Still conformance, and the highest-value check here: the plan froze an
+interface, so did both sides honour it?
 
-## 3. Tests
+- The producer implemented the frozen contract, not something adjacent
+- Each consumer calls what the contract defines, and handles what it must
+- Generated stubs match the contract file in every repo
+- No contract was edited locally in a repo after gate 2 — the freeze is what
+  let the services be built in parallel, and a local edit means other services
+  were built against something that no longer matches
 
-Run each touched service's `test` and `lint` from `workspace.yaml`. Report
-failures per service with output. Never report a feature as reviewed on
-untested code, and never paper over a failure as flaky.
+## 3. Record the outcome
 
-## 4. Feature acceptance
+**If every ticked item is real and the contracts hold**, the feature stays
+`done`. Write the report with any non-blocking comments and stop.
 
-Take the whole-feature acceptance criteria from `spec.md` and check them across
-the services together. This is the part no single agent could have done and the
-main reason this phase exists.
+**If anything deviates:**
 
-Where the criteria cannot be checked statically, say exactly what to run or
-click, rather than assuming it works.
+1. **Uncheck** the specific items that were not real, in their task documents.
+   This is what makes the re-run precise — the agent fixes three items rather
+   than redoing a task of twenty.
+2. Set those task documents to `status: failed`.
+3. Set the feature to `failed`.
+4. Leave conforming tasks untouched at `done`.
 
-## 5. Rollout order
+## 4. Report
 
-Deployment order is not implementation order. Work out what must ship first for
-the system to stay working while it is partly deployed:
+Write `features/<slug>/artifacts/review-report.md`, **organised per task**:
 
-- Consumers of a new contract cannot ship before its producer
-- A library must publish before consumers bump the pin — two phases, with a
-  window where both versions are live
-- A migration others read must land before the code that reads it
-- Anything behind a flag: say what the flag is and what order it flips in
+```markdown
+# Review — build-checkout
+Reviewed 2026-09-20 · 4 tasks · 1 failed
 
-Call out any step that breaks if deployed alone.
+## 02-payment-intent — FAILED
+Claimed and not found:
+- [ ] "Authorize transitions Pending -> Authorized"
+      internal/domain/intent.go has the states but no transition; the
+      usecase sets the field directly, bypassing validation.
+- [ ] "Provider adapter behind an interface"
+      stripe client is called directly from usecase/authorize.go:41.
 
-## 6. Report
+## 01-stock-reservation — OK
 
-Write `features/<slug>/artifacts/review-report.md` and summarise in the
-session. Lead with what is broken.
+## Comments (non-blocking)
+- order-service: Checkout orchestration would read better split in two.
+  Follows the plan exactly; noted only.
+- The plan has no path for a payment authorised after the reservation
+  expired. Not a deviation - the plan does not mention it. Re-plan with
+  `/pave:design build-checkout` if you want it covered.
+```
 
-If everything passes, set the feature status to `done` and give the rollout
-order. If not, list what is failing, in which service, and whether it is a code
-fix (back to `/pave:build`) or a contract problem (back to `/pave:design`).
+Per-task sections are not cosmetic. A re-run builder reads only its own
+section, exactly as it reads only its own task document.
 
-Report faithfully. A feature that passes review is one someone will merge.
+Then summarise in the session: what failed, in which service, and whether the
+route forward is `/pave:build` (execution drift) or `/pave:design <slug>`
+(the plan needs to change). Lead with what failed.

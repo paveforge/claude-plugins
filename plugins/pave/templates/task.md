@@ -1,7 +1,7 @@
 ---
 service: <service-name>
 feature: <feature-slug>
-status: pending            # pending | in-progress | done | blocked
+status: pending            # pending | in-progress | done | blocked | failed
 depends_on: []
 branch: feature/<feature-slug>
 ---

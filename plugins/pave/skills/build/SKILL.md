@@ -42,7 +42,19 @@ If `contracts.land_before_fanout` is false, skip this and expect drift.
 Stop if codegen fails. A broken stub multiplied across four parallel agents is
 four broken builds.
 
-## 2. Group tasks
+## 2. Decide what to build
+
+**If the feature is `failed`, build only the tasks marked `failed`.** Review
+found those agents claimed work they had not done. Everything else stays as it
+is — do not rebuild a task that passed.
+
+Each re-run builder is given the review report alongside its task document.
+Review has already unchecked the specific items that were not real, so the
+agent fixes those rather than starting over.
+
+Otherwise build every task in the feature.
+
+## 3. Group tasks
 
 Read the frontmatter of every task document. Group by `service`.
 
@@ -64,9 +76,9 @@ When several services live in one repo — a monorepo, visible in
 
 Respect `depends_on`. Anything it blocks waits for its blocker to reach `done`.
 
-## 3. Fan out
+## 4. Fan out
 
-Spawn one `service-builder` agent per group, passing `phases.build.model` from
+Spawn one `builder` agent per group, passing `agents.builder.model` from
 `config.yaml` as the `model` argument. This is where the model choice actually
 multiplies, and it is the user's to make — never substitute your own.
 
@@ -88,7 +100,7 @@ next run with nothing to regenerate.
 document and returns a summary. Four agents returning full narratives into this
 session will exhaust the context exactly when it is needed for integration.
 
-## 4. Track
+## 5. Track
 
 Task status lives in each task document's frontmatter: `pending` →
 `in-progress` → `done`, or `blocked`. One agent owns one document; nothing else
@@ -98,7 +110,7 @@ After each agent returns, rewrite `features/<slug>/README.md` and
 `features/README.md` from the task frontmatter and checkbox state. Never
 hand-maintain either — they are derived, so they cannot drift.
 
-## 5. Handle escalation
+## 6. Handle escalation
 
 An agent that finds the contract wrong or insufficient must stop and report,
 never improvise. Three siblings are building against that contract; a local fix
@@ -115,10 +127,13 @@ The same applies to anything ambiguous. If build agents routinely need to think
 their way out of gaps, that is a defect in `design`, not a reason to raise the
 build model.
 
-## 6. Report
+## 7. Report
 
 Write `features/<slug>/artifacts/build-report.md`: what landed per service,
-what is blocked, what each agent reported. Set the feature status to `review`
-and point at `/pave:review`.
+what is blocked, what each agent reported.
+
+Set the feature status to `done` when every task is `done`, and `blocked` if
+any agent escalated. Mention that `/pave:review` will check the work against
+the plan — it is on demand, not required.
 
 Nothing is merged and no PR is opened unless the user asks.

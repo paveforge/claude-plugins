@@ -17,12 +17,39 @@ reachable through `additionalDirectories` and are modified only by build agents.
 
 ## Workflow
 
-`/pave:init` → `/pave:analyse` → `/pave:design` → gate 1 → gate 2 →
-`/pave:build` → `/pave:review`
+| | When |
+|---|---|
+| `/pave:init` | First time, and whenever repos are added or move |
+| `/pave:analyse` | First time, then on demand as services drift |
+| `/pave:design` | Every new feature - two approval gates |
+| `/pave:build` | Once the plan is approved |
+| `/pave:review` | On demand |
 
 `init` records how to build each repo. `analyse` records what each service
 does. Design needs both: without the second it writes concrete tasks that
 contradict code which already exists.
+
+You never have to remember `analyse` - design spawns analysts itself for any
+service whose knowledge is missing or stale. Running it explicitly refreshes
+the whole platform at once.
+
+## Status
+
+```
+planning -> ready -> building -> done
+                                  |
+                                  |  review finds the plan was not followed
+                                  v
+                               failed -> building -> done
+```
+
+`build` sets `done`. `review` is the independent check that the agents did
+what the plan said, and sets `failed` if they did not - then `/pave:build`
+re-runs only the failed tasks.
+
+Review checks execution against the plan, not whether the feature works. A
+gap in the plan is not a review failure: it is a comment, and you decide
+whether to re-plan with `/pave:design <slug>`.
 
 ## Rules
 

@@ -2,7 +2,7 @@
 name: design
 description: Plan a feature across every service it touches. Finds the blast radius, writes the spec and architecture, freezes the contracts, and produces one self-contained task document per unit of work. Use before building any feature that spans more than one service.
 effort: high
-argument-hint: "<feature description>"
+argument-hint: "<feature description> | <existing feature slug>"
 ---
 
 # Pave — design
@@ -13,17 +13,32 @@ This is the phase the whole plugin exists for, and the one the feature lives or
 dies on. Everything downstream executes what is decided here; nothing
 downstream is allowed to redesign it. Spend the effort here.
 
+## Re-planning an existing feature
+
+Given an existing feature slug instead of a description, re-open that
+feature's planning. This is the route back when review or a build agent showed
+the **plan** was wrong rather than the execution — a missed case, a contract
+that cannot express what is needed.
+
+Read what is there, change only what must change, and run both gates again.
+Contracts are re-frozen at gate 2, so anything already built against a changed
+contract needs its task marked `pending`. Set the feature back to `planning`
+while you work.
+
+The user decides when this is the right move. Do not re-plan because a build
+agent found something awkward.
+
 ## Before starting
 
 Locate the hub by walking up for `.pave-hub`. Read `config.yaml` and
 `workspace.yaml`. If either is missing, stop and tell the user to run
 `/pave:init`.
 
-Check the session model against `phases.design.model`. If the session is on a
+Check the session model against `agents.designer.model`. If the session is on a
 weaker model, say so and ask whether to continue:
 
 ```
-config.yaml sets phases.design.model: opus, this session is on sonnet.
+config.yaml sets agents.designer.model: opus, this session is on sonnet.
 Planning quality decides the whole feature. Continue anyway? [y/N]
 ```
 

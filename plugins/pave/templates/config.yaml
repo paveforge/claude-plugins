@@ -4,27 +4,21 @@
 hub:
   name: platform
 
-phases:
-  analyse:
-    model: sonnet
-    effort: medium       # reads business logic across the services
-  design:
-    model: opus
-    effort: high         # planning decides the feature
-  build:
-    model: sonnet
-    effort: medium       # executes frozen specs, makes no design calls
-  review:
-    model: opus
-    effort: high         # a missed contract mismatch is expensive
-
+# Who does each piece of work, and how strong they should be.
 agents:
-  explorer:
-    model: haiku
-    effort: low          # mechanical scanning - commands, manifests, contracts
-  analyst:
-    model: sonnet
-    effort: medium       # reads business logic; haiku is too weak for this
+
+  # Spawned as subagents - this model is enforced at spawn.
+  analyst:  { model: sonnet, effort: medium }   # reads business logic
+  builder:  { model: sonnet, effort: medium }   # executes one task document
+  explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
+
+  # Run in your session, because they stop to talk to you.
+  # Pave warns when your session model is below this. It cannot switch for you.
+  designer: { model: opus, effort: high }       # planning decides the feature
+  reviewer: { model: opus, effort: high }
+
+# The orchestrating skills themselves (analyse, build) take no entry - they
+# check staleness, run codegen and group tasks, and run on your session model.
 
 execution:
   mode: parallel                 # parallel | sequential

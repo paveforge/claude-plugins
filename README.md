@@ -36,7 +36,15 @@ plugin assumes a stack or an architecture.
 | `/pave:analyse` | Learn what each service does; write the knowledge base |
 | `/pave:design` | Blast radius → spec → architecture → contracts → task documents |
 | `/pave:build` | Land the contracts, fan out one agent per service |
-| `/pave:review` | Contracts against consumers, tests, rollout order |
+| `/pave:review` | Did the agents do exactly what the plan said? |
+
+| Command | When |
+|---|---|
+| `init` | First time, and whenever repos are added or move |
+| `analyse` | First time, then on demand as services drift |
+| `design` | Every new feature |
+| `build` | Once the plan is approved |
+| `review` | On demand |
 
 `init` records how to *build* each repo. `analyse` records what each service
 *does*. Design needs both — without the second it writes confident, concrete
@@ -88,6 +96,23 @@ Knowledge goes stale path-scoped rather than by age: each service records the
 commit and the source directories its analysis rested on, so a month of commits
 to CI config invalidates nothing, and a change under `internal/domain`
 invalidates exactly one service.
+
+### Review is a conformance check
+
+Build agents tick their own checkboxes and report their own success. `review`
+is the independent check on those claims: every ticked item has to be findable
+in the code, and both sides of every frozen contract have to honour it. It
+reads code and runs nothing — the builders already ran the commands and CI
+runs them again.
+
+It does not ask whether the feature works, or whether the plan was right. That
+restraint keeps it cheap and keeps the approval gates meaningful. A gap in the
+plan is a comment, not a failure; you decide whether to re-plan.
+
+When an agent claimed work it did not do, review unchecks those specific items,
+marks the task `failed`, and writes a per-task report. `/pave:build` then
+re-runs only the failed tasks, and each agent reads only its own section — so a
+fix touches three items rather than redoing twenty.
 
 ### Why it works
 
