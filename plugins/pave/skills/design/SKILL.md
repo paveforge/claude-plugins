@@ -2,7 +2,7 @@
 name: design
 description: Plan a feature across every service it touches. Finds the blast radius, writes the spec and architecture, freezes the contracts, and produces one self-contained task document per unit of work. Use before building any feature that spans more than one service.
 effort: high
-argument-hint: "<feature description> | <existing feature slug to re-design>"
+argument-hint: "[TICKET-123] <feature description> | <existing feature slug>"
 ---
 
 # Pave — design
@@ -13,9 +13,50 @@ This is the phase the whole plugin exists for, and the one the feature lives or
 dies on. Everything downstream executes what is decided here; nothing
 downstream is allowed to redesign it. Spend the effort here.
 
+## 0. Work out the feature slug
+
+The slug names the folder every artefact goes into, so settle it before
+writing anything. It is also how `/pave:build` and `/pave:review` refer to the
+feature.
+
+**Does the whole argument match a directory in `features/`?**
+
+| | |
+|---|---|
+| **Yes** | Re-design that feature. See below. |
+| **No** | A new feature. Derive the slug: |
+
+1. If the first word looks like a ticket reference — letters, a hyphen, digits,
+   such as `DFG-7584` or `PROJ-12` — keep it as the `feature_id` and put it at
+   the front of the slug, uppercase preserved.
+2. Kebab-case the rest of the description: lowercase, spaces to hyphens, drop
+   punctuation.
+
+```
+/pave:design DFG-7584 build checkout   →  features/DFG-7584-build-checkout/
+                                          feature_id: DFG-7584
+
+/pave:design build checkout            →  features/build-checkout/
+                                          feature_id: (none)
+```
+
+Record `feature_id` in `spec.md` frontmatter when there is one. It is the link
+back to whatever tracker the work came from, and without it nobody reading the
+hub six months later can find the ticket.
+
+**Never invent a ticket id** when the user did not give one. A fabricated
+`FEAT-001` looks like a real reference to a real system and is worse than
+having none.
+
+**If the derived slug already exists**, stop and ask. It is either the
+re-design you meant — in which case say so and continue — or a name collision
+that would silently overwrite an approved plan. Do not guess which.
+
+Say the slug back before continuing. Everything downstream is addressed by it.
+
 ## Re-designing an existing feature
 
-Given an existing feature slug instead of a description, re-design that
+When the argument matched an existing feature directory, re-design that
 feature. This is the route back when the **design** was wrong rather than the
 execution — a missed case, a contract that cannot express what is needed.
 

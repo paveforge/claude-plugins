@@ -189,6 +189,22 @@ stronger model than your session if `config.yaml` asks for it.
    **→ Gate 2.** One question: are these briefs executable without further
    decisions?
 
+**Naming a feature.** The slug names the folder and is how `/pave:build` and
+`/pave:review` refer to it afterwards:
+
+```
+/pave:design DFG-7584 build checkout   →  features/DFG-7584-build-checkout/
+/pave:design build checkout            →  features/build-checkout/
+```
+
+A leading ticket reference is kept as the feature's `feature_id` and recorded
+in `spec.md`, so the hub links back to your tracker. Without one, the slug is
+just the description. Pave never invents a ticket id.
+
+If the argument matches an existing feature directory, that's a re-design of
+that feature. If a *new* feature's slug collides with an existing one, it stops
+and asks rather than overwriting an approved plan.
+
 **What it asks you.** To confirm the blast radius, then both gates.
 
 **Re-designing.** `/pave:design <slug>` on an existing feature re-derives the
