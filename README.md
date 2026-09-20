@@ -95,6 +95,14 @@ since the config split depends on version control.
 adds it to `additionalDirectories` in `.claude/settings.json` — that second
 part is what actually grants Claude access to the repo.
 
+It runs `scripts/pave.sh`, because none of that needs a model: validate,
+absolutise, append, merge. The script is idempotent, so adding the same folder
+twice is a no-op, and you can run it directly if you prefer:
+
+```
+"$(...)/plugins/pave/scripts/pave.sh" add ../be-order-service
+```
+
 That's all it records: name and path. Not the language, not the build commands.
 `/pave:analyse` finds those, and having two commands discover the same things
 would mean two answers.
