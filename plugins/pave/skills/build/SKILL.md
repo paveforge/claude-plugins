@@ -129,11 +129,35 @@ build model.
 
 ## 7. Report
 
-Write `features/<slug>/artifacts/build-report.md`: what landed per service,
-what is blocked, what each agent reported.
+Write `features/<slug>/artifacts/build-report.md` from
+`templates/build-report.md`.
 
-Set the feature status to `done` when every task is `done`, and `blocked` if
-any agent escalated. Mention that `/pave:review` will check the work against
-the plan — it is on demand, not required.
+It is triaged by **who must act**, not by service or chronology. Someone
+should know from the first line whether they are needed, and be able to stop
+there if they are not.
+
+**Do not ask a question the report can state as a fact.** An in-scope
+judgement an agent made — a library already in the repo, a name, an ordering
+the task left open — goes under *Decisions taken*, where it can be skimmed.
+Only what genuinely cannot be resolved without a person goes under *Needs
+you*, and each of those carries the decision and the exact command.
+
+Surfacing beats asking. It keeps the workflow moving while leaving the work
+reviewable, which is the whole trade this phase is making.
+
+**When nothing needs a person, say so in full** — "Nothing. All tasks
+completed and no decisions were deferred." An empty section is the point of
+the workflow; a blank heading reads as an oversight.
+
+The Verification table is load-bearing rather than decoration: `/pave:review`
+reads code and runs nothing, so this report is the only record that the
+commands ever passed. A failing command means the task is not done — if a row
+says fail and its task says done, stop and find out which is wrong.
+
+## 8. Set status
+
+Set the feature to `done` when every task is `done`, and `blocked` if any
+agent escalated. Mention that `/pave:review` will check the work against the
+plan — it is on demand, not required.
 
 Nothing is merged and no PR is opened unless the user asks.
