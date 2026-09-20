@@ -11,10 +11,18 @@ reachable through `additionalDirectories` and are modified only by build agents.
 - `conventions/` - how code is written, by language and service. Yours to edit.
 - `features/` - the durable record of what was decided.
 - `artifacts/` - disposable. Delete anything here and it regenerates.
+- `artifacts/knowledge/` - what each service does, written by `/pave:analyse`.
+  Derived from code, so it is disposable; its index is what lets design load
+  selectively instead of scanning everything.
 
 ## Workflow
 
-`/pave:design` → gate 1 → gate 2 → `/pave:build` → `/pave:review`
+`/pave:init` → `/pave:analyse` → `/pave:design` → gate 1 → gate 2 →
+`/pave:build` → `/pave:review`
+
+`init` records how to build each repo. `analyse` records what each service
+does. Design needs both: without the second it writes concrete tasks that
+contradict code which already exists.
 
 ## Rules
 

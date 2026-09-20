@@ -33,9 +33,15 @@ plugin assumes a stack or an architecture.
 | | |
 |---|---|
 | `/pave:init` | Set up the hub, scan the repos, write `workspace.yaml` |
+| `/pave:analyse` | Learn what each service does; write the knowledge base |
 | `/pave:design` | Blast radius → spec → architecture → contracts → task documents |
 | `/pave:build` | Land the contracts, fan out one agent per service |
 | `/pave:review` | Contracts against consumers, tests, rollout order |
+
+`init` records how to *build* each repo. `analyse` records what each service
+*does*. Design needs both — without the second it writes confident, concrete
+tasks that contradict code which already exists, and an agent faithfully
+builds them.
 
 ### The hub
 
@@ -45,7 +51,8 @@ hub/
 ├── workspace.yaml           your repos - gitignored, local to you
 ├── CLAUDE.md
 ├── conventions/             how code is written, by language and service
-├── artifacts/               disposable
+├── artifacts/
+│   └── knowledge/           what each service does - indexed, disposable
 └── features/
     ├── README.md            portfolio: one row per feature
     └── build-checkout/
@@ -60,6 +67,27 @@ hub/
 `config.yaml` is shared and machine-independent; `workspace.yaml` holds the repo
 paths, which differ per developer. That split is what lets a team share one
 policy while everyone keeps their own local layout.
+
+### Selective loading
+
+`/pave:analyse` spawns one agent per service and writes an indexed knowledge
+base: a domain model, business flows, integrations and data ownership per
+service, plus a single generated index of capabilities, domain terms and
+events.
+
+Design loads that index — and only that — then opens the specific files it
+points at. A four-service feature in a twelve-service platform reads one index,
+four summaries and a handful of deep files.
+
+There is no vector store and no graph database. The index is a generated table
+of business vocabulary, and the events table is the dependency graph. Both are
+rebuilt from the analysts' frontmatter, so they cannot drift from the files
+they describe.
+
+Knowledge goes stale path-scoped rather than by age: each service records the
+commit and the source directories its analysis rested on, so a month of commits
+to CI config invalidates nothing, and a change under `internal/domain`
+invalidates exactly one service.
 
 ### Why it works
 

@@ -30,14 +30,50 @@ Planning quality decides the whole feature. Continue anyway? [y/N]
 Say it once and respect the answer. Do not switch models — that decision is
 the user's.
 
-## 1. Blast radius
+## 1. Blast radius — from the knowledge index
 
-Before writing anything, work out which services the feature touches. This is
+Work out which services the feature touches before writing anything. This is
 the step that justifies planning centrally: the answer is usually wider than
 the person asking expects.
 
-Use `consumes` edges in `workspace.yaml`, then dispatch `explorer` agents
-against the candidate repos to confirm. Use `agents.explorer.model`.
+Load knowledge in stages. Never scan every service, and never read a knowledge
+file the index did not point you at.
+
+| Stage | Load | Purpose |
+|---|---|---|
+| 1 | `artifacts/knowledge/README.md` — **only this** | Match the feature against capabilities, terms and events |
+| 2 | `knowledge/services/<candidate>/README.md` | Confirm or drop each candidate. ~50 lines each |
+| 3 | The files the index named | `domain.md` for services being modified, `integration.md` for services at the seam |
+
+A four-service feature in a twelve-service platform reads one index, four
+summaries and a handful of deep files. That is the whole point of the index
+existing.
+
+Read the Terms table carefully. The most expensive mistake this phase can make
+is a vocabulary miss — designing a `Reservation` into a service that has named
+that concept `StockHold` for two years. The task will be concrete, confident
+and wrong, and an agent will build it.
+
+Then confirm against `consumes` edges in `workspace.yaml` and the events table.
+Topological coupling and domain coupling are different: an import graph will
+not tell you that checkout touches stock because reservations expire.
+
+### When knowledge is missing or stale
+
+Never proceed blind, and never stop to send the user away. Check each
+candidate for staleness the way `/pave:analyse` does — whether its
+`source_paths` have changed since its recorded `commit` — then spawn `analyst`
+agents for anything missing or stale, using `agents.analyst.model`, and
+continue once they return.
+
+Say what you are doing and why, in one line. Do not ask permission for it.
+
+### Uncertainty is not knowledge
+
+Every `uncertain:` entry on a service you are about to design against must be
+resolved by reading the code yourself, not carried forward. The analyst
+flagged it precisely because it could not tell. If it bears on the feature,
+verify it; if you cannot, say so at gate 1 rather than designing over it.
 
 Report the radius and ask before continuing:
 
@@ -125,6 +161,21 @@ not
 Ordering is top to bottom. An agent that wants to write models before handlers
 will do that anyway; it does not need to be told.
 
+**Ground every task in code that exists.** A task touching existing behaviour
+names the type, file or flow it extends, taken from that service's knowledge
+files. A task that is genuinely new says so. This is what separates specific
+from specific-and-wrong, and it is the whole reason `/pave:analyse` runs.
+
+```markdown
+- [ ] Extend `StockHold` (internal/domain/hold.go) with expires_at + Expired state
+```
+
+not
+
+```markdown
+- [ ] Add a Reservation entity with a TTL
+```
+
 Pull `build`, `test` and `lint` for the target service out of `workspace.yaml`
 into the document's Verification section. The agent must not have to rediscover
 how to build the repo.
@@ -149,6 +200,7 @@ it. For **every** task document:
 | Acceptance | No "done when" |
 | Out of scope | Not stated |
 | Self-contained | Refers to another task document, or to this conversation |
+| Grounded | Touches existing behaviour without naming the code it extends |
 
 On failure, name the gap and stop. Do not fan out. Do not let `/pave:build`
 proceed and fix it later — that is the cheap model making design decisions,

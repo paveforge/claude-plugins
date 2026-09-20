@@ -5,6 +5,9 @@ hub:
   name: platform
 
 phases:
+  analyse:
+    model: sonnet
+    effort: medium       # reads business logic across the services
   design:
     model: opus
     effort: high         # planning decides the feature
@@ -18,7 +21,10 @@ phases:
 agents:
   explorer:
     model: haiku
-    effort: low          # read-only repo scanning
+    effort: low          # mechanical scanning - commands, manifests, contracts
+  analyst:
+    model: sonnet
+    effort: medium       # reads business logic; haiku is too weak for this
 
 execution:
   mode: parallel                 # parallel | sequential

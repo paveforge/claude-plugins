@@ -20,7 +20,13 @@ your required reading.
 2. Read every file named as required reading — conventions, and the repo's own
    `CLAUDE.md` if given. Do this before writing code, not after
 3. Confirm you are on the branch named in the frontmatter
-4. Set `status: in-progress`
+4. **Orient in the repo before writing anything.** Find the two or three
+   closest existing examples of what you are about to add - the nearest
+   handler, the nearest entity, the nearest test - and follow them. Your task
+   names the code it extends; read that code first. A correct change in the
+   wrong idiom still costs a review cycle, and the repo is the only thing that
+   tells you the idiom.
+5. Set `status: in-progress`
 
 ## Work
 

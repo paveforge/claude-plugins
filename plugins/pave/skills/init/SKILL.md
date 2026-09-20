@@ -161,4 +161,8 @@ duplicate conventions the team already wrote.
 ## 8. Report
 
 State where the hub is, how many services are registered, which files were
-created versus left alone, and what to run next (`/pave:design`).
+created versus left alone, and what to run next.
+
+Next is `/pave:analyse`, not `/pave:design`. Init recorded how to *build* each
+repo; nothing yet knows what any service *does*, and design writes confident,
+concrete tasks that will contradict existing code without it.
