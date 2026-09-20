@@ -19,8 +19,8 @@ The hub is the central command folder. All specs, designs and task documents
 live there; the service repos stay untouched except by build agents.
 
 - If `$1` was given, use it.
-- Otherwise, if the working directory contains `config.yaml` and `features/`,
-  use it.
+- Otherwise walk up from the working directory looking for `.pave-hub`, the
+  same way every other skill locates the hub.
 - Otherwise **ask**. Never guess, and never silently use the working
   directory. Offer the working directory as the default and show what would
   be created.
@@ -39,36 +39,16 @@ its root so other skills can locate it by walking up from anywhere.
 already has it; init must never rewrite their settings. If they want different
 defaults they edit the file.
 
-## 3. workspace.yaml — warn before touching
+## 3. Discover
 
-`workspace.yaml` is the source of truth for repos. It is local to this machine
-and gitignored, which is what lets the team share one `config.yaml` while each
-person keeps their own layout. It may contain hand edits.
+Repo paths live in `workspace.yaml`, not `config.yaml`. If `workspace.yaml` is
+absent, ask for them now. If it exists, use the paths it records and ask
+whether anything has been added.
 
-If it already exists, **do not overwrite it silently**. Rescan, then show what
-would change, marking anything that would destroy a hand edit:
+Check each path exists before scanning it. A path that has moved is a finding
+for the summary, not a crash.
 
-```
-!  workspace.yaml already exists - generated 2026-09-14, modified since.
-   This file is your source of truth and may contain corrections.
-
-   Rescanning would change:
-     + loyalty-service    ../loyalty-service                       new
-     ~ payment-service    test: make test-integration -> go test ./...
-                          ^ your edit would be overwritten
-     - legacy-billing     ../legacy-billing no longer exists
-
-   Back up to workspace-old.yaml and regenerate?  [Y / n / cancel]
-```
-
-On yes: copy to `workspace-old.yaml` (one generation only — it overwrites any
-previous backup), then write the new file. On no: keep the existing file and
-report what is stale. On cancel: stop.
-
-## 4. Discover
-
-Ask for the repo paths if `config.yaml` was just created and nothing is known
-yet. Then dispatch the `explorer` agent — one per repo, in parallel — using
+Then dispatch the `explorer` agent — one per repo, in parallel — using
 `agents.explorer.model` from `config.yaml` if it exists.
 
 Never scan repos yourself in the main context. A single large repo will fill it
@@ -94,6 +74,34 @@ Also record, per service: `kind` (service | library | app | infra), `language`,
 any contract files (`.proto`, `openapi.yaml`, `*.graphql`, JSON Schema, Avro),
 `consumes` edges where they can be inferred from imports or client code, and
 the path to the repo's own `CLAUDE.md` if it has one.
+
+## 4. workspace.yaml — warn before touching
+
+`workspace.yaml` is the source of truth for repos. It is local to this machine
+and gitignored, which is what lets the team share one `config.yaml` while each
+person keeps their own layout. It may contain hand edits.
+
+If it already exists, **do not overwrite it silently.** Diff what you just
+discovered against what the file says, and mark anything that would destroy a
+hand edit — a value that differs from discovery on a file whose mtime is later
+than its own `generated_at`:
+
+```
+!  workspace.yaml already exists - generated 2026-09-14, modified since.
+   This file is your source of truth and may contain corrections.
+
+   Rescanning would change:
+     + loyalty-service    ../loyalty-service                       new
+     ~ payment-service    test: make test-integration -> go test ./...
+                          ^ your edit would be overwritten
+     - legacy-billing     ../legacy-billing no longer exists
+
+   Back up to workspace-old.yaml and regenerate?  [Y / n / cancel]
+```
+
+On yes: copy to `workspace-old.yaml` (one generation only — it overwrites any
+previous backup), then continue. On no: keep the existing file and report what
+is stale. On cancel: stop.
 
 ## 5. Summarise and ask
 
@@ -133,9 +141,12 @@ folder on every run.
 ## 6. Write
 
 - `workspace.yaml` — from `templates/workspace.yaml`
-- `artifacts/platform.code-workspace` — hub plus every repo, multi-root
+- `artifacts/<hub.name>.code-workspace` — hub plus every repo, multi-root
 - `.claude/settings.json` — `additionalDirectories` pointing at every repo
   path. Without this the build agents cannot read or write the service repos.
+  **If the file exists, merge into it.** Add missing directories and leave
+  every other setting alone — it is a Claude Code config the user may have
+  customised, not a Pave artefact.
 - `CLAUDE.md` — from `templates/hub-CLAUDE.md`, if absent
 - `conventions/README.md` and `conventions/<language>.md` — see below, if absent
 - `features/README.md` — empty portfolio table, if absent
@@ -162,6 +173,11 @@ duplicate conventions the team already wrote.
 
 State where the hub is, how many services are registered, which files were
 created versus left alone, and what to run next.
+
+Say what to commit: `config.yaml`, `CLAUDE.md`, `conventions/` and `.pave-hub`
+are shared with the team. `workspace.yaml` is not — it is gitignored, and a
+teammate generates their own by running this command. That split is what lets
+everyone share one policy with different local paths.
 
 Next is `/pave:analyse`, not `/pave:design`. Init recorded how to *build* each
 repo; nothing yet knows what any service *does*, and design writes confident,

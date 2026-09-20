@@ -28,6 +28,9 @@ is missing, stop and say to run `/pave:init`.
 - `/pave:analyse <service>` — just that one, always
 - `/pave:analyse` — everything missing or stale
 
+A service with no knowledge folder is **missing** and is always analysed.
+A service that has one is checked for staleness.
+
 **Staleness is path-scoped, not time-based.** Each service README records the
 `commit` it was analysed at and the `source_paths` the analysis was based on.
 A service is stale when those paths have moved:
@@ -39,6 +42,10 @@ git -C <repo> diff --name-only <commit>..HEAD -- <source_paths>
 Empty output means the knowledge is still valid however old it is. A month of
 commits to CI config, READMEs or unrelated packages invalidates nothing. Report
 what is stale and why before spawning anything.
+
+**Prune what no longer exists.** A knowledge folder for a service that is gone
+from `workspace.yaml` keeps appearing in the index, and design will happily
+plan against a service nobody can build. Remove the folder and say so.
 
 ## 2. Fan out
 
@@ -62,6 +69,12 @@ returning full narratives will exhaust this session's context.
 `artifacts/knowledge/README.md` is the only file design loads unconditionally,
 so it must be small and it must be generated — never hand-written, never
 appended to.
+
+**Rebuild it from every service README, not only the ones you just analysed.**
+`/pave:analyse <service>` regenerates the whole index from all of them.
+Building it from one analyst's output would erase every other service from the
+capabilities, terms and events tables — and design would then plan as though
+those services did not exist.
 
 Build it from the frontmatter of every service README:
 
@@ -112,5 +125,10 @@ State which services were analysed, which were skipped as current, and list
 every `uncertain` entry the analysts raised. Those are the points design must
 verify against code rather than trust.
 
-Do not report a service as analysed if its analyst returned blocked or
-incomplete.
+Do not report a service as analysed if its analyst returned blocked,
+incomplete, or nothing at all. Leave its previous knowledge in place if it had
+any, do not update its `commit`, and say it still needs analysing — otherwise
+the next run sees a current `commit` and skips a service that was never read.
+
+A repo that could not be reached is the same case: report it, do not index it
+as current.

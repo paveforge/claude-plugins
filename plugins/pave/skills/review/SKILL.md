@@ -32,10 +32,31 @@ missing case is a planning problem, so it goes in the report as a comment and
 
 **Improvements never change status.** Note them, clearly marked non-blocking.
 
+## Before starting
+
+Locate the hub. Read `config.yaml`, `workspace.yaml` and `features/<slug>/`.
+
+| Feature status | Review |
+|---|---|
+| `done` | Yes. The normal case. |
+| `failed` | Yes — a re-review after `/pave:build` fixed the deviations. |
+| `blocked` | Yes, but only the tasks that are `done`. Say plainly that the feature is incomplete. |
+| `building` | Yes, only the `done` tasks. A partial run leaves work unfinished, not wrong. |
+| `ready`, `planning` | Refuse. Nothing has been built. |
+
+**Only review tasks that are `done`.** A `pending` task has no code to compare
+against, so a reviewer would report every item missing — which is true and
+useless, and would mark as failed a task that was never attempted.
+
 ## 1. Fan out, one reviewer per task
 
-Spawn a `reviewer` for **every task** in the feature, in parallel up to
+Spawn a `reviewer` for **every `done` task** in the feature, in parallel up to
 `execution.max_parallel`, passing `agents.reviewer.model`.
+
+Re-review checks every `done` task again, including ones that passed last
+time. That is deliberate, not waste: a re-run builder fixing three items may
+have touched code another task depends on, and a task that passed against the
+old code is not known to pass against the new.
 
 Review follows `config.yaml` exactly. Unlike design, it does not upgrade to
 match a stronger session — comparing a document to code is not a phase that
@@ -59,8 +80,10 @@ it, they conform to each other — no reviewer needs to see both.
 
 ## 2. Record the outcome
 
-**If every reviewer reports clean**, the feature stays `done`. Write the
-report with any non-blocking comments and stop.
+**If every reviewer reports clean**, leave the feature status as it is. A
+clean review confirms what was built; it does not finish what was not. A
+`blocked` or `building` feature stays that way — say so rather than letting a
+green review read as a complete feature.
 
 **For each reviewer reporting a deviation:**
 
@@ -104,9 +127,6 @@ approval.
 **Keep improvements in a section builders do not read.** A suggestion that
 reaches a re-run agent becomes work it does, and the builder's authority is
 the task document, not a reviewer's opinion.
-
-Record what the reviewers reported. Do not soften a finding, and do not add
-one of your own — you did not read the code.
 
 Then summarise in the session: what failed, in which service, and the single
 command to run next — `/pave:build <slug>` for execution drift, or
