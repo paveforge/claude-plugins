@@ -38,7 +38,7 @@ derives_from:              # the design this task projects. No source = invented
 ## Architecture & Data Contracts
 **Data structures / schema:** <entities, migrations, DTOs>
 **API contracts:** <path to the contract file>
-**Contract status:** FROZEN at gate 2. Stubs generated and committed in <sha>.
+**Contract status:** FROZEN at gate 1. Stubs generated and committed in <sha>.
 Do not edit the contract or its generated files.
 
 ## Cross-Service Dependencies

@@ -34,7 +34,7 @@ still holds — this is re-deriving, not discarding — but derive it, do not
 assume it.
 
 Set the feature to `planning` while you work. Contracts are re-frozen at gate
-2, so any task already built against a contract that changed goes back to
+1, so any task already built against a contract that changed goes back to
 `pending`.
 
 The user decides when this is the right move. Do not re-design because a build
@@ -68,10 +68,10 @@ That keeps the whole phase conversational, which is what it wants to be.
 **If your session is below it, spawn the `designer` agent** with `model` set
 to the configured value, twice:
 
-1. After the blast radius is confirmed → it writes `spec.md` and
-   `architecture.md` → present them at gate 1
-2. After gate 1 is approved → it writes `contracts/` and every task document →
-   present them at gate 2
+1. After the blast radius is confirmed → it writes `spec.md`,
+   `architecture.md` and `contracts/` → present them at gate 1
+2. After gate 1 is approved → it writes every task document → present them at
+   gate 2
 
 You keep the conversation, the blast-radius confirmation and both gates. It
 does the thinking.
@@ -203,11 +203,6 @@ read it.
 
 **Assumptions** you had to make, stated plainly, so gate 1 can challenge them.
 
-### → Gate 1
-
-Present the spec and architecture. Stop and wait for approval. Do not write
-contracts or tasks yet.
-
 ## 4. Contracts — frozen, and generated
 
 Write the contracts into `features/<slug>/contracts/`.
@@ -226,6 +221,24 @@ its stubs exist, order-service and payment-service stop depending on each
 other's in-flight code and can be built at the same time. If contracts are
 still soft when the agents spawn, they will diverge and reconciling costs more
 than the fan-out saved.
+
+### → Gate 1
+
+Present the spec, the architecture **and the contracts**. Stop and wait for
+approval. Do not write task documents yet.
+
+Contracts are approved here, with the architecture they belong to, because an
+interface between two services is a design decision and not an implementation
+detail. Deciding it at the same moment as the flow and the state ownership is
+what lets them be judged together.
+
+It also puts the objection where it is cheap. "This should be an event, not a
+synchronous call" invalidates every task derived from that contract — so it
+has to be asked before those tasks exist, not after you have read twenty of
+them.
+
+**On approval the contracts are frozen.** From here they change only by
+re-running design, never by an agent in a repo.
 
 ## 5. Task documents
 
@@ -422,11 +435,11 @@ which is the one thing the split is meant to prevent.
 
 ### → Gate 2
 
-Present the contracts, the task documents and the readiness result. Stop and
-wait for approval.
+Present the task documents and the readiness result. Stop and wait for
+approval.
 
-On approval the contracts are frozen: from here they change only by re-running
-design, never by an agent in a repo.
+The contracts were settled at gate 1, so this gate asks one question only:
+**are these briefs executable without further decisions?**
 
 ## 7. Write the roll-ups
 

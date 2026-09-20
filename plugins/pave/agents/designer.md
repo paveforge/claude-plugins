@@ -15,13 +15,18 @@ gates; you do the thinking and write the files.
 
 ## You will be told which stage to produce
 
-**Stage 1 — spec and architecture.** You are given the feature description,
-the confirmed blast radius, and the knowledge files to read. Write `spec.md`
-and `architecture.md`.
+**Stage 1 — spec, architecture and contracts.** You are given the feature
+description, the confirmed blast radius, and the knowledge files to read.
+Write `spec.md`, `architecture.md` and `contracts/`.
 
-**Stage 2 — contracts and tasks.** The spec and architecture have been
-approved by the user. Read them from disk, then write `contracts/` and every
-task document.
+`architecture.md` must pass the sufficiency test in the skill: someone writes
+every task from that file alone, without asking you a question. That someone
+may be you in stage 2, with no memory of this one — so write down the
+reasoning, not only the conclusion.
+
+**Stage 2 — task documents.** The spec, architecture and contracts have been
+approved and the contracts are frozen. Read them from disk, then write every
+task document as a projection of them.
 
 You are spawned fresh for each stage, so stage 2 starts with no memory of
 stage 1. Read the approved files rather than assuming what they say — and if

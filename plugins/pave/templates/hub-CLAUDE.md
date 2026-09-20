@@ -64,8 +64,10 @@ produces tasks that are individually reasonable and collectively inconsistent.
 
 ## Rules
 
-**Contracts are frozen at gate 2.** They change by re-running `/pave:design`,
-never by editing them in a service repo. The freeze is what lets services be
+**Contracts are frozen at gate 1**, alongside the architecture they belong to.
+An interface between two services is a design decision, not an implementation
+detail. They change by re-running `/pave:design`, never by editing them in a
+service repo. The freeze is what lets services be
 built in parallel; a local edit breaks every service building against it.
 
 **Task documents are self-contained.** An agent executing one has not seen the

@@ -67,7 +67,7 @@ hub/
         ├── README.md        feature: one row per task
         ├── spec.md
         ├── architecture.md
-        ├── contracts/       frozen at gate 2
+        ├── contracts/       frozen at gate 1
         ├── tasks/           one self-contained document per unit of work
         └── artifacts/       build and review reports
 ```

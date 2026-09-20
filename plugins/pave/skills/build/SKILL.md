@@ -1,6 +1,6 @@
 ---
 name: build
-description: Execute an approved feature plan. Lands the frozen contracts in each repo, then fans out one agent per service to work through its task documents. Use after /pave:design has passed gate 2.
+description: Execute an approved feature plan. Lands the frozen contracts in each repo, then fans out one agent per service to work through its task documents. Use after /pave:design has passed both gates.
 effort: medium
 argument-hint: "<feature slug>"
 ---
@@ -9,7 +9,7 @@ argument-hint: "<feature slug>"
 
 Land the contracts, then fan out.
 
-Build executes. It does not design. Every decision was made at gate 2; this
+Build executes. It does not design. Every decision was made at the gates; this
 phase turns frozen task documents into code.
 
 ## Before starting
