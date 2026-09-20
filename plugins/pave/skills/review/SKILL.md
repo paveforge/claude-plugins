@@ -72,40 +72,43 @@ report with any non-blocking comments and stop.
 
 If any task failed, set the feature to `failed`.
 
+**If a reviewer returns nothing or errors**, that task is unreviewed, not
+passed. Leave its status untouched, record it in the report, and say so in
+your summary. Never let a missing result read as a clean one.
+
 Record exactly what the reviewers reported. Do not soften a finding, and do
 not add one of your own — you did not read the code.
 
 ## 3. Report
 
-Write `features/<slug>/artifacts/review-report.md`, **organised per task**:
+Write `features/<slug>/artifacts/review-report.md` from
+`templates/review-report.md`.
 
-```markdown
-# Review — build-checkout
-Reviewed 2026-09-20 · 4 tasks · 1 failed
+Its structure exists to serve two readers at once:
 
-## 02-payment-intent — FAILED
-Claimed and not found:
-- [ ] "Authorize transitions Pending -> Authorized"
-      internal/domain/intent.go has the states but no transition; the
-      usecase sets the field directly, bypassing validation.
-- [ ] "Provider adapter behind an interface"
-      stripe client is called directly from usecase/authorize.go:41.
+- **A person** deciding whether this is mergeable reads the header and the
+  Failed section, and stops.
+- **A re-run builder** reads only its own subsection. It sees nothing else,
+  exactly as it sees only its own task document — so every subsection names
+  its task file and repo, and quotes the failed items verbatim.
 
-## 01-stock-reservation — OK
-## 03-order-checkout — OK
-## 04-notification-confirm — OK
+Three rules the template encodes, all of them load-bearing:
 
-## Comments (non-blocking)
-- order-service: Checkout orchestration would read better split in two.
-  Follows the plan exactly; noted only.
-- The plan has no path for a payment authorised after the reservation
-  expired. Not a deviation - the plan does not mention it. Re-design with
-  `/pave:design build-checkout` if you want it covered.
-```
+**Quote items exactly** as they appear in the task document. The builder
+matches on that text to find what to fix.
 
-Per-task sections are not cosmetic. A re-run builder reads only its own
-section, exactly as it reads only its own task document.
+**Never omit the Not reviewed section** when a reviewer returned nothing or
+errored. A task with no section reads as a pass, and silence must never mean
+approval.
 
-Then summarise in the session: what failed, in which service, and whether the
-route forward is `/pave:build` (execution drift) or `/pave:design <slug>` (the
-design needs to change). Lead with what failed.
+**Keep improvements in a section builders do not read.** A suggestion that
+reaches a re-run agent becomes work it does, and the builder's authority is
+the task document, not a reviewer's opinion.
+
+Record what the reviewers reported. Do not soften a finding, and do not add
+one of your own — you did not read the code.
+
+Then summarise in the session: what failed, in which service, and the single
+command to run next — `/pave:build <slug>` for execution drift, or
+`/pave:design <slug>` when the design itself needs to change. Lead with what
+failed.
