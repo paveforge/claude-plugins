@@ -1,0 +1,32 @@
+# Pave policy. Shared by the team - commit this file.
+# Contains nothing machine-specific. Your repo paths live in workspace.yaml.
+
+hub:
+  name: platform
+
+phases:
+  design:
+    model: opus
+    effort: high         # planning decides the feature
+  build:
+    model: sonnet
+    effort: medium       # executes frozen specs, makes no design calls
+  review:
+    model: opus
+    effort: high         # a missed contract mismatch is expensive
+
+agents:
+  explorer:
+    model: haiku
+    effort: low          # read-only repo scanning
+
+execution:
+  mode: parallel                 # parallel | sequential
+  monorepo_strategy: sequential  # sequential | worktree | shared-tree
+  max_parallel: 4
+
+branch:
+  pattern: feature/{feature-slug}
+
+contracts:
+  land_before_fanout: true       # generate and commit stubs before agents spawn

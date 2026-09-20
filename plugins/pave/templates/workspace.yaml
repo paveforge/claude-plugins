@@ -1,0 +1,50 @@
+# Your repos. Source of truth - edit freely, Pave reads what is here.
+# Seeded by /pave:init; re-running backs this up to workspace-old.yaml first.
+# Local to your machine. Not committed.
+
+generated_at: 2026-01-01T00:00:00Z
+hub: platform
+
+repos:
+  - path: ../order-service
+    default_branch: main
+    services: [order-service]
+  - path: ../storefront
+    default_branch: main
+    services: [web-checkout, shared-events]   # monorepo: two services, one repo
+
+ignored:                    # init will not ask about these again
+  - ../infra
+
+services:
+  - name: order-service
+    repo: ../order-service
+    path: .
+    kind: service           # service | library | app | infra
+    language: go
+    claude_md: ../order-service/CLAUDE.md   # repo has its own; agents read it
+    commands:
+      build: make build
+      test:  go test ./...
+      lint:  golangci-lint run
+      codegen: buf generate
+    contracts:
+      - kind: protobuf      # protobuf | openapi | graphql | json-schema | avro | prose
+        path: proto/order/v1/order.proto
+        role: producer
+    consumes: [stock-service]
+
+  - name: shared-events
+    repo: ../storefront
+    path: packages/events
+    kind: library           # publishes a version; consumers bump the pin
+    language: typescript
+    commands:
+      build:   pnpm --filter events build
+      test:    pnpm --filter events test
+      publish: pnpm --filter events publish
+    contracts:
+      - kind: json-schema
+        path: packages/events/schemas/
+        role: producer
+    consumes: []
