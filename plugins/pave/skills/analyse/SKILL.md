@@ -53,7 +53,8 @@ One `analyst` per service, in parallel up to `execution.max_parallel`, using
 `agents.analyst.model` from `config.yaml`.
 
 Each analyst writes only its own folder under
-`artifacts/knowledge/services/<service>/`. One writer per directory, same rule
+`artifacts/knowledge/services/<service>/`, its README from
+`templates/knowledge-service-README.md`. One writer per directory, same rule
 as the builders — parallel agents never share a file.
 
 Give each analyst its repo path, its `path` within the repo, its language, its
@@ -76,7 +77,8 @@ Building it from one analyst's output would erase every other service from the
 capabilities, terms and events tables — and design would then plan as though
 those services did not exist.
 
-Build it from the frontmatter of every service README:
+Build it from `templates/knowledge-README.md`, filled from the frontmatter of
+every service README:
 
 ```markdown
 # Knowledge index
@@ -132,3 +134,5 @@ the next run sees a current `commit` and skips a service that was never read.
 
 A repo that could not be reached is the same case: report it, do not index it
 as current.
+
+Then say what to run next: `/pave:design <feature>`.

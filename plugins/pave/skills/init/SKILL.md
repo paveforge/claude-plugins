@@ -148,8 +148,9 @@ folder on every run.
   every other setting alone — it is a Claude Code config the user may have
   customised, not a Pave artefact.
 - `CLAUDE.md` — from `templates/hub-CLAUDE.md`, if absent
-- `conventions/README.md` and `conventions/<language>.md` — see below, if absent
-- `features/README.md` — empty portfolio table, if absent
+- `conventions/README.md` — from `templates/conventions-README.md`, if absent
+- `conventions/<language>.md` — drafted, see below, if absent
+- `features/README.md` — from `templates/features-README.md`, empty table, if absent
 - `.gitignore` — ensure it contains `workspace.yaml` and `workspace-old.yaml`
 
 ## 7. Draft the conventions

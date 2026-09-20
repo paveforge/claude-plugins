@@ -151,8 +151,8 @@ A service the user adds here is worth more than three you inferred.
 
 ## 2. Spec
 
-Write `features/<slug>/spec.md`: what and why, user-visible behaviour,
-acceptance criteria for the feature **as a whole**.
+Write `features/<slug>/spec.md` from `templates/spec.md`: what and why,
+user-visible behaviour, acceptance criteria for the feature **as a whole**.
 
 Feature-level acceptance matters and is easy to skip. In a per-service model
 nobody owns "does checkout actually work end to end" — every service can pass
@@ -160,8 +160,9 @@ its own criteria while the seams are broken. Write it here or no one will.
 
 ## 3. Architecture
 
-Write `features/<slug>/architecture.md`. This file is the source every task is
-derived from, so it has to be sufficient on its own.
+Write `features/<slug>/architecture.md` from `templates/architecture.md`. This
+file is the source every task is derived from, so it has to be sufficient on
+its own.
 
 ### The sufficiency test
 
@@ -446,5 +447,9 @@ The contracts were settled at gate 1, so this gate asks one question only:
 **After approval, not before.** A feature marked `ready` that nobody approved
 would let `/pave:build` run against a rejected plan.
 
-- `features/<slug>/README.md` — one row per task, from task frontmatter
-- `features/README.md` — one row per feature, status `ready`
+- `features/<slug>/README.md` — from `templates/feature-README.md`, one row per
+  task, built from task frontmatter
+- `features/README.md` — from `templates/features-README.md`, one row per
+  feature, status `ready`
+
+Then say what to run next: `/pave:build <slug>`.

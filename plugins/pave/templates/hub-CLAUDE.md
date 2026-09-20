@@ -43,16 +43,33 @@ configured you get opus; on fable you keep fable.
 ## Status
 
 ```
-planning -> ready -> building -> done
-                                  |
-                                  |  review finds the plan was not followed
-                                  v
-                               failed -> building -> done
+planning --> ready --> building --> done
+                          |  ^            |
+      an agent escalated  |  |            |  review found the plan
+      a contract problem  v  |            |  was not followed
+                       blocked            v
+                          |            failed
+                          |               |
+       work still remains v               v
+                       building <---------+  /pave:build re-runs
+                                             only the failed tasks
 ```
 
+| Status | Means |
+|---|---|
+| `planning` | Design is in progress |
+| `ready` | Both gates passed; not built yet |
+| `building` | Being built, or a run finished with work still to do |
+| `done` | Every task built |
+| `failed` | Review found claimed work that was not real |
+| `blocked` | An agent escalated - usually a contract that cannot express what is needed |
+
 `build` sets `done`. `review` is the independent check that the agents did
-what the plan said, and sets `failed` if they did not - then `/pave:build`
-re-runs only the failed tasks.
+what the plan said, and sets `failed` if they did not.
+
+A run that ends at `building` is the honest partial: some tasks finished,
+nothing escalated, work remains. Re-running `/pave:build` picks it up.
+`blocked` needs you - the build report says what the decision is.
 
 Review checks execution against the plan, not whether the feature works. A
 gap in the plan is not a review failure: it is a comment, and you decide
