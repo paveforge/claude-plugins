@@ -189,27 +189,23 @@ stronger model than your session if `config.yaml` asks for it.
    **→ Gate 2.** One question: are these briefs executable without further
    decisions?
 
-**Naming a feature.** The slug names the folder and is how `/pave:build` and
-`/pave:review` refer to it afterwards:
+**Naming a feature.** The id names the folder and is how every later step
+refers to the feature:
 
 ```
-/pave:design DGF-8888 build checkout   →  features/DGF-8888/
-/pave:design build checkout            →  features/build-checkout/
+/pave:design DGF-8888 build checkout     →  features/DGF-8888/
+/pave:design build checkout              →  features/feat-1/
 ```
 
-A leading ticket reference becomes the id on its own, so later steps are short
-to type from memory — `/pave:build DGF-8888` works in a fresh session that
-remembers nothing. The description becomes the feature's title in `spec.md`
-and the portfolio table, so a folder of bare ticket numbers stays readable.
+A leading ticket reference becomes the id; otherwise Pave generates `feat-N`.
+Ids are deliberately short rather than descriptive — `/pave:build DGF-8888`
+has to work from a fresh session with nothing to look up, and a kebab-cased
+sentence is not something anyone types twice. The description becomes the
+feature's **title**, in `spec.md` and the portfolio table, so the folder list
+stays readable.
 
-The feature id **is** the folder name — there is no second identifier. It is
-what `/pave:build` and `/pave:review` take, and what task documents carry. A
-ticket reference is simply part of it, which keeps the hub greppable against
-your tracker. Pave never invents one.
-
-If the argument matches an existing feature directory, that's a re-design of
-that feature. If a *new* feature's id collides with an existing one, it stops
-and asks rather than overwriting an approved plan.
+If the id already exists, that's a re-design of that feature — announced
+before it starts, and still gated.
 
 **What it asks you.** To confirm the blast radius, then both gates.
 

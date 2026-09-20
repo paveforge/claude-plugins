@@ -17,58 +17,57 @@ downstream is allowed to redesign it. Spend the effort here.
 
 **The feature id is the folder name under `features/`.** There is no second
 identifier: it names the folder, it is what `/pave:build` and `/pave:review`
-take as their argument, and it is what task documents carry in frontmatter.
+take, and it is what task documents carry in frontmatter.
 
-It needs to be **unique and short enough to retype from memory**. Every later
-step is addressed by it, often from a fresh session that remembers nothing —
-`/pave:build DGF-8888` has to work without you looking anything up.
+It exists to be **short and retypable**. Every later step is addressed by it,
+usually from a fresh session that remembers nothing — `/pave:build DGF-8888`
+has to work with nothing to look up.
 
-### Deriving it
+### Two rules
 
-**If the first word is a ticket reference** — letters, a hyphen, digits, such
-as `DGF-8888` or `PROJ-12` — that alone is the id. The rest of the argument is
-the feature's description and belongs in `spec.md`, not in the folder name.
+**First word is a ticket reference** — letters, hyphen, digits, like
+`DGF-8888` or `PROJ-12` — then that alone is the id.
 
-**Otherwise** the id is the description, kebab-cased: lowercase, spaces to
-hyphens, punctuation dropped.
+**Otherwise** generate `feat-N`, where N is one higher than the highest
+existing `feat-` folder in `features/`.
 
 ```
-/pave:design DGF-8888 build checkout   →  features/DGF-8888/
-                                          title: "Build checkout"
-
-/pave:design build checkout            →  features/build-checkout/
-                                          title: "Build checkout"
+/pave:design DGF-8888 build checkout        →  features/DGF-8888/
+/pave:design build checkout                 →  features/feat-1/
+/pave:design let's build a feature that…    →  features/feat-2/
 ```
+
+Never derive the id from the description. A description makes an unusable
+folder name — `lets-build-a-feature-to-allow-users-to-checkout-with…` is not
+something anyone types twice — and generating one removes the judgement call
+about how long is too long. The id is a handle, not a summary.
 
 Never invent a ticket reference. A fabricated `FEAT-001` looks like a pointer
-into a real system and is worse than a plain description.
+into a real system; `feat-1` obviously does not, which is the point.
 
-### The title is not optional
+### The title carries the meaning
 
-When the id is a ticket reference the folder name says nothing about the work,
-so the description has to survive. Write it as the `# heading` of `spec.md` and
-the feature `README.md`, and carry it into the portfolio table. A `features/`
-directory of bare ticket numbers that nobody can read is a filing cabinet, not
-a plan.
+The id says nothing about the work, so the description must survive. Use it as
+the `# heading` of `spec.md` and the feature `README.md`, and as the **Title**
+column of the portfolio table. Otherwise `features/` is a list of handles
+nobody can read.
 
-If a ticket id was given with **no** description, and the feature does not
-exist yet, ask what it is. Do not open a ticket-shaped folder with nothing in
-it.
+If there is no description and the feature does not already exist, **ask what
+it is.** Do not open an empty folder with a generated name.
 
 ### If the id already exists
 
-Re-design it, and **say so on the line before you start**:
+Re-design it, and say so on the line before you start:
 
 ```
 DGF-8888 exists — re-designing it. Everything will be re-derived.
 ```
 
-That is the intended way to revisit a feature, so it does not need a
-confirmation prompt, but it must never be silent: the same line is how you
-notice a genuine name collision, and both gates still stand between the
-re-design and anything being built.
+That is the intended way to revisit a feature, so it needs no confirmation
+prompt — but it is never silent, because that line is how a mistake gets
+noticed. Both gates still stand between a re-design and anything being built.
 
-Say the id back before continuing. Everything downstream is addressed by it.
+Say the id and the title back before continuing.
 
 ## Re-designing an existing feature
 
