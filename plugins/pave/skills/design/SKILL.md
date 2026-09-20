@@ -74,9 +74,16 @@ to the configured value, twice:
    present them at gate 2
 
 You keep the conversation, the blast-radius confirmation and both gates. It
-does the thinking. Pass it the relevant section of this skill, the knowledge
-files to read, and the approved artefacts — it starts fresh each time and
-knows nothing you do not tell it.
+does the thinking.
+
+**Pass it this entire skill, not the section you think applies.** Stage 2
+still needs §1's knowledge discipline and §3's sufficiency test to judge what
+it is reading. Passing an excerpt is how the spawned path starts producing
+something different from the in-session one.
+
+Also pass the knowledge files to read and the approved artefacts. It starts
+fresh each time and knows nothing you do not tell it — which is precisely why
+`architecture.md` has to carry the reasoning and not just the conclusions.
 
 **If you cannot determine your session model, spawn.** That fails safe: you
 get at least what was configured, never less.
@@ -153,9 +160,48 @@ its own criteria while the seams are broken. Write it here or no one will.
 
 ## 3. Architecture
 
-Write `features/<slug>/architecture.md`: the cross-service approach, the flow
-through the services, the failure and rollback behaviour, and which service
-owns which piece of state.
+Write `features/<slug>/architecture.md`. This file is the source every task is
+derived from, so it has to be sufficient on its own.
+
+### The sufficiency test
+
+**Could someone write every task document from this file alone, without asking
+you a question?**
+
+That is not a stylistic bar, it is a correctness one. You may write the tasks
+in a fresh context that remembers none of your reasoning — the spawned path
+does exactly that, stage 2 reading this file off disk with no memory of stage
+1. Anything you decided but did not write down is gone, and the task-writer
+will invent a replacement that looks reasonable and is not what you meant.
+
+So the rule is: **write down the reasoning, not only the conclusion.** The two
+modes must produce the same quality, and this file is the only thing that
+guarantees it.
+
+### What it must contain
+
+**Named sections with stable anchors.** Tasks cite `architecture.md#<section>`
+in `derives_from`. Prose without headings cannot be cited, and an uncitable
+decision cannot be checked.
+
+**Each decision, with its rationale.** What was decided, why, and what was
+rejected. The rejected alternative matters most: without it, a task-writer
+looking at the same problem may quietly re-derive the option you ruled out.
+
+**The flow, step by step** — which service does what, in order, and what it
+emits.
+
+**The unhappy paths, at the cross-service level.** What happens when each step
+fails: what retries, what compensates, what is left inconsistent and for how
+long, what the caller sees. This section is what §5 projects into per-item
+failure behaviour. If it is not here, tasks cannot state it, and builders will
+invent it one repo at a time — four services each picking something sensible
+and none of them agreeing.
+
+**State ownership** — which service owns which piece of state, and who may
+read it.
+
+**Assumptions** you had to make, stated plainly, so gate 1 can challenge them.
 
 ### → Gate 1
 
@@ -374,13 +420,18 @@ On failure, name the gap and stop. Do not fan out. Do not let `/pave:build`
 proceed and fix it later — that is the cheap model making design decisions,
 which is the one thing the split is meant to prevent.
 
-## 7. Write the roll-ups
-
-- `features/<slug>/README.md` — one row per task, from task frontmatter
-- `features/README.md` — one row per feature, status `ready`
-
 ### → Gate 2
 
 Present the contracts, the task documents and the readiness result. Stop and
-wait for approval. On approval the contracts are frozen: from here they change
-only by re-running design, never by an agent in a repo.
+wait for approval.
+
+On approval the contracts are frozen: from here they change only by re-running
+design, never by an agent in a repo.
+
+## 7. Write the roll-ups
+
+**After approval, not before.** A feature marked `ready` that nobody approved
+would let `/pave:build` run against a rejected plan.
+
+- `features/<slug>/README.md` — one row per task, from task frontmatter
+- `features/README.md` — one row per feature, status `ready`
