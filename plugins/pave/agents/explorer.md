@@ -52,10 +52,3 @@ package, each with its own `path`.
 Flag anything you guessed rather than found, and anything that looked like a
 service but had no recognisable tooling. Those go to the user for a decision —
 being wrong quietly is the one outcome to avoid.
-
-## Sampling conventions
-
-When asked to draft conventions, read the lint config and three or four
-representative source files, and report the patterns actually in use: error
-handling, interface placement, test style, naming. Report what the code does,
-not what you would recommend.

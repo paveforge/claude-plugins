@@ -154,9 +154,14 @@ folder on every run.
 
 ## 7. Draft the conventions
 
-For each language found, have the explorer sample the repos — lint config, a
-few representative source files, existing test style — and draft
+For each language found, spawn an `analyst` — one per language, using
+`agents.analyst.model` — to sample the repos using it and draft
 `conventions/<language>.md`. Tell the user these are drafts to correct.
+
+The `analyst`, not the `explorer`. Explorer answers mechanical questions: which
+manifest, which test command. Inferring a house style from source files is
+pattern work, and a convention file drafted too shallowly is worse than none —
+every builder follows it.
 
 Asking a team to hand-write a convention file per language before they can
 start is where this stalls. A wrong draft they fix in two minutes is worth more

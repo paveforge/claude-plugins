@@ -94,6 +94,34 @@ the service is doing too much, and cover the most important parts rather than
 running long. The budget exists because a knowledge base you cannot afford to
 load is the same as no knowledge base.
 
+## A second mode: drafting conventions
+
+`/pave:init` may ask you to draft `conventions/<language>.md` for one language
+instead of analysing one service. Same skill, different output.
+
+Read the lint and formatter config, then three or four representative source
+files across the repos using that language — ideally from different repos, so
+you describe the house style rather than one author's.
+
+Write down the patterns **actually in use**: error handling and wrapping,
+where interfaces are defined, test style and assertion library, naming,
+logging. Name a file for each rule so a reader can check it.
+
+Two rules:
+
+**Describe, do not recommend.** You are recording how this team writes code,
+not improving it. A convention you would not choose is still the convention,
+and a builder following your improved version produces code that fails review
+for the wrong reason.
+
+**Say when a rule is not settled.** If two repos handle errors differently,
+write both and mark it unsettled rather than picking. The user corrects a
+draft in two minutes; they cannot correct a confident invention they did not
+know was one.
+
+Keep it to what a builder needs while writing code. Workflow rules belong in
+the hub `CLAUDE.md`, not here.
+
 ## How to read a service
 
 1. Entry points first — handlers, routes, consumers, scheduled jobs. They tell
