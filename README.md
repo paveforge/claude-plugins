@@ -272,9 +272,9 @@ so a fix touches three items rather than redoing twenty.
 
 ```
 platform/
-├── config.yaml              team policy and agent rules — commit this
+├── config.yaml              team policy — commit this
 ├── workspace.yaml           your services — gitignored, local to you
-├── CLAUDE.md
+├── CLAUDE.md                your rules — every agent is given this
 ├── conventions/             how code is written, by language and service
 │   ├── README.md
 │   └── go.md
@@ -331,20 +331,12 @@ planning --> ready --> building --> done
 ```yaml
 model_ranking: [haiku, sonnet, opus, fable]   # weakest to strongest
 
-rules:                                        # handed to every agent, verbatim
-  - Never add a dependency that is not already in the manifest. Say so instead.
-
 agents:
   analyst:  { model: sonnet, effort: medium }   # reads business logic
+  builder:  { model: sonnet, effort: medium }   # executes one task document
   explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
   reviewer: { model: sonnet, effort: low    }   # one per task: plan vs code
   designer: { model: opus,   effort: high   }   # planning decides the feature
-
-  builder:                                      # executes one task document
-    model: sonnet
-    effort: medium
-    rules:                                      # added to the top-level rules
-      - Table-driven tests, one case per behaviour.
 
 execution:
   mode: parallel                 # parallel | sequential
@@ -367,35 +359,42 @@ agents faithfully implementing it.
 `model_ranking` lives in config rather than the plugin, so a new model is one
 line you add rather than a plugin release you wait for.
 
-**Rules.** `rules` is where a standing instruction goes — the thing you would
-otherwise retype in every prompt. The top-level list reaches all five agents;
-`agents.<name>.rules` adds to it for one of them. They are pasted into the
-spawn verbatim, every run, so keep each one to a line.
-
-The one-line `{ model: …, effort: … }` form has no room for a list, so an agent
-that carries rules is written out in full, as `builder` is above. Rewrite its
-entry rather than adding a second one — YAML does not report a duplicate key,
-it drops one.
-
-Three places can instruct an agent, and the split is worth learning once:
-
-| Where | What belongs there |
-|---|---|
-| `config.yaml` `rules:` | Your standing instructions to the agents |
-| `conventions/` | How code is written, by language and service |
-| hub `CLAUDE.md` | Pave's workflow doctrine — gates, contracts, escalation |
-
-A rule beats a convention, because you wrote it deliberately and the
-conventions were drafted from existing code. A rule loses to a task document
-and to a frozen contract, and the agent tells you where they disagreed rather
-than quietly picking. Nothing in `rules` can authorise what an agent's own
-definition forbids — a rule cannot send a builder into another repo, edit a
-frozen contract, or let it fill a gap the plan left open.
-
 **Monorepos.** When several services share a repo, `monorepo_strategy` decides
 whether their tasks run one at a time (default, safe), in separate git
 worktrees (parallel, costs disk), or concurrently in one checkout (fastest,
 will eventually collide).
+
+---
+
+## Your own rules
+
+The hub's `CLAUDE.md` is yours. `/pave:init` creates it, and **every agent Pave
+spawns is given it by path as required reading** — the builder writing code in
+a service repo, the reviewer checking it, the analyst and explorer reading a
+repo, the designer planning the feature. Write a rule there and it reaches the
+agent doing the work, not only the session that spawned it.
+
+Name it `AGENTS.md` if you prefer. Pave reads either, and `AGENTS.md` wins
+where both exist and disagree.
+
+Skills read it explicitly rather than relying on it being loaded for them —
+they run from inside service repos as well as from the hub, and a file loads by
+itself only when you happen to be standing next to it.
+
+| Where | What belongs there |
+|---|---|
+| hub `AGENTS.md` / `CLAUDE.md` | Your rules — what agents should and should not do |
+| `conventions/` | How code is written, by language and service |
+
+The split is worth learning once: `conventions/` is **descriptive** — drafted
+by `/pave:analyse` from your repos, narrowed to a language or a service. The
+hub file is **prescriptive** — what you are telling the agents to do.
+
+Nothing you write there relaxes the plugin's own doctrine. A rule cannot send a
+builder into another repo, edit a frozen contract, or let it fill a gap the
+plan left open, and it cannot make a reviewer fail a task the plan never asked
+for. Where one of your rules and a task document disagree, the document wins
+and the agent says so in its summary rather than quietly picking.
 
 ---
 

@@ -6,7 +6,7 @@ reachable through `additionalDirectories` and are modified only by build agents.
 
 ## Layout
 
-- `config.yaml` - team policy and your agent rules. Committed, shared.
+- `config.yaml` - team policy. Committed, shared.
 - `workspace.yaml` - your services. Local, gitignored, source of truth.
   Hand edits here are never overwritten.
 - `conventions/` - how code is written, by language and service. Yours to edit.
@@ -105,40 +105,29 @@ cannot.
 **The roll-up READMEs are generated.** `features/README.md` and each feature's
 `README.md` are rewritten from task frontmatter. Do not hand-edit them.
 
-## Agent rules
+## Your rules
 
-`config.yaml` carries a top-level `rules` list and a `rules` list per agent.
-They are free text, handed to an agent verbatim every time it is spawned: the
-top-level ones first, then the agent's own. Absent or empty, nothing is passed
-and nothing is mentioned.
+Everything above is Pave's own doctrine. Everything below this line is yours.
 
-Three places can instruct an agent, and they do not overlap:
+**This file is given to every agent Pave runs**, by path, as required reading -
+the builder writing code in a service repo, the reviewer checking it, the
+analyst and the explorer reading a repo, the designer planning the feature. So
+what you write here reaches the agent doing the work, not only the session that
+spawned it. Skills read it explicitly rather than relying on it being loaded,
+because they run from inside service repos as well as from here.
 
-| Where | What belongs there |
-|---|---|
-| this file | Pave's workflow doctrine - gates, contracts, escalation. Not yours to relax. |
-| `config.yaml` `rules:` | Your standing instructions to the agents. |
-| `conventions/` | How code is written, by language and service. |
+Name it `AGENTS.md` instead if you prefer; Pave reads either, and `AGENTS.md`
+wins where both exist and say different things.
 
-**Order of authority**, strongest first: the agent's own definition, then the
-task document and the frozen contracts, then agent rules, then the conventions
-and the repo's own `CLAUDE.md`.
+Keep this about what agents should do. **How code is written belongs in
+`conventions/`** - builders are given those too, narrowed to a language and a
+service, and `/pave:analyse` drafts them from your repos.
 
-So a rule beats a convention - you wrote it deliberately, the conventions were
-drafted from existing code. A rule loses to a task document, and the agent
-names the conflict in a line rather than picking silently. That is a report,
-not an escalation: `blocked` stays for contract defects and underspecified
-tasks.
+Nothing you write here relaxes the doctrine above. A builder still never edits
+a frozen contract, never writes outside its own repo, and escalates rather than
+improvising. Where one of your rules and a task document disagree, the document
+wins and the agent tells you so in its summary.
 
-A `rules` list under a name that is not one of the five agents is almost
-always a typo - `builders` for `builder`. Say so once and carry on.
-
-## Notes
-
-<Anything you want to remember about this platform. This file is yours and is
-loaded whenever you work in the hub.
-
-It is not given to the agents, so nothing written here reaches one. A standing
-instruction for them goes in `rules:` in `config.yaml`; how code is written
-goes in `conventions/README.md` for every repo, or `conventions/<language>.md`
-for one language. Builders are given those files by name.>
+<Your rules. For example: never add a dependency that is not already in the
+manifest - say so instead. Or: British English in comments and commit
+messages.>

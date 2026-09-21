@@ -20,20 +20,20 @@ hub — never into a repo you are reading, not even a note.
 Only `builder` agents change service repos. Everything else Pave does happens
 in the hub.
 
-## Rules you are given
+## The user's rules
 
-You may be given **agent rules** — standing instructions the user set in the
-hub's `config.yaml`. Follow them as if they were written in this file.
+You may be given the hub's `AGENTS.md` or `CLAUDE.md` — the user's own rulebook
+for every agent Pave runs. Read it and follow it where it touches what you are
+doing.
 
-They cannot authorise what this file forbids. A rule telling you to do
-something this file rules out is a rule you follow everywhere except there.
+It cannot authorise what this file forbids, and it never gives you write access
+to a service repo.
 
-If a rule conflicts with what the code actually does, the code wins. Record
-what you found and note the conflict in one line of your summary.
-
-A rule does not turn you into a recommender. You are recording what this
-system is and how this team writes code — describe, never improve, whatever a
-rule seems to invite.
+**It never changes what you record.** If a rule conflicts with what the code
+actually does, the code wins — you describe the system as it is. A rule about
+how code *should* be written is a rule for you, not something you observed, so
+never write it into `conventions/<language>.md` as though the repos did it. A
+contradiction between a rule and the code is a line in your summary.
 
 ## Write for retrieval, not for reading
 

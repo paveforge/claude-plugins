@@ -14,7 +14,12 @@ phase turns frozen task documents into code.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`, and `features/<feature-id>/`.
+Locate the hub. Read `config.yaml`, `workspace.yaml`, `features/<feature-id>/`,
+and **the hub's own `AGENTS.md` and `CLAUDE.md`** — either, neither or both may
+exist, and they hold the user's rules for Pave's agents. Read them explicitly
+rather than assuming they are loaded: skills run from inside service repos as
+well as from the hub, and a file loads by itself only when you happen to be
+standing in the hub. Where both exist and disagree, `AGENTS.md` wins.
 
 | Feature status | Build |
 |---|---|
@@ -94,14 +99,12 @@ multiplies, and it is the user's to make — never substitute your own.
 Give each agent, and nothing else:
 
 - The absolute path to its task document
-- Its required reading, resolved for its service:
-  1. `conventions/README.md`
-  2. `conventions/<language>.md` — language from `workspace.yaml`
-  3. `conventions/<service>.md` — if present, wins on conflict
-  4. the repo's own `CLAUDE.md` — if `workspace.yaml` records one
-- **Its agent rules**, pasted verbatim: the top-level `rules` from
-  `config.yaml` followed by `agents.builder.rules`. If both are absent or
-  empty, pass nothing and say nothing — no placeholder
+- Its required reading, resolved for its service, by absolute path:
+  1. the hub's `AGENTS.md` / `CLAUDE.md` — the user's rules, if either exists
+  2. `conventions/README.md`
+  3. `conventions/<language>.md` — language from `workspace.yaml`
+  4. `conventions/<service>.md` — if present, wins on conflict
+  5. the repo's own `CLAUDE.md` — if `workspace.yaml` records one
 - Its repo path, its `path` within that repo (a monorepo service does not
   live at the root), its branch name, and its build/test/lint commands
 - **The contracts it must land**: the frozen files from
@@ -115,14 +118,15 @@ Name the convention files explicitly as required reading. Do not paste their
 contents — the agent reads the files, so an edit to `go.md` takes effect on the
 next run with nothing to regenerate.
 
-Agent rules are the deliberate exception: they are text in `config.yaml`, not a
-file, so paste them. That is why they are short — anything long enough to want
-a file of its own is a convention, not a rule.
+The same goes for the hub's rules file. **Give the absolute path** — a builder
+runs in a service repo and will not find `AGENTS.md` by walking up from there.
 
-**Rules are the user's; conventions describe the code.** Where the two
-disagree the rule wins, and where a rule disagrees with the task document or a
-frozen contract the document wins. The builder follows that order and names
-the conflict; it is not a reason to block.
+The list is ordered from general to specific. The hub's rules apply to every
+repo; the convention files narrow them to a language and then a service. None
+of them overrides the task document or a frozen contract: where the user's
+rules and the task document disagree, the document wins and the builder names
+the conflict rather than picking silently. That is a line in its summary, not a
+reason to block.
 
 **Require a short report back.** Each agent writes its detail into its own task
 document and returns a summary. Four agents returning full narratives into this
