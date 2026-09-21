@@ -105,8 +105,29 @@ cannot.
 **The roll-up READMEs are generated.** `features/README.md` and each feature's
 `README.md` are rewritten from task frontmatter. Do not hand-edit them.
 
-## Conventions
+## Your rules
 
-<Cross-cutting rules that apply to every repo. Language-specific rules belong
-in `conventions/<language>.md`, which is loaded only when a task targets that
-language.>
+Everything above is Pave's own doctrine. Everything below this line is yours.
+
+**This file is given to every agent Pave runs**, by path, as required reading -
+the builder writing code in a service repo, the reviewer checking it, the
+analyst and the explorer reading a repo, the designer planning the feature. So
+what you write here reaches the agent doing the work, not only the session that
+spawned it. Skills read it explicitly rather than relying on it being loaded,
+because they run from inside service repos as well as from here.
+
+Name it `AGENTS.md` instead if you prefer; Pave reads either, and `AGENTS.md`
+wins where both exist and say different things.
+
+Keep this about what agents should do. **How code is written belongs in
+`conventions/`** - builders are given those too, narrowed to a language and a
+service, and `/pave:analyse` drafts them from your repos.
+
+Nothing you write here relaxes the doctrine above. A builder still never edits
+a frozen contract, never writes outside its own repo, and escalates rather than
+improvising. Where one of your rules and a task document disagree, the document
+wins and the agent tells you so in its summary.
+
+<Your rules. For example: never add a dependency that is not already in the
+manifest - say so instead. Or: British English in comments and commit
+messages.>
