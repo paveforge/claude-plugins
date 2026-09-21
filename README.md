@@ -372,6 +372,11 @@ otherwise retype in every prompt. The top-level list reaches all five agents;
 `agents.<name>.rules` adds to it for one of them. They are pasted into the
 spawn verbatim, every run, so keep each one to a line.
 
+The one-line `{ model: …, effort: … }` form has no room for a list, so an agent
+that carries rules is written out in full, as `builder` is above. Rewrite its
+entry rather than adding a second one — YAML does not report a duplicate key,
+it drops one.
+
 Three places can instruct an agent, and the split is worth learning once:
 
 | Where | What belongs there |

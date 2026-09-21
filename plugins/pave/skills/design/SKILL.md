@@ -173,8 +173,9 @@ not tell you that checkout touches stock because reservations expire.
 Never proceed blind, and never stop to send the user away. Check each
 candidate for staleness the way `/pave:analyse` does — whether its
 `source_paths` have changed since its recorded `commit` — then spawn `analyst`
-agents for anything missing or stale, using `agents.analyst.model`, and
-continue once they return.
+agents for anything missing or stale, using `agents.analyst.model` and the
+same agent rules `/pave:analyse` §3 passes (`rules` plus
+`agents.analyst.rules`), and continue once they return.
 
 Say what you are doing and why, in one line. Do not ask permission for it.
 

@@ -29,6 +29,11 @@ rules: []
 # Every entry is enforced: the model is passed when the agent is spawned.
 #
 # Each agent also takes its own `rules`, added to the ones above.
+#
+# The one-line form has no room for a list, so an agent that carries rules is
+# written out in full, as `builder` is below. Rewrite its entry - do not add a
+# second one. Two `builder:` keys in one file is not an error YAML reports; one
+# of them is silently dropped.
 agents:
   analyst:  { model: sonnet, effort: medium }   # reads business logic
   explorer: { model: haiku,  effort: low    }   # mechanical repo scanning

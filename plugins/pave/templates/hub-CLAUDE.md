@@ -133,8 +133,12 @@ tasks.
 A `rules` list under a name that is not one of the five agents is almost
 always a typo - `builders` for `builder`. Say so once and carry on.
 
-## Conventions
+## Notes
 
-<Cross-cutting rules that apply to every repo. Language-specific rules belong
-in `conventions/<language>.md`, which is loaded only when a task targets that
-language.>
+<Anything you want to remember about this platform. This file is yours and is
+loaded whenever you work in the hub.
+
+It is not given to the agents, so nothing written here reaches one. A standing
+instruction for them goes in `rules:` in `config.yaml`; how code is written
+goes in `conventions/README.md` for every repo, or `conventions/<language>.md`
+for one language. Builders are given those files by name.>

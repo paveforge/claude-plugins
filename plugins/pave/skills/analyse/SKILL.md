@@ -172,7 +172,8 @@ The `analyst`, not the `explorer`. Inferring a house style from source files is
 pattern work, and a convention file drafted too shallowly is worse than none —
 every builder follows it.
 
-Pass its agent rules here too. But **a rule does not become a convention**:
+Pass its agent rules here too — the same `rules` plus `agents.analyst.rules`
+as §3. But **a rule does not become a convention**:
 this file records what the repos already do, and a rule saying how the team
 *should* write code stays in `config.yaml` where the user put it. Copying it
 here would turn one instruction into two copies that drift, and dress an
