@@ -103,6 +103,12 @@ Design runs on the **stronger** of your session model and
 | fable | opus | fable | Stay in this session |
 | opus | opus | opus | Stay in this session |
 
+**Your agent rules apply on both paths.** Read the top-level `rules` from
+`config.yaml` and `agents.designer.rules` before you start. If you do the work
+here, follow them yourself. If you spawn the `designer`, paste them in
+alongside the skill. They are the user's instructions for designing this
+feature, and which model is doing it is not a reason to drop them.
+
 Design is the one phase that upgrades rather than obeying, because everything
 downstream executes what it produces without question. A weaker plan is not a
 cheaper plan — it is a more expensive one, paid later by four build agents

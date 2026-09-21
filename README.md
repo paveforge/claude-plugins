@@ -272,7 +272,7 @@ so a fix touches three items rather than redoing twenty.
 
 ```
 platform/
-├── config.yaml              team policy — commit this
+├── config.yaml              team policy and agent rules — commit this
 ├── workspace.yaml           your services — gitignored, local to you
 ├── CLAUDE.md
 ├── conventions/             how code is written, by language and service
@@ -331,12 +331,20 @@ planning --> ready --> building --> done
 ```yaml
 model_ranking: [haiku, sonnet, opus, fable]   # weakest to strongest
 
+rules:                                        # handed to every agent, verbatim
+  - Never add a dependency that is not already in the manifest. Say so instead.
+
 agents:
   analyst:  { model: sonnet, effort: medium }   # reads business logic
-  builder:  { model: sonnet, effort: medium }   # executes one task document
   explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
   reviewer: { model: sonnet, effort: low    }   # one per task: plan vs code
   designer: { model: opus,   effort: high   }   # planning decides the feature
+
+  builder:                                      # executes one task document
+    model: sonnet
+    effort: medium
+    rules:                                      # added to the top-level rules
+      - Table-driven tests, one case per behaviour.
 
 execution:
   mode: parallel                 # parallel | sequential
@@ -358,6 +366,26 @@ agents faithfully implementing it.
 
 `model_ranking` lives in config rather than the plugin, so a new model is one
 line you add rather than a plugin release you wait for.
+
+**Rules.** `rules` is where a standing instruction goes — the thing you would
+otherwise retype in every prompt. The top-level list reaches all five agents;
+`agents.<name>.rules` adds to it for one of them. They are pasted into the
+spawn verbatim, every run, so keep each one to a line.
+
+Three places can instruct an agent, and the split is worth learning once:
+
+| Where | What belongs there |
+|---|---|
+| `config.yaml` `rules:` | Your standing instructions to the agents |
+| `conventions/` | How code is written, by language and service |
+| hub `CLAUDE.md` | Pave's workflow doctrine — gates, contracts, escalation |
+
+A rule beats a convention, because you wrote it deliberately and the
+conventions were drafted from existing code. A rule loses to a task document
+and to a frozen contract, and the agent tells you where they disagreed rather
+than quietly picking. Nothing in `rules` can authorise what an agent's own
+definition forbids — a rule cannot send a builder into another repo, edit a
+frozen contract, or let it fill a gap the plan left open.
 
 **Monorepos.** When several services share a repo, `monorepo_strategy` decides
 whether their tasks run one at a time (default, safe), in separate git

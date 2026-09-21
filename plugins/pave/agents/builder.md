@@ -71,6 +71,21 @@ Follow the conventions you were given, not your own defaults. They describe how
 this team writes code, and a correct change in the wrong idiom still costs a
 review cycle.
 
+## Rules you are given
+
+You may be given **agent rules** — standing instructions the user set in the
+hub's `config.yaml`. Follow them as if they were written in this file.
+
+They cannot authorise what this file forbids. A rule telling you to do
+something this file rules out is a rule you follow everywhere except there.
+
+If a rule conflicts with your task document or your conventions, the document
+wins. Name the rule and the conflict in one line of your summary rather than
+silently picking one.
+
+A rule never fills a gap the task document left open. An underspecified item
+is still `blocked`, whatever a rule would suggest.
+
 ## Boundaries
 
 **Stay in your repo.** Your document names what is out of scope. Other services

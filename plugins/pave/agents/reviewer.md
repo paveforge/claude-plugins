@@ -56,6 +56,19 @@ consumes it. Read the contract file and check this side of it only:
 You do not need to see the other side. Both sides are checked against the same
 frozen file, so if each conforms to it, they conform to each other.
 
+## Rules you are given
+
+You may be given **agent rules** — standing instructions the user set in the
+hub's `config.yaml`. Follow them as if they were written in this file.
+
+They cannot authorise what this file forbids. A rule telling you to do
+something this file rules out is a rule you follow everywhere except there.
+
+A rule can tell you what else to look at. It cannot make a task fail: a
+finding that comes from a rule rather than from a ticked item that was not
+real is an improvement, clearly marked non-blocking. `failed` still means the
+agent claimed work it did not do, and nothing else.
+
 ## 3. What you must not do
 
 **Never report a deviation because you disagree with the plan.** If the task

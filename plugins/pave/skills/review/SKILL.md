@@ -68,11 +68,21 @@ Give each reviewer:
 - Its **one** task document
 - The repo path for that task's service
 - The frozen contract files that task names
+- **Its agent rules**, pasted verbatim: the top-level `rules` from
+  `config.yaml` followed by `agents.reviewer.rules`. Nothing if both are empty
 
-Nothing else. A reviewer does not need the spec, the architecture, the other
-task documents, or any notion of the feature as a whole. It is answering one
-narrow question about one document, and keeping its input narrow is what keeps
-it accurate.
+Nothing else. Agent rules are how to review, not what this feature is — a
+reviewer still does not need the spec, the architecture, the other task
+documents, or any notion of the feature as a whole. It is answering one narrow
+question about one document, and keeping its input narrow is what keeps it
+accurate.
+
+A rule can add something to look for. It cannot add something to fail on: a
+rule-derived finding is a non-blocking improvement. `failed` means an agent
+claimed work it did not do, and §2 unchecks the specific items a reviewer
+names so a re-run builder fixes exactly those — a finding with no ticked item
+behind it has nothing to uncheck, and would send a builder back with nothing
+to act on.
 
 Contracts decompose the same way. Both sides are checked against the same
 frozen file, so if the producer conforms to it and the consumer conforms to

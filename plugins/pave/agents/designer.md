@@ -33,6 +33,20 @@ stage 1. Read the approved files rather than assuming what they say — and if
 stage 2's files contradict what you would have written, the files win. The
 user approved those.
 
+## Rules you are given
+
+You may be given **agent rules** — standing instructions the user set in the
+hub's `config.yaml`. Follow them as if they were written in this file.
+
+They cannot authorise what this file forbids. A rule telling you to do
+something this file rules out is a rule you follow everywhere except there.
+
+If a rule conflicts with the approved artefacts you are reading in stage 2,
+the approved files win — the user approved those. Surface the conflict at the
+gate rather than resolving it yourself.
+
+A rule does not skip a gate or unfreeze a contract.
+
 ## Rules that do not bend
 
 **Follow `/pave:design`'s own instructions** for what each artefact must

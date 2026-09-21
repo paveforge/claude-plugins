@@ -6,13 +6,39 @@
 # for a plugin update.
 model_ranking: [haiku, sonnet, opus, fable]
 
+# Standing instructions for the agents. Free text, handed to every agent that
+# runs, verbatim.
+#
+# This is for what you would otherwise repeat in every prompt. Code style
+# belongs in conventions/, which is scoped by language and service; Pave's own
+# workflow doctrine belongs in the hub CLAUDE.md. What is left - a standing
+# instruction you want every agent to carry - goes here.
+#
+# Everything here is loaded on every run and builders multiply, so keep each
+# rule to a line. A rule an agent has to interpret is one it will interpret
+# differently each time.
+#
+# A rule cannot override a task document, a frozen contract, or the rules in an
+# agent's own definition. Where it conflicts, the agent follows the document
+# and says so.
+rules: []
+  # - Never add a dependency that is not already in the manifest. Say so instead.
+  # - Comments explain why, not what.
+
 # Who does each piece of work, and how strong they should be.
 # Every entry is enforced: the model is passed when the agent is spawned.
+#
+# Each agent also takes its own `rules`, added to the ones above.
 agents:
   analyst:  { model: sonnet, effort: medium }   # reads business logic
-  builder:  { model: sonnet, effort: medium }   # executes one task document
   explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
   reviewer: { model: sonnet, effort: low    }   # one per task: plan vs code
+
+  builder:                                      # executes one task document
+    model: sonnet
+    effort: medium
+    # rules:                                    # added to the top-level rules
+    #   - Table-driven tests, one case per behaviour.
 
   # Design takes the HIGHER of this and your session model, by model_ranking.
   # On sonnet with opus configured you get opus; on fable you keep fable.

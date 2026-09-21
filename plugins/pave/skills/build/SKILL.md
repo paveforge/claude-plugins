@@ -99,6 +99,9 @@ Give each agent, and nothing else:
   2. `conventions/<language>.md` — language from `workspace.yaml`
   3. `conventions/<service>.md` — if present, wins on conflict
   4. the repo's own `CLAUDE.md` — if `workspace.yaml` records one
+- **Its agent rules**, pasted verbatim: the top-level `rules` from
+  `config.yaml` followed by `agents.builder.rules`. If both are absent or
+  empty, pass nothing and say nothing — no placeholder
 - Its repo path, its `path` within that repo (a monorepo service does not
   live at the root), its branch name, and its build/test/lint commands
 - **The contracts it must land**: the frozen files from
@@ -111,6 +114,15 @@ creates no branch — both exist already, full of work.
 Name the convention files explicitly as required reading. Do not paste their
 contents — the agent reads the files, so an edit to `go.md` takes effect on the
 next run with nothing to regenerate.
+
+Agent rules are the deliberate exception: they are text in `config.yaml`, not a
+file, so paste them. That is why they are short — anything long enough to want
+a file of its own is a convention, not a rule.
+
+**Rules are the user's; conventions describe the code.** Where the two
+disagree the rule wins, and where a rule disagrees with the task document or a
+frozen contract the document wins. The builder follows that order and names
+the conflict; it is not a reason to block.
 
 **Require a short report back.** Each agent writes its detail into its own task
 document and returns a summary. Four agents returning full narratives into this

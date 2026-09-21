@@ -76,6 +76,9 @@ against a service nobody can build.
 Spawn one `explorer` per service needing discovery, in parallel up to
 `execution.max_parallel`, using `agents.explorer.model`.
 
+Pass each one its **agent rules**, pasted verbatim: the top-level `rules` from
+`config.yaml` followed by `agents.explorer.rules`. Nothing if both are empty.
+
 Never scan a repo yourself in the main context. One large repo will fill it,
 and you still have the rest of the phase to run.
 
@@ -154,6 +157,9 @@ Give each analyst its path, its language, its entry from `workspace.yaml`, and
 read it itself, and without it the staleness check has nothing to compare
 against.
 
+Pass its **agent rules** too, pasted verbatim: the top-level `rules` from
+`config.yaml` followed by `agents.analyst.rules`. Nothing if both are empty.
+
 Require a short summary back. Detail belongs in the files; four analysts
 returning full narratives will exhaust this session's context.
 
@@ -165,6 +171,12 @@ draft `conventions/<language>.md`. Tell the user these are drafts to correct.
 The `analyst`, not the `explorer`. Inferring a house style from source files is
 pattern work, and a convention file drafted too shallowly is worse than none —
 every builder follows it.
+
+Pass its agent rules here too. But **a rule does not become a convention**:
+this file records what the repos already do, and a rule saying how the team
+*should* write code stays in `config.yaml` where the user put it. Copying it
+here would turn one instruction into two copies that drift, and dress an
+instruction up as an observation.
 
 Seed once. **Never rewrite an existing convention file**; it is the user's the
 moment they touch it, which is why `conventions/` sits outside `artifacts/`.

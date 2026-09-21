@@ -6,7 +6,7 @@ reachable through `additionalDirectories` and are modified only by build agents.
 
 ## Layout
 
-- `config.yaml` - team policy. Committed, shared.
+- `config.yaml` - team policy and your agent rules. Committed, shared.
 - `workspace.yaml` - your services. Local, gitignored, source of truth.
   Hand edits here are never overwritten.
 - `conventions/` - how code is written, by language and service. Yours to edit.
@@ -104,6 +104,34 @@ cannot.
 
 **The roll-up READMEs are generated.** `features/README.md` and each feature's
 `README.md` are rewritten from task frontmatter. Do not hand-edit them.
+
+## Agent rules
+
+`config.yaml` carries a top-level `rules` list and a `rules` list per agent.
+They are free text, handed to an agent verbatim every time it is spawned: the
+top-level ones first, then the agent's own. Absent or empty, nothing is passed
+and nothing is mentioned.
+
+Three places can instruct an agent, and they do not overlap:
+
+| Where | What belongs there |
+|---|---|
+| this file | Pave's workflow doctrine - gates, contracts, escalation. Not yours to relax. |
+| `config.yaml` `rules:` | Your standing instructions to the agents. |
+| `conventions/` | How code is written, by language and service. |
+
+**Order of authority**, strongest first: the agent's own definition, then the
+task document and the frozen contracts, then agent rules, then the conventions
+and the repo's own `CLAUDE.md`.
+
+So a rule beats a convention - you wrote it deliberately, the conventions were
+drafted from existing code. A rule loses to a task document, and the agent
+names the conflict in a line rather than picking silently. That is a report,
+not an escalation: `blocked` stays for contract defects and underspecified
+tasks.
+
+A `rules` list under a name that is not one of the five agents is almost
+always a typo - `builders` for `builder`. Say so once and carry on.
 
 ## Conventions
 
