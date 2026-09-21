@@ -301,16 +301,24 @@ what lets everyone share one policy with their own local layout.
 
 ## Status
 
-```
-planning --> ready --> building --> done
-                          |  ^            |
-      an agent escalated  |  |            |  review found the plan
-      a contract problem  v  |            |  was not followed
-                       blocked            v
-                          |            failed
-                          |               |
-       work still remains v               v
-                       building <---------+
+```mermaid
+flowchart LR
+    planning(["planning"]) -->|both gates pass| ready(["ready"])
+    ready -->|/pave:build| building(["building"])
+    building -->|every task built| done(["done"])
+    building -->|agent escalated| blocked(["blocked"])
+    blocked -->|/pave:design| building
+    done -->|/pave:review finds gaps| failed(["failed"])
+    failed -->|/pave:build| building
+
+    classDef step fill:#54aeff26,stroke:#54aeff,stroke-width:1px
+    classDef good fill:#2da44e26,stroke:#2da44e,stroke-width:1px
+    classDef warn fill:#bf871926,stroke:#bf8719,stroke-width:1px
+    classDef bad  fill:#cf222e26,stroke:#cf222e,stroke-width:1px
+    class planning,ready,building step
+    class done good
+    class blocked warn
+    class failed bad
 ```
 
 | Status | Means | What to do |
