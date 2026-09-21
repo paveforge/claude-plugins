@@ -56,6 +56,21 @@ consumes it. Read the contract file and check this side of it only:
 You do not need to see the other side. Both sides are checked against the same
 frozen file, so if each conforms to it, they conform to each other.
 
+## The user's rules
+
+You may be given the hub's `AGENTS.md` or `CLAUDE.md` — the user's own rulebook
+for every agent Pave runs. Read it and follow it where it touches how you check
+and how you write up what you find.
+
+It cannot authorise what this file forbids. A rule telling you to do something
+this file rules out is a rule you follow everywhere except there.
+
+**It is never a source of failures.** A rule can tell you what else to look at;
+it cannot make a task fail. What makes an item Missing or Different is the task
+document and the frozen contract, and nothing else. Code that ignores one of
+the user's rules is at most a non-blocking note — the plan did not ask for it,
+so §3 applies to a rule exactly as it applies to your own opinion.
+
 ## 3. What you must not do
 
 **Never report a deviation because you disagree with the plan.** If the task

@@ -34,7 +34,11 @@ missing case is a planning problem, so it goes in the report as a comment and
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml` and `features/<feature-id>/`.
+Locate the hub. Read `config.yaml`, `workspace.yaml`, `features/<feature-id>/`,
+and the hub's own `AGENTS.md` and `CLAUDE.md` if it has either — the user's
+rules for Pave's agents. Read them explicitly; they load by themselves only
+when you happen to be standing in the hub. `AGENTS.md` wins where both exist
+and disagree.
 
 | Feature status | Review |
 |---|---|
@@ -68,11 +72,21 @@ Give each reviewer:
 - Its **one** task document
 - The repo path for that task's service
 - The frozen contract files that task names
+- The absolute path to the hub's `AGENTS.md` / `CLAUDE.md`, if either exists —
+  the user's rules
 
-Nothing else. A reviewer does not need the spec, the architecture, the other
-task documents, or any notion of the feature as a whole. It is answering one
-narrow question about one document, and keeping its input narrow is what keeps
-it accurate.
+Nothing else about the feature. The user's rules say how this team wants a
+review done; they are not feature context. A reviewer still does not need the
+spec, the architecture, the other task documents, or any notion of the feature
+as a whole. It is answering one narrow question about one document, and keeping
+its input narrow is what keeps it accurate.
+
+Those rules can add something to look for. They cannot add something to fail
+on: a finding that comes from them is a non-blocking improvement. `failed`
+means an agent claimed work it did not do, and §2 unchecks the specific items
+a reviewer names so a re-run builder fixes exactly those — a finding with no
+ticked item behind it has nothing to uncheck, and would send a builder back
+with nothing to act on.
 
 Contracts decompose the same way. Both sides are checked against the same
 frozen file, so if the producer conforms to it and the consumer conforms to

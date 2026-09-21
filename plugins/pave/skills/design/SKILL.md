@@ -92,6 +92,12 @@ Locate the hub by walking up for `.pave-hub`. Read `config.yaml` and
 `workspace.yaml`. If either is missing, stop and tell the user to run
 `/pave:init`.
 
+Read the hub's own `AGENTS.md` and `CLAUDE.md` too, if it has either — the
+user's rules for Pave's agents. Read them explicitly rather than assuming they
+are loaded. You walked up to find the hub, which means you may not be standing
+in it, and a file only loads by itself when you are. `AGENTS.md` wins where
+both exist and disagree.
+
 ## Choosing the model
 
 Design runs on the **stronger** of your session model and
@@ -102,6 +108,15 @@ Design runs on the **stronger** of your session model and
 | sonnet | opus | opus | Spawn the `designer` agent at opus |
 | fable | opus | fable | Stay in this session |
 | opus | opus | opus | Stay in this session |
+
+**The user's rules apply on both paths.** If you do the work here, follow the
+hub's `AGENTS.md` / `CLAUDE.md` yourself. If you spawn the `designer`, give it
+their absolute paths as required reading, alongside this skill — and do it for
+**stage 1 and stage 2 both**, since the agent is spawned fresh each time and
+remembers nothing of the other stage. A rule passed once is a rule that applied
+to half the feature.
+
+Which model is doing the design is not a reason to drop them.
 
 Design is the one phase that upgrades rather than obeying, because everything
 downstream executes what it produces without question. A weaker plan is not a
@@ -167,8 +182,9 @@ not tell you that checkout touches stock because reservations expire.
 Never proceed blind, and never stop to send the user away. Check each
 candidate for staleness the way `/pave:analyse` does — whether its
 `source_paths` have changed since its recorded `commit` — then spawn `analyst`
-agents for anything missing or stale, using `agents.analyst.model`, and
-continue once they return.
+agents for anything missing or stale, using `agents.analyst.model` and the same
+required reading `/pave:analyse` §3 gives them — the hub's `AGENTS.md` /
+`CLAUDE.md` — and continue once they return.
 
 Say what you are doing and why, in one line. Do not ask permission for it.
 

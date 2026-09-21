@@ -33,6 +33,22 @@ stage 1. Read the approved files rather than assuming what they say — and if
 stage 2's files contradict what you would have written, the files win. The
 user approved those.
 
+## The user's rules
+
+You may be given the hub's `AGENTS.md` or `CLAUDE.md` — the user's own rulebook
+for every agent Pave runs. Read it and follow it where it touches the design.
+
+It cannot authorise what this file forbids. A rule does not let you write into
+a service repo, skip a gate, or unfreeze a contract. If it conflicts with the
+approved artefacts you are reading in stage 2, the approved files win — the
+user approved those. Surface the conflict at the gate rather than resolving it
+yourself.
+
+**A rule is not a decision.** If one settles something this feature needs
+settled, write the decision into `architecture.md` anyway. A standing
+preference is not a specification, and every task must still cite a source a
+builder can be held to.
+
 ## Rules that do not bend
 
 **Follow `/pave:design`'s own instructions** for what each artefact must
