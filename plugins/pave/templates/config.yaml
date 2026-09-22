@@ -9,11 +9,11 @@ model_ranking: [haiku, sonnet, opus, fable]
 # Who does each piece of work, and how strong they should be.
 # Every entry is enforced: the model is passed when the agent is spawned.
 agents:
-  analyst:  { model: sonnet, effort: medium }   # reads business logic
-  builder:  { model: sonnet, effort: medium }   # executes one task document
-  explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
-  reviewer: { model: sonnet, effort: low    }   # one per task: plan vs code
-  advisor:  { model: sonnet, effort: low    }   # answers ad hoc questions
+  analyst:   { model: sonnet, effort: medium }   # reads business logic
+  builder:   { model: sonnet, effort: medium }   # executes one task document
+  explorer:  { model: haiku,  effort: low    }   # mechanical repo scanning
+  reviewer:  { model: sonnet, effort: low    }   # one per task: plan vs code
+  retriever: { model: sonnet, effort: low    }   # answers hub questions
 
   # Design takes the HIGHER of this and your session model, by model_ranking.
   # On sonnet with opus configured you get opus; on fable you keep fable.
