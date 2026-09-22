@@ -1,70 +1,48 @@
 ---
 name: help
-description: Ask a question about this hub or about Pave itself - a service's behaviour, a convention, why a feature is stuck, how a command works. Spawns an advisor agent that reads the knowledge base, conventions and hub docs to answer with citations. Use any time.
+description: Explain how a Pave command works, or what to run next. Answers from the plugin's own docs only - no hub needed. For questions about your hub's services, conventions or features, use /pave:query instead.
 effort: low
-argument-hint: "<question>"
-allowed-tools: Read, Glob, Grep, Agent
+argument-hint: "[command or question]"
+allowed-tools: Read, Glob, Grep
 ---
 
 # Pave — help
 
-Answer one question. Nothing else.
+Explain Pave itself. Nothing about your hub.
 
-This is the only skill that does not assume you are moving the pipeline
-forward. You are not designing, building or reviewing anything — you want to
-know something, and the answer lives in files this hub or this plugin
-already has.
+This skill answers from the plugin's own files —
+`${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md` and nothing else. No hub lookup, no
+`.pave-hub` walk, no agent spawn: the whole answer is a handful of small
+files already in the plugin, so reading them here costs less than delegating
+would.
 
-This skill is an orchestrator. It locates what exists and hands the question
-to an `advisor`. The reading and the answering happen in the agent, for the
-same reason every other phase delegates: keeping this session's context free
-for whatever you do next.
+For anything about *your* hub — what a service does, why a feature is
+stuck, what a convention says — this skill is the wrong tool. Say so and
+point at `/pave:query <question>` rather than guessing.
 
-## Before starting
+## No argument — overview
 
-Locate the hub, the same way every other skill does (walk up for
-`.pave-hub`). **Not finding one is not an error here.** `/pave:help` also
-answers questions about Pave itself — "what does `/pave:build` do", "why does
-review not fail on a missing case" — and those need no hub at all.
+List the workflow in order (`init` → `add` → `analyse` → `design` → `build`
+→ `review`), then the anytime commands (`help`, `query`, `visualize`), each
+with the one-line `description` read straight from its `SKILL.md`
+frontmatter — never hand-copied, so it can't drift from the real text.
 
-If a hub was found, read `config.yaml` if present.
+## Argument names a command
 
-## 1. Gather paths, not content
+`/pave:help design`, `/pave:help build` — read that skill's full `SKILL.md`
+and explain what it does, what it asks the user, and what normally comes
+before and after it, in plain language.
 
-Do not read any of these yourself — you are collecting what to hand the
-advisor, not answering the question. Note which of these exist:
+## Argument is a free-form question
 
-- `artifacts/knowledge/README.md` — the index
-- `conventions/README.md`, and any per-language or per-service file under
-  `conventions/`
-- the hub's `AGENTS.md` / `CLAUDE.md` (`AGENTS.md` wins where both exist)
-- `workspace.yaml`
-- if the question names a feature, or the hub has exactly one, that
-  feature's `spec.md`, `architecture.md` and `README.md`
-- this plugin's own `skills/*/SKILL.md` files — always available, for
-  questions about Pave itself rather than about the hub's services
+Decide first whether it's actually about Pave:
 
-If a hub exists but has no `artifacts/knowledge/`, that's worth noting to the
-advisor, not a reason to stop — the question may still be answerable from
-conventions, the hub's rules, or the plugin's own docs.
+- **About Pave** — "how does build decide which tasks run in parallel",
+  "why doesn't review fail on a missing case" — answer from the relevant
+  `SKILL.md` file(s).
+- **About the hub** — names a service, a feature id, a convention, or
+  anything only the hub's own docs could answer — don't attempt it. Say
+  plainly this needs `/pave:query <question>` instead.
 
-## 2. Spawn the advisor
-
-One `advisor` agent, given: the question verbatim, every path gathered in
-§1 labelled with what it is, and nothing else. It has no Bash and cannot
-locate anything itself.
-
-Use `agents.advisor.model` from `config.yaml` if that entry exists.
-**Default to `sonnet` at `low` effort if it doesn't** — hubs created before
-this skill existed won't have the entry, and a missing config line should
-never be why `/pave:help` fails.
-
-## 3. Relay the answer
-
-Pass it through as the advisor wrote it — it already cites its sources, and
-softening or re-deriving its answer here would just reintroduce the mistake
-delegation exists to avoid. If the advisor says part of the question can't
-be answered from what it has, say that plainly, and name the fix if there is
-one (usually `/pave:analyse <service>` for a knowledge gap).
-
-No report file is written. This phase produces an answer, not an artifact.
+When unsure which it is, look for a concrete noun that isn't a Pave concept
+(a service name, a feature id) — that's the signal it belongs to `/pave:query`.

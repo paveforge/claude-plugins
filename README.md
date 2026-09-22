@@ -71,7 +71,8 @@ and a teammate generates their own with `/pave:init`.
 | `/pave:design` | Every new feature |
 | `/pave:build` | Once the plan is approved |
 | `/pave:review` | On demand |
-| `/pave:help` | Any time you have a question |
+| `/pave:help` | Any time you have a question about using Pave |
+| `/pave:query` | Any time you have a question about your hub |
 | `/pave:visualize` | Any time you want a picture instead of tables |
 
 ---
@@ -270,27 +271,48 @@ so a fix touches three items rather than redoing twenty.
 
 ---
 
-## `/pave:help` — ask a question
+## `/pave:help` — how do I use Pave
 
-Not part of the sequence above. Run it any time.
+Not part of the sequence above. Run it any time, from anywhere — it needs no
+hub.
 
 ```
-/pave:help what does the billing service own?
-/pave:help why did build-checkout end up blocked?
+/pave:help
+/pave:help design
 /pave:help how does /pave:review decide a task failed?
 ```
 
-**What it does.** Spawns an `advisor` agent that reads the knowledge base,
-`conventions/`, the hub's `AGENTS.md`/`CLAUDE.md`, and — for questions about
-Pave itself rather than about your services — the plugin's own skill files.
-It answers with the file each fact came from.
+**What it does.** Explains a command, or the workflow as a whole, straight
+from the plugin's own skill files — no hub, no agent, just a handful of
+small local files. With no argument it lists every command and what it does
+in one line. Given a command name, it explains that phase in plain language.
+
+Ask it something about *your* hub instead — a service, a feature, a
+convention — and it declines and points you at `/pave:query`, rather than
+guessing at an answer it has no way to check.
+
+**What it asks you.** Nothing.
+
+---
+
+## `/pave:query` — ask about your hub
+
+Also not part of the sequence. Run it any time, once you have a hub.
+
+```
+/pave:query what does the billing service own?
+/pave:query why did build-checkout end up blocked?
+```
+
+**What it does.** Spawns a `retriever` agent that reads the knowledge base,
+`conventions/`, and the hub's `AGENTS.md`/`CLAUDE.md` to answer, citing the
+file each fact came from.
 
 It never invents a domain fact. If a service hasn't been analysed yet, or the
 knowledge base doesn't cover what you asked, it says so and points at
 `/pave:analyse` rather than guessing.
 
-**What it asks you.** Nothing. It works even with no hub at all, for
-questions about how Pave itself works.
+**What it asks you.** Nothing.
 
 ---
 
@@ -393,12 +415,12 @@ flowchart LR
 model_ranking: [haiku, sonnet, opus, fable]   # weakest to strongest
 
 agents:
-  analyst:  { model: sonnet, effort: medium }   # reads business logic
-  builder:  { model: sonnet, effort: medium }   # executes one task document
-  explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
-  reviewer: { model: sonnet, effort: low    }   # one per task: plan vs code
-  designer: { model: opus,   effort: high   }   # planning decides the feature
-  advisor:  { model: sonnet, effort: low    }   # answers ad hoc questions
+  analyst:   { model: sonnet, effort: medium }   # reads business logic
+  builder:   { model: sonnet, effort: medium }   # executes one task document
+  explorer:  { model: haiku,  effort: low    }   # mechanical repo scanning
+  reviewer:  { model: sonnet, effort: low    }   # one per task: plan vs code
+  designer:  { model: opus,   effort: high   }   # planning decides the feature
+  retriever: { model: sonnet, effort: low    }   # answers hub questions
 
 execution:
   mode: parallel                 # parallel | sequential
