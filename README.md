@@ -71,6 +71,8 @@ and a teammate generates their own with `/pave:init`.
 | `/pave:design` | Every new feature |
 | `/pave:build` | Once the plan is approved |
 | `/pave:review` | On demand |
+| `/pave:help` | Any time you have a question |
+| `/pave:visualize` | Any time you want a picture instead of tables |
 
 ---
 
@@ -268,6 +270,56 @@ so a fix touches three items rather than redoing twenty.
 
 ---
 
+## `/pave:help` — ask a question
+
+Not part of the sequence above. Run it any time.
+
+```
+/pave:help what does the billing service own?
+/pave:help why did build-checkout end up blocked?
+/pave:help how does /pave:review decide a task failed?
+```
+
+**What it does.** Spawns an `advisor` agent that reads the knowledge base,
+`conventions/`, the hub's `AGENTS.md`/`CLAUDE.md`, and — for questions about
+Pave itself rather than about your services — the plugin's own skill files.
+It answers with the file each fact came from.
+
+It never invents a domain fact. If a service hasn't been analysed yet, or the
+knowledge base doesn't cover what you asked, it says so and points at
+`/pave:analyse` rather than guessing.
+
+**What it asks you.** Nothing. It works even with no hub at all, for
+questions about how Pave itself works.
+
+---
+
+## `/pave:visualize` — draw a picture
+
+Also not part of the sequence. Run it any time.
+
+```
+/pave:visualize build-checkout             # a feature's blast radius
+/pave:visualize how does pricing talk to checkout?   # freeform
+```
+
+**What it does.** Given a feature id, draws that feature's blast radius —
+services as nodes, the Flow steps and Contracts from its `architecture.md` as
+edges. Given anything else, treats it as a description and pulls what's
+relevant from the knowledge index.
+
+It draws only from files other phases already wrote — never from scanning a
+service repo — and says plainly when something needed is missing or stale
+rather than filling the gap.
+
+Where Claude's Artifact tool is available it publishes an interactive
+diagram and gives you the link; otherwise it writes a self-contained
+`diagram.html` you open locally.
+
+**What it asks you.** What to draw, if you ran it with no argument.
+
+---
+
 ## The hub
 
 ```
@@ -280,6 +332,7 @@ platform/
 │   └── go.md
 ├── artifacts/               disposable — delete it and it regenerates
 │   ├── knowledge/           what each service does, indexed
+│   ├── diagram.html         written by /pave:visualize when freeform
 │   └── platform.code-workspace
 └── features/
     ├── README.md            portfolio: one row per feature
@@ -289,7 +342,7 @@ platform/
         ├── architecture.md
         ├── contracts/       frozen at gate 1
         ├── tasks/           one self-contained document per unit of work
-        └── artifacts/       build and review reports
+        └── artifacts/       build/review reports, and diagram.html
 ```
 
 `config.yaml` holds nothing machine-specific, so it commits and the team shares
@@ -345,6 +398,7 @@ agents:
   explorer: { model: haiku,  effort: low    }   # mechanical repo scanning
   reviewer: { model: sonnet, effort: low    }   # one per task: plan vs code
   designer: { model: opus,   effort: high   }   # planning decides the feature
+  advisor:  { model: sonnet, effort: low    }   # answers ad hoc questions
 
 execution:
   mode: parallel                 # parallel | sequential
