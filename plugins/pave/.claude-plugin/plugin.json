@@ -1,7 +1,7 @@
 {
   "name": "pave",
   "displayName": "Pave",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Plan a feature once across every service it touches, freeze the contracts, then build each service in parallel from its own self-contained task document.",
   "author": {
     "name": "paveforge"
