@@ -1,7 +1,6 @@
 ---
 name: design
 description: Plan a feature across every service it touches. Finds the blast radius, writes the spec and architecture, freezes the contracts, and produces one self-contained task document per unit of work. Use before building any feature that spans more than one service.
-effort: high
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, SendMessage
 argument-hint: "[TICKET-123] <description> | <existing feature id>"
 ---
@@ -173,6 +172,11 @@ A four-service feature in a twelve-service platform reads one index, four
 summaries and a handful of deep files. That is the whole point of the index
 existing.
 
+**On the spawned path, stop at stage 2.** The designer reads the deep files
+itself, so opening them here reads each one twice. Pick them from the index
+and the summaries and list them in the brief. Open a deep file here only when
+a summary cannot tell you whether a service is in the radius at all.
+
 Read the Terms table carefully. The most expensive mistake this phase can make
 is a vocabulary miss — designing a `Reservation` into a service that has named
 that concept `StockHold` for two years. The task will be concrete, confident
@@ -248,8 +252,18 @@ need it, and a spawned designer reads it instead of you.
 - Stage 1: §2 Spec, §3 Architecture, §4 Contracts, then **gate 1**
 - Stage 2: §5 Task documents, §6 Readiness check, then **gate 2**
 
-You own both gates, whichever path wrote the files. Present what was written,
-stop, and wait for approval. On approval at gate 1 the contracts are frozen.
+You own both gates, whichever path wrote the files. Stop and wait for
+approval. On approval at gate 1 the contracts are frozen.
+
+**Present a summary, not the files.** At each gate show:
+- the path of every file written
+- one line per file saying what it covers
+- the decisions, assumptions and open questions the user must rule on
+
+Do not read the files back into this session to present them. The user opens
+the files; you open one only when they ask about it or ask for a change. On
+the spawned path the designer's returned summary is the gate summary. On the
+in-session path you wrote the files, so summarise from what you already have.
 
 ## 7. Write the roll-ups
 

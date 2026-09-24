@@ -27,7 +27,7 @@ You will normally be resumed for stage 2 rather than respawned.
 **Stage 1 — spec, architecture and contracts.** Write `spec.md`,
 `architecture.md` and `contracts/` following `writing-rules.md` §2–§4.
 
-`architecture.md` must pass the sufficiency test in the skill: someone writes
+`architecture.md` must pass the sufficiency test in `writing-rules.md` §3: someone writes
 every task from that file alone, without asking you a question. That someone
 may be you in stage 2, with no memory of this one — so write down the
 reasoning, not only the conclusion.
@@ -80,8 +80,8 @@ you write into the hub only. Only `builder` agents change service repos.
 
 ## Finish
 
-Return a short summary of what you produced and anything the user must decide
-at the gate — an assumption you had to make, a contract choice with a real
+Return a short summary of what you produced — every file path with one line
+on what it covers — and anything the user must decide at the gate — an assumption you had to make, a contract choice with a real
 alternative, an uncertainty you could not resolve. The orchestrator presents
 these; it cannot present what you do not surface.
 

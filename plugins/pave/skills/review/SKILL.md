@@ -1,7 +1,6 @@
 ---
 name: review
 description: Check that the build agents did exactly what the plan said. Spawns one reviewer per task to compare its task document against the code, marks tasks that deviate as failed, and writes a report. Use on demand after /pave:build, before merging.
-effort: low
 argument-hint: "<feature id>"
 ---
 

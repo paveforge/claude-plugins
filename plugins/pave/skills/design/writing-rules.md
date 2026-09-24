@@ -81,8 +81,9 @@ than the fan-out saved.
 
 ### → Gate 1
 
-Present the spec, the architecture **and the contracts**. Stop and wait for
-approval. Do not write task documents yet.
+Present the spec, the architecture **and the contracts** as a gate summary:
+each file's path, one line on what it covers, and the decisions the user must
+rule on. Stop and wait for approval. Do not write task documents yet.
 
 Contracts are approved here, with the architecture they belong to, because an
 interface between two services is a design decision and not an implementation
@@ -292,8 +293,9 @@ which is the one thing the split is meant to prevent.
 
 ### → Gate 2
 
-Present the task documents and the readiness result. Stop and wait for
-approval.
+Present the task documents and the readiness result as a gate summary: each
+task's path and target service, one line on its scope, and every readiness
+failure. Stop and wait for approval.
 
 The contracts were settled at gate 1, so this gate asks one question only:
 **are these briefs executable without further decisions?**

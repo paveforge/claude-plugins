@@ -1,7 +1,6 @@
 ---
 name: init
 description: Set up a Pave hub in a folder. Creates config.yaml, an empty workspace.yaml and the hub scaffolding. Use once, before anything else. Services are added afterwards with /pave:add.
-effort: low
 argument-hint: "[hub path]"
 ---
 

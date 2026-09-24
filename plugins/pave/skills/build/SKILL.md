@@ -1,7 +1,6 @@
 ---
 name: build
 description: Execute an approved feature plan. Fans out one agent per service, each landing the frozen contracts in its own repo and working through its task documents. Use after /pave:design has passed both gates.
-effort: medium
 argument-hint: "<feature id>"
 ---
 

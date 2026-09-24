@@ -1,7 +1,6 @@
 ---
 name: visualize
 description: Draw a picture of a feature's blast radius, or of anything else about the hub you describe. Renders an interactive diagram with Claude's Artifact tool when it's available in this environment, otherwise writes a self-contained local HTML file. Use any time.
-effort: low
 argument-hint: "<feature id> | <description of what to draw>"
 ---
 

@@ -1,7 +1,6 @@
 ---
 name: add
 description: Register service folders with the Pave hub. Records each absolute path in workspace.yaml and grants Claude access to it. Use after /pave:init, and whenever a service joins the platform.
-effort: low
 argument-hint: "<folder> [more folders...]"
 allowed-tools: Bash
 ---

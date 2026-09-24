@@ -1,7 +1,6 @@
 ---
 name: analyse
 description: Work out what the registered services are and what they do. Discovers each one's language, build commands and contracts, then reads its domain model and writes an indexed knowledge base. Use after /pave:add, and when services drift.
-effort: medium
 argument-hint: "[service name, or blank for everything missing or stale]"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 ---

@@ -1,7 +1,6 @@
 ---
 name: query
 description: Ask a question about this hub - a service's behaviour, a convention, why a feature is stuck. Spawns a retriever agent that reads the knowledge base, conventions and hub docs to answer with citations. Use any time.
-effort: low
 argument-hint: "<question>"
 allowed-tools: Read, Glob, Grep, Agent
 ---

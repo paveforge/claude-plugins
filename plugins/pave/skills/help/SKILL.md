@@ -1,7 +1,6 @@
 ---
 name: help
 description: Explain how a Pave command works, or what to run next. Answers from the plugin's own docs only - no hub needed. For questions about your hub's services, conventions or features, use /pave:query instead.
-effort: low
 argument-hint: "[command or question]"
 allowed-tools: Read, Glob, Grep
 ---
