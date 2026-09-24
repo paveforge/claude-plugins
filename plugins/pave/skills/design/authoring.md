@@ -1,6 +1,6 @@
-# Pave — design: authoring the artefacts
+# Pave — design: writing the design outputs
 
-Read by whoever writes the artefacts: `/pave:design` itself when it designs
+Read by whoever writes the design outputs: `/pave:design` itself when it designs
 in-session, or the `designer` agent when it is spawned. Where this file says
 "present" at a gate, a spawned designer returns its summary instead; the
 orchestrator presents it.

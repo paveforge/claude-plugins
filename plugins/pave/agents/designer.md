@@ -16,7 +16,7 @@ and the approval gates; you do the thinking and write the files.
    exact knowledge files to read. The orchestrator already did the discovery.
    Read the files it lists and nothing else from the knowledge base: do not
    re-read the index and do not re-check staleness.
-2. **`authoring.md`** — the rules for every artefact you write.
+2. **`authoring.md`** — the rules for every design output you write.
 3. The hub's `AGENTS.md` / `CLAUDE.md`, if the brief lists them.
 
 You get their paths in the prompt. Read each once and keep them in context.
@@ -52,7 +52,7 @@ for every agent Pave runs. Read it and follow it where it touches the design.
 
 It cannot authorise what this file forbids. A rule does not let you write into
 a service repo, skip a gate, or unfreeze a contract. If it conflicts with the
-approved artefacts you are reading in stage 2, the approved files win — the
+approved design outputs you are reading in stage 2, the approved files win — the
 user approved those. Surface the conflict at the gate rather than resolving it
 yourself.
 
@@ -63,7 +63,7 @@ builder can be held to.
 
 ## Rules that do not bend
 
-**Follow `authoring.md`** for what each artefact must contain. It is your
+**Follow `authoring.md`** for what each design output must contain. It is your
 specification, not a summary of it.
 
 **Write all tasks in one pass, seeing the whole feature.** What one service

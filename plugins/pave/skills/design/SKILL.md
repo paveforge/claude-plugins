@@ -220,7 +220,7 @@ A service the user adds here is worth more than three you inferred.
 ### Write the design brief
 
 Once the radius is confirmed, write `features/<feature-id>/artifacts/design-brief.md`.
-It is the hand-off: whoever writes the artefacts starts from it instead of
+It is the hand-off: whoever writes the design outputs starts from it instead of
 redoing the discovery you just did.
 
 - The feature id, title and description, as the user gave them
@@ -241,7 +241,7 @@ a resumed session can pick it up.
 
 ## 2–6. Spec, architecture, contracts, tasks, readiness
 
-The rules for writing every artefact live in `authoring.md`, next to this
+The rules for writing every design output live in `authoring.md`, next to this
 file. Read it when you start writing, not before: the blast radius does not
 need it, and a spawned designer reads it instead of you.
 
