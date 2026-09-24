@@ -25,10 +25,10 @@ its own.
 **Could someone write every task document from this file alone, without asking
 you a question?**
 
-That is not a stylistic bar, it is a correctness one. You may write the tasks
-in a fresh context that remembers none of your reasoning — the spawned path
-does exactly that, stage 2 reading this file off disk with no memory of stage
-1. Anything you decided but did not write down is gone, and the task-writer
+That is not a stylistic bar, it is a correctness one. The tasks may be written
+in a fresh context that remembers none of your reasoning — a spawned designer
+that cannot be resumed for stage 2 starts over, reading this file off disk
+with no memory of stage 1. Anything you decided but did not write down is gone, and the task-writer
 will invent a replacement that looks reasonable and is not what you meant.
 
 So the rule is: **write down the reasoning, not only the conclusion.** The two

@@ -33,7 +33,7 @@ missing case is a planning problem, so it goes in the report as a comment and
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`, `features/<feature-id>/`,
+Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, `features/<feature-id>/`,
 and the hub's own `AGENTS.md` and `CLAUDE.md` if it has either — the user's
 rules for Pave's agents. Read them explicitly; they load by themselves only
 when you happen to be standing in the hub. `AGENTS.md` wins where both exist
@@ -62,7 +62,7 @@ time. That is deliberate, not waste: a re-run builder fixing three items may
 have touched code another task depends on, and a task that passed against the
 old code is not known to pass against the new.
 
-Review follows `config.yaml` exactly, like every phase. It never upgrades to
+Review follows the hub's config exactly, like every phase. It never upgrades to
 match a stronger session — comparing a document to code is not a phase that
 gets better with a stronger model, and there is one reviewer per task, so the
 cost multiplies.

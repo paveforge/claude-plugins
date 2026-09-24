@@ -13,7 +13,7 @@ phase turns frozen task documents into code.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`, `features/<feature-id>/`,
+Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, `features/<feature-id>/`,
 and **the hub's own `AGENTS.md` and `CLAUDE.md`** — either, neither or both may
 exist, and they hold the user's rules for Pave's agents. Read them explicitly
 rather than assuming they are loaded: skills run from inside service repos as

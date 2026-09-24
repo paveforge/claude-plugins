@@ -25,7 +25,7 @@ faithfully build it.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`, and the hub's own
+Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, and the hub's own
 `AGENTS.md` and `CLAUDE.md` if it has either — the user's rules for Pave's
 agents. Read them explicitly; they load by themselves only when you happen to
 be standing in the hub. `AGENTS.md` wins where both exist and disagree.

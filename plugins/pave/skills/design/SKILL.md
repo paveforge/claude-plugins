@@ -87,9 +87,9 @@ agent found something awkward.
 
 ## Before starting
 
-Locate the hub by walking up for `.pave-hub`. Read `config.yaml` and
-`workspace.yaml`. If either is missing, stop and tell the user to run
-`/pave:init`.
+Locate the hub by walking up for `.pave-hub`. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`) and
+`workspace.yaml`. If there is no config file or no `workspace.yaml`, stop and
+tell the user to run `/pave:init`.
 
 Read the hub's own `AGENTS.md` and `CLAUDE.md` too, if it has either — the
 user's rules for Pave's agents. Read them explicitly rather than assuming they
@@ -99,7 +99,7 @@ both exist and disagree.
 
 ## Choosing the model
 
-`config.yaml` decides. Ask the script rather than reading the YAML yourself:
+The hub's config decides. Ask the script rather than reading the file yourself:
 
 ```
 "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent designer
@@ -117,7 +117,7 @@ source=config
 | Different, stronger or weaker | Spawn the `designer` agent with that `model` and `effort` |
 | You cannot tell your session model | Spawn. The configured model is guaranteed on that path |
 
-`source=default` means `config.yaml` has no `designer` entry and the script
+`source=default` means the hub's config has no `designer` entry and the script
 filled in Pave's default. Treat it the same way, and say so in one line.
 
 Never substitute your own judgement for the configured model, in either

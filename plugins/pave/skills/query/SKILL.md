@@ -29,7 +29,7 @@ Locate the hub, the same way every other skill does (walk up for
 `.pave-hub`). If none is found, stop and say to run `/pave:init` first —
 this phase has nothing to answer from without one.
 
-Read `config.yaml` if present.
+Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`) if there is one.
 
 ## 1. Gather paths, not content
 
