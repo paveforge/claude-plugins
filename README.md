@@ -439,6 +439,11 @@ look each one up with `pave.sh agent <name>` rather than parsing YAML. If your
 session model differs from `designer`'s, `/pave:design` spawns a `designer`
 agent on the configured model, once, and resumes it for the second stage.
 
+Agent definitions carry no `model` or `effort`. The orchestrating skill always
+passes both when it spawns, so `config.yaml` is the only place to change them.
+If an agent has no entry there, `pave.sh agent` falls back to Pave's default
+and reports `source=default`.
+
 `model_ranking` lives in config rather than the plugin, so a new model is one
 line you add rather than a plugin release you wait for.
 

@@ -56,9 +56,9 @@ One `retriever` agent, given: the question verbatim, every path gathered in
 locate anything itself.
 
 Pass the `model` and `effort` printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent retriever`.
-**Default to `sonnet` at `low` effort if it exits 2** — hubs created before
-this skill existed won't have the entry, and a missing config line should
-never be why `/pave:query` fails.
+Hubs created before this skill existed have no `retriever` entry; the script
+fills in Pave's default for them, so a missing config line never makes
+`/pave:query` fail.
 
 ## 3. Relay the answer
 

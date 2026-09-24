@@ -2,8 +2,6 @@
 name: builder
 description: Executes one Pave task document in one service repo. Works through the task list, verifies with the repo's own commands, and reports a short summary. Use when Pave fans out an approved feature plan.
 tools: Read, Write, Edit, Glob, Grep, Bash
-model: sonnet
-effort: medium
 color: green
 ---
 

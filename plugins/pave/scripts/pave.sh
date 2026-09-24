@@ -4,7 +4,7 @@
 #   pave.sh add <folder>...    register service folders with the hub
 #   pave.sh stale [service]     report what needs discovery or analysis
 #   pave.sh feature <args...>   resolve a feature id and create its folder
-#   pave.sh agent <name>        model and effort config.yaml assigns an agent
+#   pave.sh agent <name>        model and effort to spawn an agent with
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -142,13 +142,27 @@ cmd_feature() {
 }
 
 # agent <name>
-# Prints the model and effort config.yaml assigns to one agent. Exit 2 when
-# there is no entry, so the caller falls back to the agent's own default.
+# Prints the model and effort to spawn an agent with. config.yaml wins; the
+# defaults below cover hubs whose config predates an agent. Agent definitions
+# carry no model or effort, so this is the only place either is decided.
+agent_default() {
+  case "$1" in
+    analyst)   echo "sonnet medium" ;;
+    builder)   echo "sonnet medium" ;;
+    explorer)  echo "haiku low" ;;
+    reviewer)  echo "sonnet low" ;;
+    retriever) echo "sonnet low" ;;
+    designer)  echo "opus high" ;;
+    *) return 1 ;;
+  esac
+}
+
 cmd_agent() {
   [ $# -eq 1 ] || die "usage: pave.sh agent <name>"
+  local def; def="$(agent_default "$1")" || die "unknown agent: $1"
+  local dmodel="${def% *}" deffort="${def#* }"
   local hub; hub="$(find_hub)"
   local cfg="$hub/config.yaml"
-  [ -f "$cfg" ] || die "no config.yaml in $hub. Run /pave:init first."
 
   local out
   out="$(awk -v want="$1" '
@@ -172,13 +186,12 @@ cmd_agent() {
         v = val($0, "effort"); if (v != "" && effort == "") effort = v
       }
     }
-    END {
-      if (!found || model == "") exit 2
-      print "model=" model
-      if (effort != "") print "effort=" effort
-    }
-  ' "$cfg")" || return 2
-  printf '%s\n' "$out"
+    END { print model " " effort }
+  ' "$cfg" 2>/dev/null)"
+  local model="${out% *}" effort="${out#* }" source=config
+  [ -n "$model" ] || { model="$dmodel"; source=default; }
+  [ -n "$effort" ] || effort="$deffort"
+  printf 'model=%s\neffort=%s\nsource=%s\n' "$model" "$effort" "$source"
 }
 
 case "${1:-}" in

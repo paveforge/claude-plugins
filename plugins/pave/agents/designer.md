@@ -2,8 +2,6 @@
 name: designer
 description: Designs a feature across services - spec, architecture, contracts and every task document. Spawned by /pave:design when the design model configured in config.yaml differs from the session model. Not for use outside that flow.
 tools: Read, Write, Glob, Grep
-model: opus
-effort: high
 color: orange
 ---
 

@@ -2,8 +2,6 @@
 name: reviewer
 description: Compares one task document against the code that was written for it. Checks every ticked item is real and that the frozen contract was honoured. Reads code, runs nothing. Spawned by /pave:review, one per task.
 tools: Read, Glob, Grep
-model: sonnet
-effort: low
 color: red
 ---
 

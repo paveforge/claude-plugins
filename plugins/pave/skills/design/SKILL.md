@@ -109,6 +109,7 @@ both exist and disagree.
 ```
 model=sonnet
 effort=high
+source=config
 ```
 
 | Session model vs `model=` | What to do |
@@ -116,7 +117,9 @@ effort=high
 | Same | Design here, in this session |
 | Different, stronger or weaker | Spawn the `designer` agent with that `model` and `effort` |
 | You cannot tell your session model | Spawn. The configured model is guaranteed on that path |
-| Script exits 2 (no `designer` entry) | Design here, and say in one line that no model was configured |
+
+`source=default` means `config.yaml` has no `designer` entry and the script
+filled in Pave's default. Treat it the same way, and say so in one line.
 
 Never substitute your own judgement for the configured model, in either
 direction. The team chose it, and it is their token budget.

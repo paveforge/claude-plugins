@@ -2,8 +2,6 @@
 name: explorer
 description: Read-only repository scanner. Discovers a repo's language, build commands, contracts and layout, and reports a compact summary. Use when Pave needs to understand a service repo without loading it into the main context.
 tools: Read, Glob, Grep
-model: haiku
-effort: low
 color: cyan
 ---
 

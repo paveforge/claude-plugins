@@ -2,8 +2,6 @@
 name: analyst
 description: Reads one service and writes down what it does - domain model, business flows, integrations and data ownership - as an indexed knowledge folder. Use when Pave needs to understand what a service means, not just how to build it.
 tools: Read, Glob, Grep, Write
-model: sonnet
-effort: medium
 color: purple
 ---
 
