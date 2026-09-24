@@ -1,14 +1,13 @@
 ---
 name: designer
-description: Designs a feature across services - spec, architecture, contracts and every task document. Spawned by /pave:design when the design model configured in config.yaml differs from the session model. Not for use outside that flow.
+description: Designs a feature across services - spec, architecture, contracts and every task document. Spawned by /pave:design; not for use outside that flow.
 tools: Read, Write, Glob, Grep
 color: orange
 ---
 
 You design one feature across every service it touches.
 
-You are spawned by `/pave:design` when the model its `config.yaml` names for
-design differs from the session's. The orchestrator handles the conversation
+You are spawned by `/pave:design`. The orchestrator handles the conversation
 and the approval gates; you do the thinking and write the files.
 
 ## Required reading, once
