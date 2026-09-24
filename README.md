@@ -444,6 +444,22 @@ passes both when it spawns, so `config.yaml` is the only place to change them.
 If an agent has no entry there, `pave.sh agent` falls back to Pave's default
 and reports `source=default`.
 
+The hub's config may be `config.yaml`, `config.yml` or `config.toml`, but only
+one of them. `pave.sh` reads it with `scripts/yaml-reader` or
+`scripts/toml-reader`, both Python 3. The YAML reader uses PyYAML when it is
+installed, and otherwise a built-in parser that rejects any syntax it doesn't
+support rather than guessing. The TOML reader uses Python 3.11's `tomllib`.
+Either reader can be called directly:
+
+```
+scripts/yaml-reader config.yaml agents.explorer
+model=haiku
+effort=low
+```
+
+A config file that can't be parsed stops the command with an error rather than
+falling back to defaults.
+
 `model_ranking` lives in config rather than the plugin, so a new model is one
 line you add rather than a plugin release you wait for.
 

@@ -23,6 +23,8 @@ find_hub() {
 
 have_python() { command -v python3 >/dev/null 2>&1; }
 
+SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # add <folder>...
 cmd_add() {
   [ $# -ge 1 ] || die "usage: pave.sh add <folder>..."
@@ -93,8 +95,7 @@ PY
 cmd_stale() {
   local hub; hub="$(find_hub)"
   have_python || die "python3 is required for 'stale'"
-  local here; here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  python3 "$here/pave-stale.py" "$hub" "$@"
+  python3 "$SCRIPTS/pave-stale.py" "$hub" "$@"
 }
 
 # feature <ticket-id|description...>
@@ -162,36 +163,41 @@ cmd_agent() {
   local def; def="$(agent_default "$1")" || die "unknown agent: $1"
   local dmodel="${def% *}" deffort="${def#* }"
   local hub; hub="$(find_hub)"
-  local cfg="$hub/config.yaml"
+  local model="" effort="" source=default
 
-  local out
-  out="$(awk -v want="$1" '
-    function val(s, key,   m) {
-      if (match(s, key "[[:space:]]*:[[:space:]]*[A-Za-z0-9._-]+")) {
-        m = substr(s, RSTART, RLENGTH); sub(/^[^:]*:[[:space:]]*/, "", m); return m
-      }
-      return ""
-    }
-    { sub(/#.*/, "") }
-    /^[^[:space:]]/ { in_agents = ($0 ~ /^agents[[:space:]]*:/); inside = 0; next }
-    !in_agents { next }
-    {
-      match($0, /^[[:space:]]*/); ind = RLENGTH
-      if (inside && ind <= ind0 && $0 ~ /[^[:space:]]/) inside = 0
-      if (!inside && $0 ~ ("^[[:space:]]*" want "[[:space:]]*:")) {
-        inside = 1; ind0 = ind; found = 1
-      }
-      if (inside) {
-        v = val($0, "model");  if (v != "" && model == "")  model = v
-        v = val($0, "effort"); if (v != "" && effort == "") effort = v
-      }
-    }
-    END { print model " " effort }
-  ' "$cfg" 2>/dev/null)"
-  local model="${out% *}" effort="${out#* }" source=config
-  [ -n "$model" ] || { model="$dmodel"; source=default; }
+  find_config "$hub"
+  if [ -n "$CONFIG" ]; then
+    have_python || die "python3 is required to read $CONFIG"
+    local out rc
+    out="$("$SCRIPTS/$CONFIG_READER" "$CONFIG" "agents.$1")"; rc=$?
+    case $rc in
+      0) model="$(printf '%s\n' "$out" | sed -n 's/^model=//p')"
+         effort="$(printf '%s\n' "$out" | sed -n 's/^effort=//p')" ;;
+      3) ;;
+      *) die "cannot read $CONFIG" ;;
+    esac
+  fi
+
+  [ -n "$model" ] && source=config || model="$dmodel"
   [ -n "$effort" ] || effort="$deffort"
   printf 'model=%s\neffort=%s\nsource=%s\n' "$model" "$effort" "$source"
+}
+
+# find_config <hub>
+# Sets CONFIG to the hub's config file and CONFIG_READER to the script that
+# reads it; both empty when there is none. At most one may exist.
+find_config() {
+  local f n=0
+  CONFIG="" CONFIG_READER=""
+  for f in config.toml config.yaml config.yml; do
+    [ -f "$1/$f" ] || continue
+    n=$((n+1)); CONFIG="$1/$f"
+    case "$f" in
+      *.toml) CONFIG_READER=toml-reader ;;
+      *)      CONFIG_READER=yaml-reader ;;
+    esac
+  done
+  [ "$n" -le 1 ] || die "more than one config file in $1. Keep exactly one of config.toml, config.yaml, config.yml."
 }
 
 case "${1:-}" in

@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Print one value from a TOML file.
+
+    toml-reader <file> <dotted.key>
+
+A scalar prints as-is, a table as key=value lines, an array one item per line.
+Exit 3 when the key is absent, 1 when the file cannot be read or parsed.
+"""
+import sys
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    try:
+        import tomli as tomllib
+    except ModuleNotFoundError:
+        sys.exit("toml-reader: needs Python 3.11+, or the tomli package")
+
+
+def fmt(v):
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    return str(v)
+
+
+def emit(v):
+    if isinstance(v, dict):
+        for k, x in v.items():
+            if isinstance(x, (dict, list)):
+                sys.exit(f"toml-reader: {k} is nested; ask for it by its full key")
+            print(f"{k}={fmt(x)}")
+    elif isinstance(v, list):
+        for x in v:
+            print(fmt(x))
+    else:
+        print(fmt(v))
+
+
+def main():
+    if len(sys.argv) != 3:
+        sys.exit("usage: toml-reader <file> <dotted.key>")
+    path, key = sys.argv[1], sys.argv[2]
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except OSError as e:
+        sys.exit(f"toml-reader: {e}")
+    except tomllib.TOMLDecodeError as e:
+        sys.exit(f"toml-reader: {path}: {e}")
+
+    v = data
+    for part in key.split("."):
+        if not isinstance(v, dict) or part not in v:
+            sys.exit(3)
+        v = v[part]
+    emit(v)
+
+
+if __name__ == "__main__":
+    main()
