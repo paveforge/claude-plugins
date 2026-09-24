@@ -52,10 +52,14 @@ and report the link back.
 
 **If it is not:** write a single self-contained HTML file — inline SVG, no
 external assets, no network calls — so it opens correctly from disk in any
-browser. Write it to `features/<feature-id>/artifacts/diagram.html` in blast
-radius mode, or the hub's `artifacts/diagram.html` in freeform mode — the
-same disposable-output convention `artifacts/` already carries elsewhere in
-the hub. Tell the user the path to open.
+browser. In blast radius mode, write it to
+`features/<feature-id>/artifacts/diagram.html`. In freeform mode, write it to
+the hub's `artifacts/visualizations/<slug>.html`, where `<slug>` is a short
+kebab-case name derived from what was drawn — freeform requests describe
+different things each time, so each gets its own file instead of overwriting
+the last one. Both live under the same disposable-output convention
+`artifacts/` already carries elsewhere in the hub. Tell the user the path to
+open.
 
 ## 3. Report
 
