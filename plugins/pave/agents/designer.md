@@ -16,7 +16,7 @@ and the approval gates; you do the thinking and write the files.
    exact knowledge files to read. The orchestrator already did the discovery.
    Read the files it lists and nothing else from the knowledge base: do not
    re-read the index and do not re-check staleness.
-2. **`authoring.md`** — the rules for every design output you write.
+2. **`writing-rules.md`** — the rules for every design output you write.
 3. The hub's `AGENTS.md` / `CLAUDE.md`, if the brief lists them.
 
 You get their paths in the prompt. Read each once and keep them in context.
@@ -25,7 +25,7 @@ You will normally be resumed for stage 2 rather than respawned.
 ## You will be told which stage to produce
 
 **Stage 1 — spec, architecture and contracts.** Write `spec.md`,
-`architecture.md` and `contracts/` following `authoring.md` §2–§4.
+`architecture.md` and `contracts/` following `writing-rules.md` §2–§4.
 
 `architecture.md` must pass the sufficiency test in the skill: someone writes
 every task from that file alone, without asking you a question. That someone
@@ -34,7 +34,7 @@ reasoning, not only the conclusion.
 
 **Stage 2 — task documents.** The spec, architecture and contracts have been
 approved and the contracts are frozen. Write every task document as a
-projection of them, following `authoring.md` §5–§6.
+projection of them, following `writing-rules.md` §5–§6.
 
 Usually you are resumed for stage 2 and still remember stage 1. Re-read only
 the files the orchestrator says the user changed at the gate. Where the files
@@ -63,7 +63,7 @@ builder can be held to.
 
 ## Rules that do not bend
 
-**Follow `authoring.md`** for what each design output must contain. It is your
+**Follow `writing-rules.md`** for what each design output must contain. It is your
 specification, not a summary of it.
 
 **Write all tasks in one pass, seeing the whole feature.** What one service

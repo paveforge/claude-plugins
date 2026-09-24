@@ -134,7 +134,7 @@ Spawn the `designer` **once**, after the blast radius is confirmed and the
 design brief is written. Give it only:
 
 - the absolute path to `features/<feature-id>/artifacts/design-brief.md`
-- the absolute path to `authoring.md`, next to this skill
+- the absolute path to `writing-rules.md`, next to this skill
 - which stage to produce: stage 1
 
 It writes `spec.md`, `architecture.md` and `contracts/`, then returns. You
@@ -147,11 +147,11 @@ and its own reasoning in context, so stage 2 costs only the task writing.
 
 Spawn a fresh `designer` for stage 2 only when resuming isn't possible: no
 `SendMessage` tool, or the agent is gone. Pass the same brief and
-`authoring.md`, plus the approved stage-1 files. That is exactly why
+`writing-rules.md`, plus the approved stage-1 files. That is exactly why
 `architecture.md` has to carry the reasoning and not only the conclusions.
 
 You keep the conversation, the blast-radius confirmation and both gates. It
-does the thinking. Do not read `authoring.md` yourself on this path; the
+does the thinking. Do not read `writing-rules.md` yourself on this path; the
 designer reads it.
 
 ## 1. Blast radius — from the knowledge index
@@ -241,7 +241,7 @@ a resumed session can pick it up.
 
 ## 2–6. Spec, architecture, contracts, tasks, readiness
 
-The rules for writing every design output live in `authoring.md`, next to this
+The rules for writing every design output live in `writing-rules.md`, next to this
 file. Read it when you start writing, not before: the blast radius does not
 need it, and a spawned designer reads it instead of you.
 
