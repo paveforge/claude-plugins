@@ -92,8 +92,8 @@ contracts and expect drift.
 
 ## 3. Fan out
 
-Spawn one `builder` agent per group, passing `agents.builder.model` from
-`config.yaml` as the `model` argument. This is where the model choice actually
+Spawn one `builder` agent per group, passing the `model` and `effort` printed
+by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent builder`. This is where the model choice actually
 multiplies, and it is the user's to make — never substitute your own.
 
 Give each agent, and nothing else:

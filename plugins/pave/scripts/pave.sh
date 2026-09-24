@@ -4,6 +4,7 @@
 #   pave.sh add <folder>...    register service folders with the hub
 #   pave.sh stale [service]     report what needs discovery or analysis
 #   pave.sh feature <args...>   resolve a feature id and create its folder
+#   pave.sh agent <name>        model and effort config.yaml assigns an agent
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -140,10 +141,51 @@ cmd_feature() {
   return 0
 }
 
+# agent <name>
+# Prints the model and effort config.yaml assigns to one agent. Exit 2 when
+# there is no entry, so the caller falls back to the agent's own default.
+cmd_agent() {
+  [ $# -eq 1 ] || die "usage: pave.sh agent <name>"
+  local hub; hub="$(find_hub)"
+  local cfg="$hub/config.yaml"
+  [ -f "$cfg" ] || die "no config.yaml in $hub. Run /pave:init first."
+
+  local out
+  out="$(awk -v want="$1" '
+    function val(s, key,   m) {
+      if (match(s, key "[[:space:]]*:[[:space:]]*[A-Za-z0-9._-]+")) {
+        m = substr(s, RSTART, RLENGTH); sub(/^[^:]*:[[:space:]]*/, "", m); return m
+      }
+      return ""
+    }
+    { sub(/#.*/, "") }
+    /^[^[:space:]]/ { in_agents = ($0 ~ /^agents[[:space:]]*:/); inside = 0; next }
+    !in_agents { next }
+    {
+      match($0, /^[[:space:]]*/); ind = RLENGTH
+      if (inside && ind <= ind0 && $0 ~ /[^[:space:]]/) inside = 0
+      if (!inside && $0 ~ ("^[[:space:]]*" want "[[:space:]]*:")) {
+        inside = 1; ind0 = ind; found = 1
+      }
+      if (inside) {
+        v = val($0, "model");  if (v != "" && model == "")  model = v
+        v = val($0, "effort"); if (v != "" && effort == "") effort = v
+      }
+    }
+    END {
+      if (!found || model == "") exit 2
+      print "model=" model
+      if (effort != "") print "effort=" effort
+    }
+  ' "$cfg")" || return 2
+  printf '%s\n' "$out"
+}
+
 case "${1:-}" in
   add) shift; cmd_add "$@" ;;
   stale) shift; cmd_stale "$@" ;;
   feature) shift; cmd_feature "$@" ;;
-  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n       pave.sh stale [service]\n       pave.sh feature <ticket-id|description...>\n' ;;
+  agent) shift; cmd_agent "$@" ;;
+  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n       pave.sh stale [service]\n       pave.sh feature <ticket-id|description...>\n       pave.sh agent <name>\n' ;;
   *) die "unknown command: $1" ;;
 esac

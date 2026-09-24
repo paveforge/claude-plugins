@@ -55,8 +55,8 @@ One `retriever` agent, given: the question verbatim, every path gathered in
 §1 labelled with what it is, and nothing else. It has no Bash and cannot
 locate anything itself.
 
-Use `agents.retriever.model` from `config.yaml` if that entry exists.
-**Default to `sonnet` at `low` effort if it doesn't** — hubs created before
+Pass the `model` and `effort` printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent retriever`.
+**Default to `sonnet` at `low` effort if it exits 2** — hubs created before
 this skill existed won't have the entry, and a missing config line should
 never be why `/pave:query` fails.
 

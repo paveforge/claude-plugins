@@ -77,7 +77,8 @@ against a service nobody can build.
 ## 2. Discover — what each repo is
 
 Spawn one `explorer` per service needing discovery, in parallel up to
-`execution.max_parallel`, using `agents.explorer.model`.
+`execution.max_parallel`, with the `model` and `effort` printed by
+`"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent explorer`.
 
 Give each one the absolute path to the hub's `AGENTS.md` / `CLAUDE.md`, if
 either exists, as required reading — an explorer runs in a service repo and
@@ -149,7 +150,7 @@ for the user to fill.
 ## 3. Analyse — what each service does
 
 Spawn one `analyst` per service, in parallel up to `execution.max_parallel`,
-using `agents.analyst.model`.
+with the `model` and `effort` printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent analyst`.
 
 Each writes only its own folder under
 `artifacts/knowledge/services/<service>/`, its README from

@@ -169,8 +169,8 @@ itself for any service whose knowledge is missing or stale.
 
 ## `/pave:design` — plan the feature
 
-The phase everything else depends on, and the only one that upgrades to a
-stronger model than your session if `config.yaml` asks for it.
+The phase everything else depends on. It runs on the model `config.yaml`
+names for the designer, spawning a `designer` agent when your session differs.
 
 **What it does, in order:**
 
@@ -434,11 +434,10 @@ contracts:
   land_contracts: true
 ```
 
-Every model is enforced when its agent is spawned. **Design is the exception:
-it runs on the stronger of your session model and the configured one.** On
-sonnet with opus configured you get opus; on fable you keep fable. A weaker
-plan is not a cheaper plan — it is a more expensive one, paid later by build
-agents faithfully implementing it.
+Every model is enforced when its agent is spawned, design included. Skills
+look each one up with `pave.sh agent <name>` rather than parsing YAML. If your
+session model differs from `designer`'s, `/pave:design` spawns a `designer`
+agent on the configured model, once, and resumes it for the second stage.
 
 `model_ranking` lives in config rather than the plugin, so a new model is one
 line you add rather than a plugin release you wait for.

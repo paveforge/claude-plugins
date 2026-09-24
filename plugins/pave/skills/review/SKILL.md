@@ -55,14 +55,15 @@ useless, and would mark as failed a task that was never attempted.
 ## 1. Fan out, one reviewer per task
 
 Spawn a `reviewer` for **every `done` task** in the feature, in parallel up to
-`execution.max_parallel`, passing `agents.reviewer.model`.
+`execution.max_parallel`, passing the `model` and `effort` printed by
+`"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent reviewer`.
 
 Re-review checks every `done` task again, including ones that passed last
 time. That is deliberate, not waste: a re-run builder fixing three items may
 have touched code another task depends on, and a task that passed against the
 old code is not known to pass against the new.
 
-Review follows `config.yaml` exactly. Unlike design, it does not upgrade to
+Review follows `config.yaml` exactly, like every phase. It never upgrades to
 match a stronger session — comparing a document to code is not a phase that
 gets better with a stronger model, and there is one reviewer per task, so the
 cost multiplies.
