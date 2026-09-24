@@ -1,7 +1,6 @@
 ---
 name: build
 description: Execute an approved feature plan. Fans out one agent per service, each landing the frozen contracts in its own repo and working through its task documents. Use after /pave:design has passed both gates.
-effort: medium
 argument-hint: "<feature id>"
 ---
 
@@ -14,7 +13,7 @@ phase turns frozen task documents into code.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`, `features/<feature-id>/`,
+Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, `features/<feature-id>/`,
 and **the hub's own `AGENTS.md` and `CLAUDE.md`** — either, neither or both may
 exist, and they hold the user's rules for Pave's agents. Read them explicitly
 rather than assuming they are loaded: skills run from inside service repos as
@@ -92,8 +91,8 @@ contracts and expect drift.
 
 ## 3. Fan out
 
-Spawn one `builder` agent per group, passing `agents.builder.model` from
-`config.yaml` as the `model` argument. This is where the model choice actually
+Spawn one `builder` agent per group, passing the `model` and `effort` printed
+by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent builder`. This is where the model choice actually
 multiplies, and it is the user's to make — never substitute your own.
 
 Give each agent, and nothing else:

@@ -7,7 +7,8 @@
 model_ranking: [haiku, sonnet, opus, fable]
 
 # Who does each piece of work, and how strong they should be.
-# Every entry is enforced: the model is passed when the agent is spawned.
+# Every entry is enforced: skills look it up with `pave.sh agent <name>`
+# and pass model and effort when the agent is spawned.
 agents:
   analyst:   { model: sonnet, effort: medium }   # reads business logic
   builder:   { model: sonnet, effort: medium }   # executes one task document
@@ -15,8 +16,8 @@ agents:
   reviewer:  { model: sonnet, effort: low    }   # one per task: plan vs code
   retriever: { model: sonnet, effort: low    }   # answers hub questions
 
-  # Design takes the HIGHER of this and your session model, by model_ranking.
-  # On sonnet with opus configured you get opus; on fable you keep fable.
+  # Design runs on exactly this model. If your session model differs, in
+  # either direction, /pave:design spawns the designer agent on it.
   designer: { model: opus, effort: high }       # planning decides the feature
 
 execution:

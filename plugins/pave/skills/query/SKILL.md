@@ -1,7 +1,6 @@
 ---
 name: query
 description: Ask a question about this hub - a service's behaviour, a convention, why a feature is stuck. Spawns a retriever agent that reads the knowledge base, conventions and hub docs to answer with citations. Use any time.
-effort: low
 argument-hint: "<question>"
 allowed-tools: Read, Glob, Grep, Agent
 ---
@@ -30,7 +29,7 @@ Locate the hub, the same way every other skill does (walk up for
 `.pave-hub`). If none is found, stop and say to run `/pave:init` first —
 this phase has nothing to answer from without one.
 
-Read `config.yaml` if present.
+Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`) if there is one.
 
 ## 1. Gather paths, not content
 
@@ -55,10 +54,10 @@ One `retriever` agent, given: the question verbatim, every path gathered in
 §1 labelled with what it is, and nothing else. It has no Bash and cannot
 locate anything itself.
 
-Use `agents.retriever.model` from `config.yaml` if that entry exists.
-**Default to `sonnet` at `low` effort if it doesn't** — hubs created before
-this skill existed won't have the entry, and a missing config line should
-never be why `/pave:query` fails.
+Pass the `model` and `effort` printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent retriever`.
+Hubs created before this skill existed have no `retriever` entry; the script
+fills in Pave's default for them, so a missing config line never makes
+`/pave:query` fail.
 
 ## 3. Relay the answer
 

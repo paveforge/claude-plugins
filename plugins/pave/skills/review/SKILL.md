@@ -1,7 +1,6 @@
 ---
 name: review
 description: Check that the build agents did exactly what the plan said. Spawns one reviewer per task to compare its task document against the code, marks tasks that deviate as failed, and writes a report. Use on demand after /pave:build, before merging.
-effort: low
 argument-hint: "<feature id>"
 ---
 
@@ -34,7 +33,7 @@ missing case is a planning problem, so it goes in the report as a comment and
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`, `features/<feature-id>/`,
+Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, `features/<feature-id>/`,
 and the hub's own `AGENTS.md` and `CLAUDE.md` if it has either — the user's
 rules for Pave's agents. Read them explicitly; they load by themselves only
 when you happen to be standing in the hub. `AGENTS.md` wins where both exist
@@ -55,14 +54,15 @@ useless, and would mark as failed a task that was never attempted.
 ## 1. Fan out, one reviewer per task
 
 Spawn a `reviewer` for **every `done` task** in the feature, in parallel up to
-`execution.max_parallel`, passing `agents.reviewer.model`.
+`execution.max_parallel`, passing the `model` and `effort` printed by
+`"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent reviewer`.
 
 Re-review checks every `done` task again, including ones that passed last
 time. That is deliberate, not waste: a re-run builder fixing three items may
 have touched code another task depends on, and a task that passed against the
 old code is not known to pass against the new.
 
-Review follows `config.yaml` exactly. Unlike design, it does not upgrade to
+Review follows the hub's config exactly, like every phase. It never upgrades to
 match a stronger session — comparing a document to code is not a phase that
 gets better with a stronger model, and there is one reviewer per task, so the
 cost multiplies.

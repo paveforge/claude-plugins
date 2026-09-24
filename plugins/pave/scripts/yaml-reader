@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""Print one value from a YAML file.
+
+    yaml-reader <file> <dotted.key>
+
+A scalar prints as-is, a mapping as key=value lines, a list one item per line.
+Exit 3 when the key is absent, 1 when the file cannot be read or parsed.
+
+Uses PyYAML when installed. Otherwise a built-in parser reads the subset Pave's
+config uses (block mappings and lists, inline {..} and [..], comments, plain or
+quoted scalars) and rejects anything else rather than guessing.
+"""
+import re
+import sys
+
+
+class YamlError(Exception):
+    pass
+
+
+def scalar(s, ln):
+    s = s.strip()
+    if not s:
+        return None
+    if s[0] in "\"'":
+        if len(s) < 2 or s[-1] != s[0]:
+            raise YamlError(f"line {ln}: unterminated string {s}")
+        return s[1:-1]
+    if s[0] in "&*!|>@`%":
+        raise YamlError(f"line {ln}: unsupported YAML syntax {s!r}")
+    low = s.lower()
+    if low in ("true", "yes", "on"):
+        return True
+    if low in ("false", "no", "off"):
+        return False
+    if low in ("null", "~"):
+        return None
+    if re.fullmatch(r"-?\d+", s):
+        return int(s)
+    if re.fullmatch(r"-?\d+\.\d+", s):
+        return float(s)
+    return s
+
+
+def split_flow(body, ln):
+    parts, depth, quote, cur = [], 0, None, ""
+    for c in body:
+        if quote:
+            cur += c
+            if c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+            cur += c
+        elif c in "[{":
+            raise YamlError(f"line {ln}: nested inline collections are not supported")
+        elif c == ",":
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += c
+    if quote:
+        raise YamlError(f"line {ln}: unterminated string")
+    if cur.strip():
+        parts.append(cur)
+    return [p.strip() for p in parts]
+
+
+def value(s, ln):
+    s = s.strip()
+    if s.startswith("{"):
+        if not s.endswith("}"):
+            raise YamlError(f"line {ln}: unclosed {{")
+        out = {}
+        for item in split_flow(s[1:-1], ln):
+            k, sep, v = item.partition(":")
+            if not sep or not k.strip():
+                raise YamlError(f"line {ln}: expected key: value, got {item!r}")
+            k = k.strip()
+            if k in out:
+                raise YamlError(f"line {ln}: duplicate key {k}")
+            out[k] = scalar(v, ln)
+        return out
+    if s.startswith("["):
+        if not s.endswith("]"):
+            raise YamlError(f"line {ln}: unclosed [")
+        return [scalar(x, ln) for x in split_flow(s[1:-1], ln)]
+    return scalar(s, ln)
+
+
+def strip_comment(line):
+    quote = None
+    for i, c in enumerate(line):
+        if quote:
+            if c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+        elif c == "#" and (i == 0 or line[i - 1] in " \t"):
+            return line[:i]
+    return line
+
+
+def tokenize(text):
+    rows = []
+    for ln, raw in enumerate(text.splitlines(), 1):
+        if raw.strip() in ("---", "..."):
+            continue
+        line = strip_comment(raw).rstrip()
+        if not line.strip():
+            continue
+        body = line.lstrip(" ")
+        if body.startswith("\t") or "\t" in line[: len(line) - len(body)]:
+            raise YamlError(f"line {ln}: tabs are not allowed for indentation")
+        rows.append((len(line) - len(body), body, ln))
+    return rows
+
+
+def parse_block(rows, i, indent):
+    if rows[i][1].startswith("- ") or rows[i][1] == "-":
+        return parse_list(rows, i, indent)
+    return parse_map(rows, i, indent)
+
+
+def child(rows, i, indent, ln):
+    if i < len(rows) and rows[i][0] > indent:
+        return parse_block(rows, i, rows[i][0])
+    return None, i
+
+
+def parse_map(rows, i, indent):
+    out = {}
+    while i < len(rows):
+        ind, body, ln = rows[i]
+        if ind < indent:
+            break
+        if ind > indent:
+            raise YamlError(f"line {ln}: unexpected indentation")
+        if body.startswith("-"):
+            raise YamlError(f"line {ln}: list item where a key was expected")
+        m = re.match(r"""("[^"]*"|'[^']*'|[^:]+?)\s*:(?:\s+(.*)|$)""", body)
+        if not m:
+            raise YamlError(f"line {ln}: expected key: value, got {body!r}")
+        key = m.group(1).strip("\"'")
+        if key in out:
+            raise YamlError(f"line {ln}: duplicate key {key}")
+        rest = (m.group(2) or "").strip()
+        i += 1
+        if rest:
+            out[key] = value(rest, ln)
+            if i < len(rows) and rows[i][0] > indent:
+                raise YamlError(f"line {rows[i][2]}: unexpected indentation")
+        else:
+            out[key], i = child(rows, i, indent, ln)
+    return out, i
+
+
+def parse_list(rows, i, indent):
+    out = []
+    while i < len(rows):
+        ind, body, ln = rows[i]
+        if ind < indent:
+            break
+        if ind > indent or not (body.startswith("- ") or body == "-"):
+            raise YamlError(f"line {ln}: expected a list item")
+        rest = body[1:].strip()
+        i += 1
+        if not rest:
+            item, i = child(rows, i, indent, ln)
+            out.append(item)
+        elif re.match(r"""("[^"]*"|'[^']*'|[^:\[{"']+?)\s*:(\s|$)""", rest):
+            sub = [(indent + 2, rest, ln)]
+            while i < len(rows) and rows[i][0] > indent:
+                sub.append(rows[i])
+                i += 1
+            item, _ = parse_map(sub, 0, indent + 2)
+            out.append(item)
+        else:
+            out.append(value(rest, ln))
+    return out, i
+
+
+def load(text):
+    try:
+        import yaml
+    except ImportError:
+        rows = tokenize(text)
+        if not rows:
+            return {}
+        if rows[0][0] != 0:
+            raise YamlError(f"line {rows[0][2]}: top level must not be indented")
+        data, _ = parse_block(rows, 0, 0)
+        return data
+    try:
+        return yaml.safe_load(text) or {}
+    except yaml.YAMLError as e:
+        raise YamlError(str(e))
+
+
+def fmt(v):
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    return "" if v is None else str(v)
+
+
+def emit(v):
+    if isinstance(v, dict):
+        for k, x in v.items():
+            if isinstance(x, (dict, list)):
+                sys.exit(f"yaml-reader: {k} is nested; ask for it by its full key")
+            print(f"{k}={fmt(x)}")
+    elif isinstance(v, list):
+        for x in v:
+            print(fmt(x))
+    else:
+        print(fmt(v))
+
+
+def main():
+    if len(sys.argv) != 3:
+        sys.exit("usage: yaml-reader <file> <dotted.key>")
+    path, key = sys.argv[1], sys.argv[2]
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = load(f.read())
+    except OSError as e:
+        sys.exit(f"yaml-reader: {e}")
+    except YamlError as e:
+        sys.exit(f"yaml-reader: {path}: {e}")
+
+    v = data
+    for part in key.split("."):
+        if not isinstance(v, dict) or part not in v:
+            sys.exit(3)
+        v = v[part]
+    emit(v)
+
+
+if __name__ == "__main__":
+    main()

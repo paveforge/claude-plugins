@@ -2,8 +2,6 @@
 name: retriever
 description: Answers one question about the hub by reading the knowledge base, conventions and hub docs. Read-only. Spawned by /pave:query.
 tools: Read, Glob, Grep
-model: sonnet
-effort: low
 color: blue
 ---
 

@@ -1,7 +1,6 @@
 ---
 name: init
 description: Set up a Pave hub in a folder. Creates config.yaml, an empty workspace.yaml and the hub scaffolding. Use once, before anything else. Services are added afterwards with /pave:add.
-effort: low
 argument-hint: "[hub path]"
 ---
 
@@ -55,7 +54,7 @@ skip the what-to-commit advice at the end.
 | File | If absent | If present |
 |---|---|---|
 | `.pave-hub` | Empty marker — other skills walk up to find it | Leave |
-| `config.yaml` | From `templates/config.yaml` | **Leave untouched** — it is team policy |
+| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave untouched** — it is team policy |
 | `workspace.yaml` | From `templates/workspace.yaml`, with **no services** | Leave |
 | `CLAUDE.md` | From `templates/hub-CLAUDE.md`, unless an `AGENTS.md` is already there | Leave |
 | `conventions/README.md` | From `templates/conventions-README.md` | Leave |
@@ -63,8 +62,11 @@ skip the what-to-commit advice at the end.
 | `.claude/settings.json` | `additionalDirectories: []` | **Merge** — add nothing, leave every other setting alone |
 | `.gitignore` | Add `workspace.yaml`, if git | Add the line if missing |
 
-`config.yaml` is never rewritten. A teammate who clones the hub already has
-the team's settings, and init must not undo them.
+The config file is never rewritten, and never added beside another one. A hub
+may use `config.yaml`, `config.yml` or `config.toml`, but only one: a second
+file makes every command that reads the config stop with an error. A teammate
+who clones the hub already has the team's settings, and init must not undo
+them.
 
 The hub's `CLAUDE.md` is where the user writes rules of their own, and every
 agent Pave spawns is given it as required reading. Say so when you report —
@@ -92,7 +94,7 @@ Hub ready at /Users/long/be-central. No services registered yet.
 Then /pave:analyse to work out what they are and what they do.
 ```
 
-If the hub is a git repository, say what to commit: `config.yaml`,
-`CLAUDE.md`, `conventions/` and `.pave-hub` are shared with the team.
+If the hub is a git repository, say what to commit: the config file
+(`config.yaml`, or the `.yml` / `.toml` the hub uses), `CLAUDE.md`, `conventions/` and `.pave-hub` are shared with the team.
 `workspace.yaml` is not — it holds local paths, and a teammate builds their
 own with `/pave:add`.

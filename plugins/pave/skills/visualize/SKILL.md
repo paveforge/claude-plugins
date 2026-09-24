@@ -1,7 +1,6 @@
 ---
 name: visualize
 description: Draw a picture of a feature's blast radius, or of anything else about the hub you describe. Renders an interactive diagram with Claude's Artifact tool when it's available in this environment, otherwise writes a self-contained local HTML file. Use any time.
-effort: low
 argument-hint: "<feature id> | <description of what to draw>"
 ---
 
@@ -14,7 +13,7 @@ never a service repo.
 ## Before starting
 
 Locate the hub, the same way every other skill does (walk up for
-`.pave-hub`). Read `config.yaml` and the hub's `AGENTS.md` / `CLAUDE.md` if
+`.pave-hub`). Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`) and the hub's `AGENTS.md` / `CLAUDE.md` if
 either exists — the user's rules may shape labels or wording, never the
 underlying facts.
 

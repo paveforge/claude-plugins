@@ -1,7 +1,6 @@
 ---
 name: analyse
 description: Work out what the registered services are and what they do. Discovers each one's language, build commands and contracts, then reads its domain model and writes an indexed knowledge base. Use after /pave:add, and when services drift.
-effort: medium
 argument-hint: "[service name, or blank for everything missing or stale]"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 ---
@@ -26,7 +25,7 @@ faithfully build it.
 
 ## Before starting
 
-Locate the hub. Read `config.yaml`, `workspace.yaml`, and the hub's own
+Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, and the hub's own
 `AGENTS.md` and `CLAUDE.md` if it has either — the user's rules for Pave's
 agents. Read them explicitly; they load by themselves only when you happen to
 be standing in the hub. `AGENTS.md` wins where both exist and disagree.
@@ -77,7 +76,8 @@ against a service nobody can build.
 ## 2. Discover — what each repo is
 
 Spawn one `explorer` per service needing discovery, in parallel up to
-`execution.max_parallel`, using `agents.explorer.model`.
+`execution.max_parallel`, with the `model` and `effort` printed by
+`"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent explorer`.
 
 Give each one the absolute path to the hub's `AGENTS.md` / `CLAUDE.md`, if
 either exists, as required reading — an explorer runs in a service repo and
@@ -149,7 +149,7 @@ for the user to fill.
 ## 3. Analyse — what each service does
 
 Spawn one `analyst` per service, in parallel up to `execution.max_parallel`,
-using `agents.analyst.model`.
+with the `model` and `effort` printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent analyst`.
 
 Each writes only its own folder under
 `artifacts/knowledge/services/<service>/`, its README from

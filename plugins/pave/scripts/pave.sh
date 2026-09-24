@@ -4,6 +4,7 @@
 #   pave.sh add <folder>...    register service folders with the hub
 #   pave.sh stale [service]     report what needs discovery or analysis
 #   pave.sh feature <args...>   resolve a feature id and create its folder
+#   pave.sh agent <name>        model and effort to spawn an agent with
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -21,6 +22,8 @@ find_hub() {
 }
 
 have_python() { command -v python3 >/dev/null 2>&1; }
+
+SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # add <folder>...
 cmd_add() {
@@ -92,8 +95,7 @@ PY
 cmd_stale() {
   local hub; hub="$(find_hub)"
   have_python || die "python3 is required for 'stale'"
-  local here; here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  python3 "$here/pave-stale.py" "$hub" "$@"
+  python3 "$SCRIPTS/pave-stale.py" "$hub" "$@"
 }
 
 # feature <ticket-id|description...>
@@ -140,10 +142,69 @@ cmd_feature() {
   return 0
 }
 
+# agent <name>
+# Prints the model and effort to spawn an agent with. config.yaml wins; the
+# defaults below cover hubs whose config predates an agent. Agent definitions
+# carry no model or effort, so this is the only place either is decided.
+agent_default() {
+  case "$1" in
+    analyst)   echo "sonnet medium" ;;
+    builder)   echo "sonnet medium" ;;
+    explorer)  echo "haiku low" ;;
+    reviewer)  echo "sonnet low" ;;
+    retriever) echo "sonnet low" ;;
+    designer)  echo "opus high" ;;
+    *) return 1 ;;
+  esac
+}
+
+cmd_agent() {
+  [ $# -eq 1 ] || die "usage: pave.sh agent <name>"
+  local def; def="$(agent_default "$1")" || die "unknown agent: $1"
+  local dmodel="${def% *}" deffort="${def#* }"
+  local hub; hub="$(find_hub)"
+  local model="" effort="" source=default
+
+  find_config "$hub"
+  if [ -n "$CONFIG" ]; then
+    have_python || die "python3 is required to read $CONFIG"
+    local out rc
+    out="$("$SCRIPTS/$CONFIG_READER" "$CONFIG" "agents.$1")"; rc=$?
+    case $rc in
+      0) model="$(printf '%s\n' "$out" | sed -n 's/^model=//p')"
+         effort="$(printf '%s\n' "$out" | sed -n 's/^effort=//p')" ;;
+      3) ;;
+      *) die "cannot read $CONFIG" ;;
+    esac
+  fi
+
+  [ -n "$model" ] && source=config || model="$dmodel"
+  [ -n "$effort" ] || effort="$deffort"
+  printf 'model=%s\neffort=%s\nsource=%s\n' "$model" "$effort" "$source"
+}
+
+# find_config <hub>
+# Sets CONFIG to the hub's config file and CONFIG_READER to the script that
+# reads it; both empty when there is none. At most one may exist.
+find_config() {
+  local f n=0
+  CONFIG="" CONFIG_READER=""
+  for f in config.toml config.yaml config.yml; do
+    [ -f "$1/$f" ] || continue
+    n=$((n+1)); CONFIG="$1/$f"
+    case "$f" in
+      *.toml) CONFIG_READER=toml-reader ;;
+      *)      CONFIG_READER=yaml-reader ;;
+    esac
+  done
+  [ "$n" -le 1 ] || die "more than one config file in $1. Keep exactly one of config.toml, config.yaml, config.yml."
+}
+
 case "${1:-}" in
   add) shift; cmd_add "$@" ;;
   stale) shift; cmd_stale "$@" ;;
   feature) shift; cmd_feature "$@" ;;
-  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n       pave.sh stale [service]\n       pave.sh feature <ticket-id|description...>\n' ;;
+  agent) shift; cmd_agent "$@" ;;
+  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n       pave.sh stale [service]\n       pave.sh feature <ticket-id|description...>\n       pave.sh agent <name>\n' ;;
   *) die "unknown command: $1" ;;
 esac
