@@ -44,7 +44,8 @@ The config split depends on it: `config.yaml` is committed and shared,
 `workspace.yaml` is gitignored and local to each person. Without git neither
 happens.
 
-If the hub is not a git repository, say so and offer `git init`. If the user
+If the hub is not a git repository, say so and offer `git init -b main` (so
+the hub starts on `main`, not `master`). If the user
 declines, carry on, but tell them plainly that nothing can be shared with the
 team until the hub is version controlled — and then write no `.gitignore`, and
 skip the what-to-commit advice at the end.
