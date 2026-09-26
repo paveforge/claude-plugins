@@ -46,9 +46,9 @@ claude
 
 ```
 /pave:init                             # create the hub here
-/pave:add ../be-user-service           # register each service
-/pave:add ../be-order-service
-/pave:add ../be-pricing-service
+/pave:add ../user-service           # register each service
+/pave:add ../order-service
+/pave:add ../pricing-service
 /pave:analyse                          # work out what they are, and what they do
 /pave:spec build checkout              # pick an id, then agree what it must do
 /pave:plan                             # → one approval gate
@@ -67,6 +67,41 @@ teammate generates their own with `/pave:init`.
 
 The service repos are different: builders branch and commit there, and task
 documents record those commits, so each service must be a git repository.
+
+---
+
+## How it flows
+
+```
+spec  →  plan  →  build  →  review  →  learn
+what      how      do        check      remember
+```
+
+Every feature takes the same path, and each step answers exactly one
+question:
+
+| Step | Question | Owned by |
+|---|---|---|
+| **spec** | What must be true when this is done? | You — nothing is written without your yes |
+| **plan** | What has to change, in which services, to make it true? | The planner — one gate, your approval |
+| **build** | Make the change | Builders, one per repo, in parallel |
+| **review** | Did the code do what the plan said? | Reviewers, one per task |
+| **learn** | What does the platform know now that it didn't before? | The knowledge base |
+
+The philosophy is in how the steps relate:
+
+- **Each step trusts only what the step before it wrote down.** The handoff
+  is a file — `spec.md`, `plan.md`, a task document — never a conversation.
+  So any step can run in a fresh session and reach the same result.
+- **Change flows one way.** A new requirement starts at spec, never in a task
+  or a repo. A builder that finds a gap stops; a planner that meets a "what"
+  question sends it back. Nothing downstream decides what upstream left open.
+- **Drift is detected, not trusted away.** The plan records the spec it
+  answers and the tasks it approved, by hash. Change either, and build and
+  review refuse until the feature is re-planned.
+- **The loop closes.** What a feature added, and what a question dug out of
+  the code, goes back into the knowledge base — so the next spec is written,
+  and the next plan is made, against the platform as it now is.
 
 ---
 
@@ -106,7 +141,7 @@ since the config split depends on version control.
 ## `/pave:add` — register a service
 
 ```
-/pave:add ../be-order-service
+/pave:add ../order-service
 /pave:add ../storefront/packages/events     # a monorepo package
 ```
 
@@ -119,7 +154,7 @@ absolutise, append, merge. The script is idempotent, so adding the same folder
 twice is a no-op, and you can run it directly if you prefer:
 
 ```
-"$(...)/plugins/pave/scripts/pave.sh" add ../be-order-service
+"$(...)/plugins/pave/scripts/pave.sh" add ../order-service
 ```
 
 That's all it records: name and path. Not the language, not the build commands.
@@ -496,21 +531,25 @@ what lets everyone share one policy with their own local layout.
 
 ```mermaid
 flowchart LR
-    specifying(["specifying"]) -->|/pave:plan| planning(["planning"])
+    new(( )) -->|/pave:spec| specifying(["specifying"])
+    specifying -->|/pave:plan| planning(["planning"])
     planning -->|gate passes, plan sealed| ready(["ready"])
     ready -->|/pave:build| building(["building"])
-    building -->|every task built| done(["done"])
+    building -->|every task done| done(["done"])
     building -->|agent escalated| blocked(["blocked"])
-    blocked -->|/pave:plan| building
+    blocked -->|blocker resolved, /pave:build| building
+    blocked -->|plan must change, /pave:plan| planning
     done -->|/pave:review finds gaps| failed(["failed"])
     failed -->|/pave:build| building
-    done -.->|spec changed| specifying
+    any(["any status"]) -.->|/pave:spec changes the spec| specifying
 
     classDef step fill:#54aeff26,stroke:#54aeff,stroke-width:1px
     classDef good fill:#2da44e26,stroke:#2da44e,stroke-width:1px
     classDef warn fill:#bf871926,stroke:#bf8719,stroke-width:1px
     classDef bad  fill:#cf222e26,stroke:#cf222e,stroke-width:1px
+    classDef muted fill:none,stroke:#8c959f,stroke-dasharray:3 3
     class specifying,planning,ready,building step
+    class any,new muted
     class done good
     class blocked warn
     class failed bad
@@ -518,13 +557,17 @@ flowchart LR
 
 | Status | Means | What to do |
 |---|---|---|
-| `specifying` | The spec changed and has not been planned since | `/pave:plan` once it has no open questions |
+| `specifying` | The spec is being written, or changed since it was last planned | `/pave:plan` once it has no open questions |
 | `planning` | Planning in progress | — |
 | `ready` | Plan approved and sealed, not built | `/pave:build` |
 | `building` | Being built, or a run left work | `/pave:build` resumes |
 | `done` | Every task built | `/pave:review` if you want it checked |
 | `failed` | Review found claims that were not real | `/pave:build` re-runs those tasks |
-| `blocked` | An agent escalated | Read the build report; usually `/pave:plan`, or `/pave:spec` first |
+| `blocked` | An agent escalated | Read the build report. `/pave:build` once the blocker is fixed; `/pave:plan` if the plan must change; `/pave:spec` first if what the feature does must change |
+
+A spec change sends the feature back to `specifying` from any status: build
+and review refuse until it is re-planned. `/pave:learn` does not change the
+status; it records a `done`, reviewed feature in the knowledge base.
 
 Tasks have their own status: `pending`, `in-progress`, `done`, `reopened`
 (re-planned after it was built), `failed`, `blocked`, and `obsolete` (no longer

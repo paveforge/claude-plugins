@@ -25,7 +25,7 @@ If `$1` was given, use it. Otherwise ask, with two options:
 ```
 Set up a Pave hub here?
 
-  1. /Users/long/be-central          (current folder)
+  1. /Users/long/platform          (current folder)
   2. Other                           - tell me where
 
 This creates config.yaml, workspace.yaml, AGENTS.md and conventions/.
@@ -92,11 +92,11 @@ Say where the hub is and which files were created versus left alone.
 Then say what is next, and be concrete — an empty hub does nothing:
 
 ```
-Hub ready at /Users/long/be-central. No services registered yet.
+Hub ready at /Users/long/platform. No services registered yet.
 
-  /pave:add ../be-user-service
-  /pave:add ../be-order-service
-  /pave:add ../be-pricing-service
+  /pave:add ../user-service
+  /pave:add ../order-service
+  /pave:add ../pricing-service
 
 Then /pave:analyse to work out what they are and what they do.
 ```
