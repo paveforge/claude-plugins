@@ -21,14 +21,15 @@ point at `/pave:query <question>` rather than guessing.
 
 ## No argument — overview
 
-List the workflow in order (`init` → `add` → `analyse` → `design` → `build`
-→ `review`), then the anytime commands (`help`, `query`, `visualize`), each
+List the workflow in order (`init` → `add` → `analyse` → `spec` → `plan` →
+`build` → `review` → `learn`), then the anytime commands (`help`, `query`,
+`visualize`), each
 with the one-line `description` read straight from its `SKILL.md`
 frontmatter — never hand-copied, so it can't drift from the real text.
 
 ## Argument names a command
 
-`/pave:help design`, `/pave:help build` — read that skill's full `SKILL.md`
+`/pave:help plan`, `/pave:help build` — read that skill's full `SKILL.md`
 and explain what it does, what it asks the user, and what normally comes
 before and after it, in plain language.
 

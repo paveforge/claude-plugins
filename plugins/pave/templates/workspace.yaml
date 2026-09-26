@@ -14,13 +14,13 @@
 
 services:
 
-  - name: be-order-service
-    path: /Users/long/be-order-service
+  - name: order-service
+    path: /Users/long/order-service
     # --- below here: filled by /pave:analyse ---
-    repo_root: /Users/long/be-order-service   # two services sharing one = monorepo
+    repo_root: /Users/long/order-service   # two services sharing one = monorepo
     kind: service                             # service | library | app | infra
     language: go
-    claude_md: /Users/long/be-order-service/CLAUDE.md   # if the repo has its own
+    claude_md: /Users/long/order-service/CLAUDE.md   # if the repo has its own
     commands:
       build: make build
       test:  go test ./...
@@ -30,7 +30,7 @@ services:
       - kind: protobuf    # protobuf | openapi | graphql | json-schema | avro | prose
         path: proto/order/v1/order.proto
         role: producer
-    consumes: [be-pricing-service]
+    consumes: [pricing-service]
 
   # A monorepo package: /pave:add ../storefront/packages/events
   - name: events

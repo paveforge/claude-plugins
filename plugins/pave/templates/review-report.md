@@ -59,6 +59,14 @@ diverged or the codegen is stale.>
 
 - `<NN-task-slug>` · <service> · <n> items verified, contract OK
 
+## Cleaned up
+
+<!-- Only after a successful review, and only if the user said yes. What
+     `pave.sh prune-obsoleted-tasks` printed, verbatim. Omit when nothing was
+     removed. -->
+
+- pruned: `<NN-slug>.md` (obsolete) · `<NN-slug>.md` (revert)
+
 ## Not reviewed
 
 - `<NN-task-slug>` · <service> · <why - reviewer returned nothing, errored,
@@ -80,8 +88,8 @@ section.
   you might do differently, noted only.>
 
 - **Plan gap** <Something the plan does not cover. Not a deviation, because
-  the plan never asked for it. To cover it:
-  `/pave:design <feature-id>` - re-designs the whole feature.>
+  the plan never asked for it. If the spec requires it: `/pave:plan`. If the
+  spec does not say: `/pave:spec` first - it is the user's decision.>
 
 <!--
   This separation is load-bearing. Suggestions must never reach a re-run

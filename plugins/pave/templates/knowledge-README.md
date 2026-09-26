@@ -4,8 +4,8 @@
 
 Analysed <n> services · <date>
 
-The only knowledge file design loads unconditionally. Keep it small: it exists
-so that design can decide what to open without opening anything.
+The only knowledge file planning loads unconditionally. Keep it small: it exists
+so that planning can decide what to open without opening anything.
 
 ## Capabilities
 Business phrases, the way someone would ask for a feature.
@@ -15,7 +15,7 @@ Business phrases, the way someone would ask for a feature.
 | <capability> | <service> | <files to open> |
 
 ## Terms
-The glossary. A vocabulary miss here is the most expensive mistake design can
+The glossary. A vocabulary miss here is the most expensive mistake planning can
 make, so ambiguity is recorded rather than resolved.
 
 | Term | Owner | Also used by |
@@ -34,3 +34,26 @@ The dependency graph, written as a table.
 | Service | Analysed | Commit | Uncertain |
 |---|---|---|---|
 | <service> | <date> | <sha> | <count> |
+
+## On-demand
+
+<!-- Built from the frontmatter of every file under on-demand/. Those files are
+     never rewritten or deleted by /pave:analyse - they are answers that cost a
+     source read or a whole feature to produce. Only this index is rebuilt. -->
+
+### Source findings
+Answers to questions, read from the code by `/pave:query`. A `stale` finding's
+code has changed since; do not rely on it until it is asked again.
+
+| Question | Services | State | Read |
+|---|---|---|---|
+| <question> | <services> | current / stale | `on-demand/source/<slug>.md` |
+
+### Features
+What each reviewed feature added, recorded by `/pave:learn`. A `stale` record's
+spec has changed since; it describes a version of the feature that is no
+longer the one specified.
+
+| Feature | Title | Capabilities | Services | State | Read |
+|---|---|---|---|---|---|
+| `<feature-id>` | <title> | <capabilities> | <services> | current / stale | `on-demand/features/<feature-id>.md` |

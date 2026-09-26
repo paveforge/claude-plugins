@@ -19,7 +19,7 @@ uncertain:
 <The state and decisions that belong to this service.>
 
 ## Does not
-<What it deliberately leaves to others. This prevents design putting work
+<What it deliberately leaves to others. This prevents planning putting work
 in the wrong place.>
 
 ## Shape

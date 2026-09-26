@@ -53,9 +53,9 @@ built against it and would break.>
 
 ## Landed
 
-| Service | Repo | Commit | Tasks | Items |
+| Service | Repo | Commit | Tasks (in order) | Items |
 |---|---|---|---|---|
-| <service> | `<path>` | `<sha>` | <n> | <done>/<total> |
+| <service> | `<path>` | `<sha>` | <NN (revert), NN (reconcile), NN> | <done>/<total> |
 
 ## Verification
 
@@ -98,3 +98,7 @@ built against the same bytes.
 ## Blocked
 
 - `<task>` · <service> · <why, in one line> → see Needs you #<n>
+
+## Skipped
+
+- `<task>` · <done (sha) - frozen | obsolete, reverted by NN | depends on NN, not done>

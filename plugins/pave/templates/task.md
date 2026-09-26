@@ -1,12 +1,17 @@
 ---
 service: <service-name>
 feature: <feature-id>
-status: pending            # pending | in-progress | done | blocked | failed
+kind: build                # build | revert
+priority: low              # low (build) | high (revert) | critical (reserved)
+status: pending            # pending | in-progress | done | reopened | failed | blocked | obsolete
 depends_on: []
+reverts: []                # revert tasks only: the task numbers whose work this removes
+satisfies: []              # acceptance criteria from spec.md, e.g. [AC-1, AC-3]
 branch: feature/<feature-id>
-derives_from:              # the design this task projects. No source = invented.
-  - architecture.md#<section>
+derives_from:              # the plan this task projects. No source = invented.
+  - plan.md#<section>
   - contracts/<file>
+commit:                    # set by the builder when the task is done
 ---
 
 # <What this task achieves, as an outcome>
@@ -16,17 +21,22 @@ derives_from:              # the design this task projects. No source = invented
   own. Split by natural seam - the API and the sweeper that expires its rows
   are two tasks. Never split by architectural layer.
 
-  This document is a projection of the design, not a second act of it.
-  Nothing here should be true for the first time; everything traces to a
-  decision listed in derives_from.
+  This document describes the END STATE, never a change from a previous
+  version. When the spec changes, the planner rewrites it in place to say what
+  must be true now. A builder reading it cannot tell - and must not need to
+  know - what it said before.
 
   The test for every line below: could a competent stranger do this without
-  asking a question? The agent executing it has not seen the design
-  discussion and cannot read the other task documents.
+  asking a question? The agent executing it has not seen the plan discussion
+  and cannot read the other task documents.
+
+  Everything above "## Build notes" is the planner's and is hashed at the plan
+  gate; an edit anywhere else stops build and review. Builders change only the
+  status, the commit, checkboxes, and the Build notes section.
 -->
 
 ## Objective & Context
-**Goal:** <1-2 sentences: what we are building here, and why>
+**Goal:** <1-2 sentences: what must be true here, and why>
 
 ## Out of scope
 <!-- Behaviour as well as services. The most common autonomous failure is a
@@ -38,8 +48,8 @@ derives_from:              # the design this task projects. No source = invented
 ## Architecture & Data Contracts
 **Data structures / schema:** <entities, migrations, DTOs>
 **API contracts:** <path to the contract file>
-**Contract status:** FROZEN at gate 1. Stubs generated and committed in <sha>.
-Do not edit the contract or its generated files.
+**Contract status:** FROZEN at the plan gate. Do not edit the contract or its
+generated files.
 
 ## Cross-Service Dependencies
 | Direction | Service | Contract | Note |
@@ -52,9 +62,12 @@ Do not edit the contract or its generated files.
 <!--
   An item is one focused change, stateable in one sentence without "and".
   Name the existing code it extends. Under any item that changes behaviour,
-  nest what happens when it fails, repeats, or hits a boundary - that is
-  where an agent would otherwise invent, and review cannot catch an invention
-  the plan never ruled out.
+  nest what happens when it fails, repeats, or hits a boundary.
+
+  Revert tasks: each item names exactly what is removed - files, routes,
+  config, the migration that reverses a schema change - and what must still
+  work afterwards. Anything that cannot be reversed was settled with the user
+  at the plan gate; write the agreed handling here.
 -->
 
 - [ ] <Extend `Type` (path/to/file) with ...>
@@ -88,3 +101,8 @@ would need to say, and return.
 Stop and report to the hub. Do not change the contract locally - other
 services are building against it, and a local fix turns one contract error
 into several divergent guesses.
+
+## Build notes
+
+<!-- The builder's section: what it did, decisions within scope, why it is
+     blocked. Not hashed, not part of the specification. -->

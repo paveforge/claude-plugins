@@ -1,6 +1,6 @@
 ---
 name: analyse
-description: Work out what the registered services are and what they do. Discovers each one's language, build commands and contracts, then reads its domain model and writes an indexed knowledge base. Use after /pave:add, and when services drift.
+description: Scan the registered services and build the knowledge base - each one's language, build commands and contracts, then its domain model, flows and integrations, indexed. Use after /pave:add, and when services drift. For a question about how something works, use /pave:query instead.
 argument-hint: "[service name, or blank for everything missing or stale]"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 ---
@@ -18,7 +18,7 @@ remaining questions:
 | What does this service **do**? | `analyst` | `artifacts/knowledge/` |
 
 The second is the one that is easy to skip and expensive to miss. Without it,
-design writes confident, concrete tasks that contradict code which already
+planning writes confident, concrete tasks that contradict code which already
 exists — a `Reservation` entity in a service that has had `StockHold` for two
 years. Concrete and wrong is worse than vague, because a builder will
 faithfully build it.
@@ -26,11 +26,22 @@ faithfully build it.
 ## Before starting
 
 Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, and the hub's own
-`AGENTS.md` and `CLAUDE.md` if it has either — the user's rules for Pave's
-agents. Read them explicitly; they load by themselves only when you happen to
-be standing in the hub. `AGENTS.md` wins where both exist and disagree.
+`AGENTS.md` if it has one — the user's rules for Pave's
+agents. Read it explicitly; Claude Code loads it by itself only when you
+happen to be standing in the hub.
 
 If no services are registered, stop and say to run `/pave:add <folder>` first.
+
+**This is the scan.** The argument is empty (every service that needs it) or
+exactly a registered service name. Anything else - a question, a sentence -
+is not a scan: say so and point at `/pave:query <question>`, which answers
+from the knowledge base and reads the code only for what it needs.
+
+**It never touches on-demand knowledge.** `artifacts/knowledge/on-demand/`
+holds source findings written by `/pave:query` and feature records written by
+`/pave:learn`. A scan does not rewrite, re-verify or delete them - they are
+answers that cost a source read or a whole feature to produce, and a scan
+would silently erase them. It only rebuilds the index that lists them (§5).
 
 ## 1. Decide what to analyse
 
@@ -57,6 +68,10 @@ current      svc-a       unchanged since 0818f6e
 | `orphan` | Delete the knowledge folder and say so |
 | `current` | Nothing |
 | `unreachable` | Report it. Do not analyse, do not guess |
+| `finding-stale` | Report it, and nothing else. The next `/pave:query` that needs it reads the code again |
+| `finding-current` | Nothing |
+| `record-stale` | Report it, and nothing else. Its feature's spec changed; `/pave:learn` records it again once the feature is rebuilt and reviewed |
+| `record-current` | Nothing |
 
 Given a service name, the script checks only that one. Given none, it checks
 everything.
@@ -70,7 +85,7 @@ pure cost.
 Report what needs doing, and why, before spawning anything.
 
 An `orphan` matters more than it looks. A knowledge folder for a service no
-longer registered keeps appearing in the index, and design will happily plan
+longer registered keeps appearing in the index, and planning will happily plan
 against a service nobody can build.
 
 ## 2. Discover — what each repo is
@@ -79,8 +94,7 @@ Spawn one `explorer` per service needing discovery, in parallel up to
 `execution.max_parallel`, with the `model` and `effort` printed by
 `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent explorer`.
 
-Give each one the absolute path to the hub's `AGENTS.md` / `CLAUDE.md`, if
-either exists, as required reading — an explorer runs in a service repo and
+Give each one the absolute path to the hub's `AGENTS.md`, if it exists, as required reading — an explorer runs in a service repo and
 will not find it by walking up from there.
 
 Never scan a repo yourself in the main context. One large repo will fill it,
@@ -161,8 +175,8 @@ Give each analyst its path, its language, its entry from `workspace.yaml`, and
 read it itself, and without it the staleness check has nothing to compare
 against.
 
-Give it the absolute path to the hub's `AGENTS.md` / `CLAUDE.md` too, if
-either exists, as required reading.
+Give it the absolute path to the hub's `AGENTS.md` too, if
+it exists, as required reading.
 
 Require a short summary back. Detail belongs in the files; four analysts
 returning full narratives will exhaust this session's context.
@@ -190,37 +204,40 @@ and builders read it directly rather than following a duplicate.
 
 ## 5. Regenerate the index
 
-`artifacts/knowledge/README.md` is the only file design loads unconditionally,
+`artifacts/knowledge/README.md` is the only file planning loads unconditionally,
 so it must be small and it must be generated — never hand-written, never
 appended to.
 
 **Rebuild it from every service README, not only the ones just analysed.**
 `/pave:analyse <service>` regenerates the whole index from all of them.
 Building it from one analyst's output would erase every other service from the
-capabilities, terms and events tables, and design would then plan as though
+capabilities, terms and events tables, and planning would then plan as though
 those services did not exist.
 
 Build it from `templates/knowledge-README.md`, filled from the frontmatter of
-every service README.
+every service README - and its **On-demand** section from the frontmatter of
+every file under `on-demand/source/` and `on-demand/features/`, with each
+file's state from `pave.sh stale`. Read only frontmatter; never edit those
+files.
 
 The **Events** table is the dependency graph. There is no graph database here,
 but adjacency written down as a generated table answers the same questions and
 costs nothing to load.
 
 The **Terms** table earns its place on its own. The failure this phase exists
-to prevent is a vocabulary miss — design inventing a concept the platform
+to prevent is a vocabulary miss — planning inventing a concept the platform
 already names. Having the glossary in the always-loaded index catches it before
 a task document is written.
 
 Where two services define the same term differently, record both and mark it
-ambiguous. Do not pick a winner; that is a finding, and design needs to see it.
+ambiguous. Do not pick a winner; that is a finding, and planning needs to see it.
 
 ## 6. Report
 
 State which services were discovered, which were analysed, which were skipped
 as current, every conflict you left alone, every gap discovery could not fill,
 and every `uncertain` entry the analysts raised. Those last ones are the points
-design must verify against code rather than trust.
+planning must verify against code rather than trust.
 
 **Do not report a service as done if its agent returned blocked, incomplete or
 nothing at all.** Leave its previous state, do not update its `commit`, and say
@@ -228,4 +245,4 @@ it still needs analysing — otherwise the next run sees a current `commit` and
 skips a service that was never read. A repo that could not be reached is the
 same case.
 
-Then say what is next: `/pave:design <feature>`.
+Then say what is next: `/pave:spec <feature>`.
