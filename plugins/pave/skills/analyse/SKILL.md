@@ -18,7 +18,7 @@ remaining questions:
 | What does this service **do**? | `analyst` | `artifacts/knowledge/` |
 
 The second is the one that is easy to skip and expensive to miss. Without it,
-design writes confident, concrete tasks that contradict code which already
+planning writes confident, concrete tasks that contradict code which already
 exists — a `Reservation` entity in a service that has had `StockHold` for two
 years. Concrete and wrong is worse than vague, because a builder will
 faithfully build it.
@@ -70,7 +70,7 @@ pure cost.
 Report what needs doing, and why, before spawning anything.
 
 An `orphan` matters more than it looks. A knowledge folder for a service no
-longer registered keeps appearing in the index, and design will happily plan
+longer registered keeps appearing in the index, and planning will happily plan
 against a service nobody can build.
 
 ## 2. Discover — what each repo is
@@ -190,14 +190,14 @@ and builders read it directly rather than following a duplicate.
 
 ## 5. Regenerate the index
 
-`artifacts/knowledge/README.md` is the only file design loads unconditionally,
+`artifacts/knowledge/README.md` is the only file planning loads unconditionally,
 so it must be small and it must be generated — never hand-written, never
 appended to.
 
 **Rebuild it from every service README, not only the ones just analysed.**
 `/pave:analyse <service>` regenerates the whole index from all of them.
 Building it from one analyst's output would erase every other service from the
-capabilities, terms and events tables, and design would then plan as though
+capabilities, terms and events tables, and planning would then plan as though
 those services did not exist.
 
 Build it from `templates/knowledge-README.md`, filled from the frontmatter of
@@ -208,19 +208,19 @@ but adjacency written down as a generated table answers the same questions and
 costs nothing to load.
 
 The **Terms** table earns its place on its own. The failure this phase exists
-to prevent is a vocabulary miss — design inventing a concept the platform
+to prevent is a vocabulary miss — planning inventing a concept the platform
 already names. Having the glossary in the always-loaded index catches it before
 a task document is written.
 
 Where two services define the same term differently, record both and mark it
-ambiguous. Do not pick a winner; that is a finding, and design needs to see it.
+ambiguous. Do not pick a winner; that is a finding, and planning needs to see it.
 
 ## 6. Report
 
 State which services were discovered, which were analysed, which were skipped
 as current, every conflict you left alone, every gap discovery could not fill,
 and every `uncertain` entry the analysts raised. Those last ones are the points
-design must verify against code rather than trust.
+planning must verify against code rather than trust.
 
 **Do not report a service as done if its agent returned blocked, incomplete or
 nothing at all.** Leave its previous state, do not update its `commit`, and say
@@ -228,4 +228,4 @@ it still needs analysing — otherwise the next run sees a current `commit` and
 skips a service that was never read. A repo that could not be reached is the
 same case.
 
-Then say what is next: `/pave:design <feature>`.
+Then say what is next: `/pave:spec <feature>`.

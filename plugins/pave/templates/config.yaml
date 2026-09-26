@@ -16,9 +16,8 @@ agents:
   reviewer:  { model: sonnet, effort: low    }   # one per task: plan vs code
   retriever: { model: sonnet, effort: low    }   # answers hub questions
 
-  # Design runs on exactly this model. If your session model differs, in
-  # either direction, /pave:design spawns the designer agent on it.
-  designer: { model: opus, effort: high }       # planning decides the feature
+  # /pave:plan always runs the planner agent on exactly this model.
+  planner:  { model: opus, effort: high }       # planning decides the feature
 
 execution:
   mode: parallel                 # parallel | sequential

@@ -1,80 +1,115 @@
 ---
 name: build
-description: Execute an approved feature plan. Fans out one agent per service, each landing the frozen contracts in its own repo and working through its task documents. Use after /pave:design has passed both gates.
-argument-hint: "<feature id>"
+description: Execute the session feature's approved plan. Refuses if the spec or any task changed since the plan was approved. Fans out one builder per service, highest priority first; builds every outstanding task, or only the task numbers given (comma-separated, e.g. 03,07).
+argument-hint: "[task numbers, e.g. 03,07]"
 ---
 
 # Pave — build
 
 Fan out, and let each agent own its repo.
 
-Build executes. It does not design. Every decision was made at the gates; this
-phase turns frozen task documents into code.
+Build executes. It does not plan. Every decision was made at the plan gate;
+this phase turns sealed task documents into code.
 
-## Before starting
+## 0. The session's feature
 
-Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, `features/<feature-id>/`,
-and **the hub's own `AGENTS.md` and `CLAUDE.md`** — either, neither or both may
-exist, and they hold the user's rules for Pave's agents. Read them explicitly
-rather than assuming they are loaded: skills run from inside service repos as
-well as from the hub, and a file loads by itself only when you happen to be
-standing in the hub. Where both exist and disagree, `AGENTS.md` wins.
+This command takes no feature argument. It acts on the feature `/pave:spec`
+set in this conversation - the latest `Working on <id> — <title>` or
+`Switched: … → <id>` line. If there is none, stop:
+
+```
+No feature in this session. Run /pave:spec <feature-id> first.
+```
+
+Say `Working on <id> — <title>` before continuing.
+
+## 1. The plan must be the one approved for this spec
+
+```
+"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check <id>
+```
+
+**Anything but `ok` is a refusal.** Print what it reported and stop:
+
+```
+spec.md changed since the plan was approved → run /pave:plan
+```
+
+No partial build, no "just the unaffected tasks". A stale plan may build
+tasks the spec no longer wants, and a task edited by hand has skipped the
+gate. This is a script check on purpose: it cannot be talked out of.
+
+Then locate the hub and read the hub's config file (`config.yaml`,
+`config.yml` or `config.toml`), `workspace.yaml`, the feature's task
+documents, and **the hub's own `AGENTS.md` and `CLAUDE.md`** - read them
+explicitly; they load by themselves only when you happen to be standing in
+the hub. Where both exist and disagree, `AGENTS.md` wins.
 
 | Feature status | Build |
 |---|---|
-| `ready` | Everything. First run. |
-| `failed` | Only the tasks marked `failed`. Review found claims that were not real. |
-| `blocked` | Only tasks that are `blocked` or still `pending`, once the blocker is resolved. |
-| `building` | A previous run did not finish — resume `pending` and `blocked` tasks. |
-| `done` | Refuse. Nothing to do. Re-run review instead. |
-| `planning` | Refuse. Design has not passed gate 2. |
+| `ready`, `building`, `failed`, `blocked` | Yes - the outstanding tasks (§2) |
+| `done` | Nothing outstanding. Say so, and suggest `/pave:review` |
+| `specifying`, `planning` | Refuse. The plan has not passed its gate: `/pave:plan` |
 
-Also refuse if any task document fails the readiness check in `/pave:design`
-§6. A task document that is not self-contained is a design defect: send it
-back to `/pave:design` rather than filling the gap here.
+## 2. Decide what to build
 
-Set the feature to `building` before spawning anything. A run that dies
-mid-way leaves a status that says so, instead of one that claims the feature
-is still waiting to start.
+**No task numbers** - build every outstanding task:
 
-## Pave writes in the hub. Builders write in the repos.
+| Task status | Build? |
+|---|---|
+| `pending` | Yes |
+| `reopened` | Yes, in **reconcile mode** (§4) |
+| `failed` | Yes - only the items review unticked |
+| `in-progress` | Yes - a previous run did not finish; resume it |
+| `blocked` | Only once the blocker is resolved; otherwise report it again |
+| `done` | No - skipped, listed as such |
+| `obsolete` | Never. Its revert task removes its work |
 
-**This skill never touches a service repository.** It reads the hub, spawns
-agents, collects what they report, and writes reports back into the hub. Every
-change inside a repo — the branch, the contracts, the generated stubs, the code
-— is made by a `builder` agent in the repo it owns.
+**Task numbers given** - `/pave:build 03,07` builds exactly those. Commas are
+the recommended separator; spaces and `03, 07` are accepted too, and leading
+zeros are optional (`3` is `03`). An unknown number is rejected before
+anything runs. The same table applies, with two refinements:
 
-That is not tidiness. Parallel agents are safe because each one owns exactly
-one repo and nothing else writes there. An orchestrator reaching in to commit
-something is a second writer, and it is a second writer holding a git index
-that four agents are about to use.
+- **A named `done` task is not rebuilt.** It is frozen: it was built and
+  verified. Skip it and say why - `03 skipped: done (a1b2c3d) - frozen`. If
+  its `commit` is **not on the feature branch** (a reset, a lost commit), do
+  not reset it silently - the commit may have been removed on purpose. Ask:
 
-So contract landing, which used to happen here, happens in each builder before
-it starts work.
+  ```
+  03 is done, but a1b2c3d is not on feature/<id>.
+  Reset 03 to pending and rebuild? (yes / no)
+  ```
+- **A named task whose `depends_on` is not `done` is refused**, naming the
+  blocker. It is not built implicitly.
 
-## 1. Decide what to build
+A named `obsolete` task is skipped: `03 is obsolete; its revert is 09`.
 
-Build exactly the tasks the entry table selected. **Never rebuild a task that
-is `done`** — it has been verified, and rebuilding it risks undoing work while
-the report claims otherwise.
+Never rebuild a `done` task any other way. A task changes only by re-planning,
+which reopens it.
 
-On the `failed` path, give each builder the review report alongside its task
-document. Review has already unchecked the specific items that were not real,
-so the agent fixes those rather than starting over.
+## 3. Schedule
 
-## 2. Group tasks
+Three rules, applied in this order:
 
-Read the frontmatter of every task document. Group by `service`.
+1. **`depends_on`** — a task waits until everything it depends on is `done`.
+   The one hard ordering constraint.
+2. **One writer per repo** — tasks for the same service run one after another
+   inside one builder. Different services run in parallel, up to
+   `execution.max_parallel`. If `execution.mode` is `sequential`, groups run
+   one at a time.
+3. **Priority** — inside each builder's queue, `high` before `low`, then by
+   task number. When `max_parallel` limits how many services run at once,
+   start first the service whose next task has the highest priority.
 
-**Tasks targeting the same service run sequentially inside one agent.** Two
-agents in one repo on one branch is a write conflict. Different services run in
-parallel, up to `execution.max_parallel`.
+So a `high` revert in stock-service goes first in stock-service's queue, and
+never holds up order-service. When a revert must land before work in another
+service, the plan says so with `depends_on`, not priority.
 
-If `execution.mode` is `sequential`, run every group one at a time.
+`critical` is reserved. If a task has it, stop and say so - its scheduling is
+not defined yet.
 
-When several services live in one repo — a monorepo, visible in
-`workspace.yaml` where a repo lists more than one service — apply
-`execution.monorepo_strategy`:
+When several services live in one repo - visible in `workspace.yaml` where a
+repo lists more than one service - apply `execution.monorepo_strategy`:
 
 | Strategy | Behaviour |
 |---|---|
@@ -82,137 +117,116 @@ When several services live in one repo — a monorepo, visible in
 | `worktree` | Each gets its own git worktree, same branch name; parallel |
 | `shared-tree` | Parallel in one checkout. Concurrent git operations will collide eventually |
 
-Respect `depends_on`. Anything it blocks waits for its blocker to reach `done`.
-If a cycle would leave tasks waiting on each other forever, stop and report it
-— that is a design defect, and waiting will not resolve it.
+If a `depends_on` cycle would leave tasks waiting forever, stop and report it
+- that is a plan defect, and waiting will not resolve it.
 
-If `contracts.land_contracts` is false, tell the builders not to land
-contracts and expect drift.
+Set the feature to `building` before spawning anything.
 
-## 3. Fan out
+## Pave writes in the hub. Builders write in the repos.
 
-Spawn one `builder` agent per group, passing the `model` and `effort` printed
-by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent builder`. This is where the model choice actually
-multiplies, and it is the user's to make — never substitute your own.
+**This skill never touches a service repository.** It reads the hub, spawns
+agents, collects what they report, and writes reports back into the hub.
+Every change inside a repo - the branch, the contracts, the generated stubs,
+the code, the reverts - is made by a `builder` agent in the repo it owns.
+Parallel agents are safe because each one owns exactly one repo and nothing
+else writes there.
+
+## 4. Fan out
+
+Spawn one `builder` per service group, passing the `model` and `effort`
+printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent builder`. Never
+substitute your own.
 
 Give each agent, and nothing else:
 
-- The absolute path to its task document
-- Its required reading, resolved for its service, by absolute path:
+- The absolute paths to its task documents, **in queue order**, each with its
+  mode:
+
+  | Mode | For | Meaning |
+  |---|---|---|
+  | `fresh` | `pending` | Nothing exists yet |
+  | `resume` | `in-progress` | A previous run started it |
+  | `reconcile` | `reopened` | Code for this task already exists at its recorded `commit`. Make that code match the document, changing only what does not; work the unticked items |
+  | `fix` | `failed` | Fix only the items review unticked; give it the review report |
+  | `revert` | `kind: revert` | Remove what the document names, and nothing else |
+
+- Its required reading, by absolute path:
   1. the hub's `AGENTS.md` / `CLAUDE.md` — the user's rules, if either exists
   2. `conventions/README.md`
   3. `conventions/<language>.md` — language from `workspace.yaml`
   4. `conventions/<service>.md` — if present, wins on conflict
   5. the repo's own `CLAUDE.md` — if `workspace.yaml` records one
-- Its repo path, its `path` within that repo (a monorepo service does not
-  live at the root), its branch name, and its build/test/lint commands
+- Its repo path, its `path` within that repo, its branch name, and its
+  build/test/lint commands
 - **The contracts it must land**: the frozen files from
-  `features/<feature-id>/contracts/` that its task names, and the service's `codegen`
-  command from `workspace.yaml`. On a re-run say they are already landed.
+  `features/<id>/contracts/` that its tasks name, and the service's `codegen`
+  command. Say whether the branch and contracts already exist in this repo -
+  they do after any earlier build of this feature. If a re-plan changed a
+  contract, say which: the builder lands the new version.
 
-Tell it whether this is a first run or a re-run. A re-run lands nothing and
-creates no branch — both exist already, full of work.
+Name the files; do not paste their contents. None of them overrides the task
+document or a frozen contract: where they disagree, the document wins and the
+builder names the conflict in its summary.
 
-Name the convention files explicitly as required reading. Do not paste their
-contents — the agent reads the files, so an edit to `go.md` takes effect on the
-next run with nothing to regenerate.
+**Require a short report back.** Detail goes in each task's Build notes.
 
-The same goes for the hub's rules file. **Give the absolute path** — a builder
-runs in a service repo and will not find `AGENTS.md` by walking up from there.
+## 5. Track
 
-The list is ordered from general to specific. The hub's rules apply to every
-repo; the convention files narrow them to a language and then a service. None
-of them overrides the task document or a frozen contract: where the user's
-rules and the task document disagree, the document wins and the builder names
-the conflict rather than picking silently. That is a line in its summary, not a
-reason to block.
+Task status lives in each task document's frontmatter. One agent owns one
+document while it runs; nothing else writes to it.
 
-**Require a short report back.** Each agent writes its detail into its own task
-document and returns a summary. Four agents returning full narratives into this
-session will exhaust the context exactly when it is needed for integration.
+After each agent returns, rewrite `features/<id>/README.md` and
+`features/README.md` from the task frontmatter. Never hand-maintain either.
 
-## 4. Track
-
-Task status lives in each task document's frontmatter: `pending` →
-`in-progress` → `done`, or `blocked`. One agent owns one document; nothing else
-writes to it.
-
-After each agent returns, rewrite `features/<feature-id>/README.md` and
-`features/README.md` from the task frontmatter and checkbox state. Never
-hand-maintain either — they are derived, so they cannot drift.
-
-**If an agent returns nothing or errors, its task is unfinished, not done.**
+**If an agent returns nothing or errors, its tasks are unfinished, not done.**
 Leave the status the agent left, record it in the report, and never infer
-success from silence. A crashed builder that gets marked `done` sends unwritten
-code to review, which will find nothing wrong with work that does not exist.
+success from silence.
 
-## 5. Handle escalation
+## 6. Handle escalation
 
-An agent that finds the contract wrong or insufficient must stop and report,
-never improvise. Three siblings are building against that contract; a local fix
-turns one contract error into four divergent guesses.
+An agent that finds the contract wrong or a task underspecified stops and
+reports; it never improvises.
 
-On escalation:
-
-1. Mark the task `blocked` and say which contract and why
-2. **Find every other task that consumes or provides that contract.** They are
-   building against something now known to be wrong. Let them finish — the work
-   is on a branch and stopping mid-change leaves a worse state — but record them
-   in the report as built against a disputed contract. Re-design needs to know
-   which work is at risk, and the escalating agent could not see its siblings.
+1. Mark the task `blocked` and say which contract or item, and why
+2. **Find every other task that consumes or provides that contract.** Let
+   them finish, but record them in the report as built against a disputed
+   contract - the re-plan needs to know which work is at risk
 3. Let unrelated groups finish normally
-4. Report to the user. A contract change is a **re-gate**: back to
-   `/pave:design`, not a patch applied here
+4. Report to the user. A contract or task change is a **re-plan**:
+   `/pave:plan` (and `/pave:spec` first if the fix changes what the feature
+   does), never a patch applied here
 
-The same applies to anything ambiguous. If build agents routinely need to think
-their way out of gaps, that is a defect in `design`, not a reason to raise the
-build model.
+If builders routinely need to think their way out of gaps, that is a defect
+in the plan, not a reason to raise the build model.
 
-## 6. Report
+## 7. Report
 
-Write `features/<feature-id>/artifacts/build-report.md` from
-`templates/build-report.md`.
+Write `features/<id>/artifacts/build-report.md` from
+`templates/build-report.md`, triaged by **who must act**. Do not ask a
+question the report can state as a fact: an in-scope judgement goes under
+*Decisions taken*; only what needs a person goes under *Needs you*, with the
+decision and the exact command. When nothing needs a person, say so in full.
 
-It is triaged by **who must act**, not by service or chronology. Someone
-should know from the first line whether they are needed, and be able to stop
-there if they are not.
+List skipped tasks - `done`, `obsolete`, or refused - with the reason.
 
-**Do not ask a question the report can state as a fact.** An in-scope
-judgement an agent made — a library already in the repo, a name, an ordering
-the task left open — goes under *Decisions taken*, where it can be skimmed.
-Only what genuinely cannot be resolved without a person goes under *Needs
-you*, and each of those carries the decision and the exact command.
+The Verification table is load-bearing: `/pave:review` runs nothing, so this
+report is the only record that the commands passed. A failing command means
+the task is not done.
 
-Surfacing beats asking. It keeps the workflow moving while leaving the work
-reviewable, which is the whole trade this phase is making.
+## 8. Set status
 
-**When nothing needs a person, say so in full** — "Nothing. All tasks
-completed and no decisions were deferred." An empty section is the point of
-the workflow; a blank heading reads as an oversight.
-
-The Verification table is load-bearing rather than decoration: `/pave:review`
-reads code and runs nothing, so this report is the only record that the
-commands ever passed. A failing command means the task is not done — if a row
-says fail and its task says done, stop and find out which is wrong.
-
-## 7. Set status
-
-Derive it from the tasks, in this order — the first row that matches wins:
+The first row that matches wins:
 
 | Condition | Feature status |
 |---|---|
 | Any task `blocked` | `blocked` |
-| Any task not `done` — `pending`, `in-progress`, `failed` | `building` |
-| Every task `done` | `done` |
+| Any task not `done` or `obsolete` | `building` |
+| Every task `done` or `obsolete` | `done` |
 
-`building` as an end state is the partial run: some tasks finished, nothing
-escalated, work remains. Re-running `/pave:build <feature-id>` picks up where it
-stopped. Say so plainly rather than reporting a partial run as a success.
+`building` as an end state is the partial run; re-running `/pave:build` picks
+up where it stopped. Say so plainly rather than reporting it as a success.
 
-Never set `done` while a task is unfinished. It is the one status that tells
-review, and you, that the feature is ready to look at.
-
-Mention that `/pave:review` will check the work against the plan — it is on
-demand, not required.
+Mention that `/pave:review` checks the work against the plan, and is where
+reverted obsolete tasks get cleaned up.
 
 Nothing is merged and no PR is opened unless the user asks.

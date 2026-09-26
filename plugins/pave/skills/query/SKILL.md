@@ -41,8 +41,9 @@ retriever, not answering the question. Note which of these exist:
   `conventions/`
 - the hub's `AGENTS.md` / `CLAUDE.md` (`AGENTS.md` wins where both exist)
 - `workspace.yaml`
-- if the question names a feature, or the hub has exactly one, that
-  feature's `spec.md`, `architecture.md` and `README.md`
+- if the question names a feature, `/pave:spec` set one in this session, or
+  the hub has exactly one, that
+  feature's `spec.md`, `plan.md` and `README.md`
 
 If a hub exists but has no `artifacts/knowledge/`, that's worth noting to the
 retriever, not a reason to stop — the question may still be answerable from

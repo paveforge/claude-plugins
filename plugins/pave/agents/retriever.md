@@ -26,7 +26,7 @@ path to just because it is there.
 5. **The hub's `AGENTS.md` / `CLAUDE.md`** — for "should we" questions, and
    for anything about how this team wants Pave run. `AGENTS.md` wins where
    both exist and disagree.
-6. **The feature's `spec.md` / `architecture.md` / `README.md`**, if you were
+6. **The feature's `spec.md` / `plan.md` / `README.md`**, if you were
    given one — for "why is this feature doing X" or "what's blocking it"
    questions.
 

@@ -1,7 +1,7 @@
 ---
 name: visualize
 description: Draw a picture of a feature's blast radius, or of anything else about the hub you describe. Renders an interactive diagram with Claude's Artifact tool when it's available in this environment, otherwise writes a self-contained local HTML file. Use any time.
-argument-hint: "<feature id> | <description of what to draw>"
+argument-hint: "[feature id | description of what to draw]"
 ---
 
 # Pave — visualize
@@ -22,8 +22,10 @@ underlying facts.
 The argument is one of two things:
 
 **A feature id** — `features/<id>/` exists → **blast radius mode**. Read
-that feature's `spec.md` (Services touched table) and `architecture.md`
-(Flow table, Contracts table, State ownership). The picture is a graph:
+that feature's `plan.md` (Service map, Flow table, Contracts table, State
+ownership). `read-only` services are drawn as context and `untouched` ones
+left out. If the feature has no `plan.md` yet, there is no blast radius to
+draw; say so and point at `/pave:plan`. The picture is a graph:
 nodes are services, edges are the Flow steps and the Contracts between them,
 labelled with what's emitted or produced.
 
@@ -32,8 +34,9 @@ of what to draw. Pull only what it needs from `artifacts/knowledge/README.md`
 (Capabilities, Terms, Events tables) and `workspace.yaml`; if the description
 names a feature, read that feature's docs too, as above.
 
-**No argument** — ask what to draw, and list the known feature ids from
-`features/README.md` as a hint.
+**No argument** — if `/pave:spec` set a feature in this session, draw that
+feature's blast radius. Otherwise ask what to draw, and list the known feature
+ids from `features/README.md` as a hint.
 
 In either mode, **never read a service repo to fill a gap.** If the
 knowledge a good picture needs is missing or stale, draw what the hub does

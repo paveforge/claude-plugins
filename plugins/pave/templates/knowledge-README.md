@@ -4,8 +4,8 @@
 
 Analysed <n> services · <date>
 
-The only knowledge file design loads unconditionally. Keep it small: it exists
-so that design can decide what to open without opening anything.
+The only knowledge file planning loads unconditionally. Keep it small: it exists
+so that planning can decide what to open without opening anything.
 
 ## Capabilities
 Business phrases, the way someone would ask for a feature.
@@ -15,7 +15,7 @@ Business phrases, the way someone would ask for a feature.
 | <capability> | <service> | <files to open> |
 
 ## Terms
-The glossary. A vocabulary miss here is the most expensive mistake design can
+The glossary. A vocabulary miss here is the most expensive mistake planning can
 make, so ambiguity is recorded rather than resolved.
 
 | Term | Owner | Also used by |

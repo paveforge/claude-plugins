@@ -3,7 +3,11 @@
 #
 #   pave.sh add <folder>...    register service folders with the hub
 #   pave.sh stale [service]     report what needs discovery or analysis
-#   pave.sh feature <args...>   resolve a feature id and create its folder
+#   pave.sh feature propose <args...>   classify a feature argument, create nothing
+#   pave.sh feature create <id> [title] create a confirmed feature's folder
+#   pave.sh seal <feature-id>           record spec and task hashes at the plan gate
+#   pave.sh check <feature-id>          is the plan still the one approved for this spec?
+#   pave.sh prune-obsoleted-tasks <feature-id>  remove reverted obsolete tasks
 #   pave.sh agent <name>        model and effort to spawn an agent with
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
@@ -98,48 +102,67 @@ cmd_stale() {
   python3 "$SCRIPTS/pave-stale.py" "$hub" "$@"
 }
 
-# feature <ticket-id|description...>
-# Resolves the feature id, creates the folder skeleton, reports both.
-# The id is a handle, never a summary: a ticket reference if one was given,
-# otherwise feat-N. A kebab-cased sentence is not something anyone types twice.
-cmd_feature() {
-  [ $# -ge 1 ] || die "usage: pave.sh feature <ticket-id|description...>"
+# feature propose <ticket-id|feature-id|description...>
+# Classifies the argument and reports candidates. Creates nothing: the id is
+# confirmed by the user first, so a rejected proposal leaves no folder behind.
+cmd_feature_propose() {
+  [ $# -ge 1 ] || die "usage: pave.sh feature propose <ticket-id|feature-id|description...>"
   local hub; hub="$(find_hub)"
   local fdir="$hub/features"
-  mkdir -p "$fdir"
 
-  local id title
+  if [ $# -eq 1 ] && [ -d "$fdir/$1" ]; then
+    printf 'kind: existing\nid: %s\ntitle: %s\npath: %s\n' "$1" "$(spec_title "$fdir/$1")" "$fdir/$1"
+    return 0
+  fi
   # A ticket reference: letters, hyphen, digits. Case preserved as typed.
   if printf '%s' "$1" | grep -qE '^[A-Za-z][A-Za-z0-9_]*-[0-9]+$'; then
-    id="$1"; shift; title="$*"
-  else
-    local n=0 m
-    for d in "$fdir"/feat-*; do
-      [ -d "$d" ] || continue
-      m="${d##*/feat-}"
-      case "$m" in (*[!0-9]*|"") continue ;; esac
-      [ "$m" -gt "$n" ] && n="$m"
-    done
-    id="feat-$((n+1))"; title="$*"
+    local id="$1"; shift
+    printf 'kind: ticket\nid: %s\ntitle: %s\n' "$id" "$*"
+    [ -d "$fdir/$id" ] && printf 'note: exists - %s\n' "$fdir/$id"
+    return 0
   fi
+  printf 'kind: description\nnext: %s\ntitle: %s\n' "$(next_feat "$fdir")" "$*"
+  printf 'note: propose feat-N or a short slug (kebab-case, at most 30 characters), and let the user choose\n'
+}
 
-  local path="$fdir/$id" status="new"
+# feature create <id> [title...]
+# Creates the folder skeleton for a confirmed id. Idempotent.
+cmd_feature_create() {
+  [ $# -ge 1 ] || die "usage: pave.sh feature create <id> [title...]"
+  local id="$1"; shift
+  printf '%s' "$id" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$' \
+    || die "invalid id '$id': letters, digits, - and _ only"
+  [ "${#id}" -le 30 ] || die "id '$id' is longer than 30 characters - shorten it"
+  local hub; hub="$(find_hub)"
+  local path="$hub/features/$id" status="new"
   [ -d "$path" ] && status="exists"
-
-  # Re-design: recover the title from the existing spec rather than losing it.
-  if [ "$status" = "exists" ] && [ -z "$title" ] && [ -f "$path/spec.md" ]; then
-    title="$(grep -m1 '^# ' "$path/spec.md" 2>/dev/null | sed 's/^# //')"
-  fi
-
   mkdir -p "$path/contracts" "$path/tasks" "$path/artifacts"
+  local title="$*"
+  [ -z "$title" ] && title="$(spec_title "$path")"
+  printf 'id: %s\ntitle: %s\nstatus: %s\npath: %s\n' "$id" "$title" "$status" "$path"
+}
 
-  printf 'id: %s\n' "$id"
-  printf 'title: %s\n' "$title"
-  printf 'status: %s\n' "$status"
-  printf 'path: %s\n' "$path"
-  [ -z "$title" ] && printf 'note: no description given - ask what this feature is\n'
-  [ "$status" = "exists" ] && printf 'note: re-design - say so before re-deriving\n'
-  return 0
+spec_title() { [ -f "$1/spec.md" ] && grep -m1 '^# ' "$1/spec.md" | sed 's/^# //'; }
+
+next_feat() {
+  local n=0 m d
+  for d in "$1"/feat-*; do
+    [ -d "$d" ] || continue
+    m="${d##*/feat-}"
+    case "$m" in (*[!0-9]*|"") continue ;; esac
+    [ "$m" -gt "$n" ] && n="$m"
+  done
+  printf 'feat-%s' "$((n+1))"
+}
+
+# seal | check | prune-obsoleted-tasks <feature-id>
+# Plan integrity. See pave-plan.py.
+cmd_plan() {
+  local op="$1" id="${2:-}"
+  [ -n "$id" ] || die "usage: pave.sh $op <feature-id>"
+  have_python || die "python3 is required for '$op'"
+  local hub; hub="$(find_hub)"
+  python3 "$SCRIPTS/pave-plan.py" "$3" "$hub/features/$id"
 }
 
 # agent <name>
@@ -153,7 +176,7 @@ agent_default() {
     explorer)  echo "haiku low" ;;
     reviewer)  echo "sonnet low" ;;
     retriever) echo "sonnet low" ;;
-    designer)  echo "opus high" ;;
+    planner)   echo "opus high" ;;
     *) return 1 ;;
   esac
 }
@@ -203,8 +226,16 @@ find_config() {
 case "${1:-}" in
   add) shift; cmd_add "$@" ;;
   stale) shift; cmd_stale "$@" ;;
-  feature) shift; cmd_feature "$@" ;;
+  feature)
+    case "${2:-}" in
+      propose) shift 2; cmd_feature_propose "$@" ;;
+      create)  shift 2; cmd_feature_create "$@" ;;
+      *) die "usage: pave.sh feature <propose|create> ..." ;;
+    esac ;;
+  seal)  cmd_plan seal "${2:-}" seal ;;
+  check) cmd_plan check "${2:-}" check ;;
+  prune-obsoleted-tasks) cmd_plan prune-obsoleted-tasks "${2:-}" prune ;;
   agent) shift; cmd_agent "$@" ;;
-  ""|-h|--help) printf 'usage: pave.sh add <folder>...\n       pave.sh stale [service]\n       pave.sh feature <ticket-id|description...>\n       pave.sh agent <name>\n' ;;
+  ""|-h|--help) sed -n '4,13p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

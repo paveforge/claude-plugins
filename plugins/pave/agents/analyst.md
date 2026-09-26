@@ -38,7 +38,7 @@ contradiction between a rule and the code is a line in your summary.
 This is the part that is easy to get wrong.
 
 Your output is not documentation for a human browsing at leisure. It is an
-index entry for a design phase that must decide, from your frontmatter alone,
+index entry for a planning phase that must decide, from your frontmatter alone,
 whether to open your files at all. A beautiful `domain.md` with vague
 `capabilities:` has failed — nobody will ever open it.
 
@@ -78,7 +78,7 @@ decide staleness later: if these paths do not change, your work stays valid.
 List the code you read, not the whole repo.
 
 **`uncertain`** is where you put what you could not determine. This is data,
-not an admission — design verifies these points against code instead of
+not an admission — planning verifies these points against code instead of
 trusting them. An analysis with no uncertainty on a large unfamiliar service
 is usually one that guessed.
 
@@ -152,7 +152,7 @@ the hub `CLAUDE.md`, not here.
 
 Describe what the code **does**, not what it should do. You are not reviewing
 it. A workaround, a dead path or a surprising rule is worth recording plainly;
-design needs the truth about the system as it is.
+planning needs the truth about the system as it is.
 
 ## Finish
 

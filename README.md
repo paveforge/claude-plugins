@@ -11,8 +11,8 @@ Claude Code plugins for paveforge.
 
 # Pave
 
-**Design a feature once across every service it touches, freeze the contracts,
-then build each service in parallel.**
+**Specify a feature once, plan it across every service it touches, freeze the
+contracts, then build each service in parallel.**
 
 When a feature spans several services, the usual approach is to go service by
 service, designing each in isolation. The cross-service picture — which
@@ -20,7 +20,7 @@ services are affected, what the interfaces between them are, what order things
 ship in — never exists anywhere except in someone's head.
 
 Pave inverts that. A **hub** folder sits beside your service repos and holds
-the planning. A feature is designed once, across all of it, with the contracts
+the planning. A feature is specified and planned once, across all of it, with the contracts
 between services defined and generated before any implementation starts.
 Freezing the contracts is what makes the next step safe: the services stop
 depending on each other's in-flight code, so they can be built at the same time
@@ -50,9 +50,10 @@ claude
 /pave:add ../be-order-service
 /pave:add ../be-pricing-service
 /pave:analyse                          # work out what they are, and what they do
-/pave:design build checkout            # → two approval gates
-/pave:build build-checkout             # fan out, one agent per service
-/pave:review build-checkout            # did the agents follow the plan?
+/pave:spec build checkout              # pick an id, then agree what it must do
+/pave:plan                             # → one approval gate
+/pave:build                            # fan out, one agent per service
+/pave:review                           # did the agents follow the plan?
 ```
 
 Then commit `config.yaml`, `CLAUDE.md`, `conventions/` and `.pave-hub` so your
@@ -68,7 +69,8 @@ and a teammate generates their own with `/pave:init`.
 | `/pave:init` | Once, to create the hub |
 | `/pave:add <folder>` | Whenever a service joins the platform |
 | `/pave:analyse` | After adding services, then as they drift |
-| `/pave:design` | Every new feature |
+| `/pave:spec` | Every feature — sets the session's feature, then what it must do |
+| `/pave:plan` | Once the spec has no open questions |
 | `/pave:build` | Once the plan is approved |
 | `/pave:review` | On demand |
 | `/pave:help` | Any time you have a question about using Pave |
@@ -135,7 +137,7 @@ matters.
 integrations and data ownership, and writes an indexed knowledge base.
 
 **Why the second pass exists.** Discovery records how to *build* a repo. It
-says nothing about what a service *means*. Without that, design writes
+says nothing about what a service *means*. Without that, planning writes
 confident, concrete tasks that contradict code which already exists — a
 `Reservation` entity in a service that has had `StockHold` for two years.
 Concrete and wrong is worse than vague, because an agent will faithfully build
@@ -162,69 +164,121 @@ orphan       old-svc     knowledge folder, no such service in workspace.yaml
 current      svc-a       unchanged since 0818f6e
 ```
 
-**You rarely run it by hand after the first time.** Design spawns analysts
+**You rarely run it by hand after the first time.** `/pave:plan` spawns analysts
 itself for any service whose knowledge is missing or stale.
 
 ---
 
-## `/pave:design` — plan the feature
+## `/pave:spec` — agree what the feature must do
 
-The phase everything else depends on. It runs on the model `config.yaml`
-names for the designer, spawning a `designer` agent when your session differs.
+```
+/pave:spec DGF-8888 build checkout      →  features/DGF-8888/
+/pave:spec let's build checkout page    →  asks: feat-3 | build-checkout-page | other
+/pave:spec DGF-8888                     →  resume an existing feature
+```
+
+**One feature per session, and this is the command that sets it.**
+`/pave:plan`, `/pave:build` and `/pave:review` take no feature argument —
+they act on the feature `/pave:spec` last set in the conversation. Picking a
+feature back up in a fresh session is `/pave:spec <id>`: it loads the spec,
+summarises it, and asks nothing unless something needs clarifying.
+
+A leading ticket reference becomes the id. For a description, it proposes the
+next `feat-N` and a short slug and lets you choose; nothing is created until
+you do. The description becomes the feature's **title**.
+
+**What it does.** It is an assistant for *your* job — deciding what the
+feature is — not an agent producing something. It works through the why, the
+behaviour, the acceptance criteria (each with a permanent id like `AC-3`), the
+guardrails, what's out of scope, and what's still open. It asks when something
+is unclear rather than filling the gap, and points out what is weak: an
+untestable criterion, a "fast" with no number, a behaviour with no failure case.
+
+**It writes only when you say yes.** Whenever the conversation changes scope,
+a criterion or a guardrail, it stops and proposes the exact edit to `spec.md`.
+Every approved write bumps the spec's version. If a plan exists, it then asks
+whether to re-plan.
+
+**What it asks you.** Everything about *what*. Nothing about *how*.
+
+---
+
+## `/pave:plan` — plan it across services
+
+Always runs the `planner` agent, on the model `config.yaml` names for it.
+
+**Is a plan needed?** It first compares the spec's hash with the one recorded
+in the approved plan. Same → the plan is current, and it says so. Different →
+it re-plans, starting from what changed. It refuses while the spec still has
+open questions.
 
 **What it does, in order:**
 
-1. **Blast radius** — which services does this touch? Usually more than the
-   person asking expects.
-2. **Spec** — what and why, plus acceptance criteria for the feature as a whole
-3. **Architecture** — the cross-service approach, the flow, failure behaviour,
-   state ownership, and the reasoning behind each decision
-4. **Contracts** — the interfaces between services
+1. **Services** — which services does this touch? Usually more than the
+   person asking expects. You confirm the candidates.
+2. **plan.md** — the approach, a **service map** (every service as `modify`,
+   `read-only` or `untouched`), each decision with the criteria it serves and
+   the alternative it rejected, the flow, failure behaviour, state ownership,
+   and every task in one line: service, kind, priority, size, the criteria it
+   satisfies.
+3. **Contracts** — the interfaces between services.
 
-   **→ Gate 1.** You approve the spec, architecture and contracts together. An
-   interface between two services is a design decision, so it is judged
-   alongside the flow it serves — and the objection lands before any task
-   derived from it exists. **Contracts freeze here.**
+   **→ The gate.** You approve `plan.md` and the contracts together.
+   **Contracts freeze here.**
 
-5. **Task documents** — one per unit of work, each naming a single service
-6. **Readiness check** — fourteen checks; a failure blocks the fan-out
+4. **Task documents** — one per task, each naming a single service, then a
+   readiness check. The plan is then **sealed**: the spec's hash and each
+   task's hash are recorded in `plan.md`.
 
-   **→ Gate 2.** One question: are these briefs executable without further
-   decisions?
+**It never decides what the spec leaves open.** A question about *how* — an
+event or a call, which service owns the state — it settles or asks you. A
+question whose answer changes what the feature does goes back to you as a spec
+decision: settle it with `/pave:spec`, then re-plan.
 
-**Naming a feature.** The id names the folder and is how every later step
-refers to the feature:
+**Always tasks, even for one change.** A task is the unit that is built,
+rebuilt, reviewed and reverted on its own. Task numbers only ever increase.
 
-```
-/pave:design DGF-8888 build checkout     →  features/DGF-8888/
-/pave:design build checkout              →  features/feat-1/
-```
+**Re-planning.** Tasks describe the end state, never a change from a previous
+version. When the spec changes:
 
-A leading ticket reference becomes the id; otherwise `scripts/pave.sh`
-allocates the next `feat-N`.
-Ids are deliberately short rather than descriptive — `/pave:build DGF-8888`
-has to work from a fresh session with nothing to look up, and a kebab-cased
-sentence is not something anyone types twice. The description becomes the
-feature's **title**, in `spec.md` and the portfolio table, so the folder list
-stays readable.
+| The task is… | …and the spec | The plan |
+|---|---|---|
+| not built | still needs it, differently | rewrites it in place |
+| not built | no longer needs it | drops it |
+| built | still needs it, differently | rewrites it and **reopens** it — the builder reconciles the existing code to it |
+| built | no longer needs it | marks it **obsolete** and adds a **revert** task, high priority |
 
-If the id already exists, that's a re-design of that feature — announced
-before it starts, and still gated.
+**Token cost.** Within a session the planner is resumed rather than
+respawned, so a re-plan costs only the difference. Across sessions it
+recovers from small files: `plan.md` as the index from criteria to decisions
+to tasks, a snapshot of the spec it was approved against, and the list of
+knowledge files it relied on. A re-plan diffs the spec, follows the index to
+the affected tasks, and reads knowledge only for their services.
 
-**What it asks you.** To confirm the blast radius, then both gates.
-
-**Re-designing.** `/pave:design <feature-id>` on an existing feature re-derives the
-whole thing rather than patching the gap. You cannot know that only one case
-was missed, and a patched design produces tasks that are each individually
-reasonable and collectively inconsistent — a service handling a state its
-caller never sends. That is the hardest kind of defect to see.
+**What it asks you.** To confirm the services, any *how* questions, and the
+one gate.
 
 ---
 
 ## `/pave:build` — execute the plan
 
+```
+/pave:build                  # every outstanding task
+/pave:build 03,07            # only these (spaces also work)
+```
+
+**It refuses to build a stale plan.** Before anything else it checks the
+spec's hash and every task's hash against the sealed plan. A spec changed
+since, or a task edited by hand, stops it: run `/pave:plan`.
+
 **What it does.** Groups the tasks by service and fans out one agent per
-service.
+service. Inside each service's queue, revert tasks (`high`) run before normal
+ones (`low`), then by number; `depends_on` always comes first. A reopened task
+is rebuilt by reconciling the existing code to its document.
+
+A `done` task is frozen and never rebuilt, even when named — a task changes
+only by re-planning. If its recorded commit is no longer on the branch, build
+asks before resetting it.
 
 **Pave writes in the hub; builders write in the repos.** The skill itself never
 touches a service repository — it reads the hub, spawns agents, and writes
@@ -246,7 +300,7 @@ you can skim it; only what genuinely cannot be resolved without you reaches
 **Escalation.** An agent that finds the contract wrong stops rather than fixing
 it locally — other services are built against that contract, and a local fix
 turns one error into several divergent guesses. That becomes a decision for
-you, usually a re-design.
+you, usually a re-plan.
 
 ---
 
@@ -257,17 +311,24 @@ document and one repo, and finds every ticked item in the code — not in the
 agent's report, in the code.
 
 **What it does not do.** It does not verify the feature works, or ask whether
-the design was right. If the plan said A, B and C and the agents did A, B and
+the plan was right. If the plan said A, B and C and the agents did A, B and
 C, it passes — even if the feature needs D. A missing case is a planning
 problem, so it goes in the report as a comment and you decide.
 
 That restraint is the point: it makes the phase cheap, and it keeps your
-approval at gate 2 meaningful.
+approval at the plan gate meaningful. Like build, it refuses to run against a
+plan that no longer matches the spec.
 
 **When something deviates**, review unchecks the specific items that were not
 real, marks that task `failed`, and writes a per-task report. `/pave:build`
 then re-runs only the failed tasks, and each agent reads only its own section —
 so a fix touches three items rather than redoing twenty.
+
+**Cleaning up.** After a successful review, if any obsolete tasks have been
+reverted, it asks whether to remove them. On yes, `pave.sh
+prune-obsoleted-tasks` deletes each obsolete task together with its revert
+task and drops their hashes from `plan.md`, leaving the spec hash and every
+other task untouched.
 
 ---
 
@@ -278,7 +339,7 @@ hub.
 
 ```
 /pave:help
-/pave:help design
+/pave:help plan
 /pave:help how does /pave:review decide a task failed?
 ```
 
@@ -321,13 +382,14 @@ knowledge base doesn't cover what you asked, it says so and points at
 Also not part of the sequence. Run it any time.
 
 ```
-/pave:visualize build-checkout             # a feature's blast radius
+/pave:visualize                            # the session feature's blast radius
+/pave:visualize build-checkout             # another feature's
 /pave:visualize how does pricing talk to checkout?   # freeform
 ```
 
-**What it does.** Given a feature id, draws that feature's blast radius —
-services as nodes, the Flow steps and Contracts from its `architecture.md` as
-edges. Given anything else, treats it as a description and pulls what's
+**What it does.** Given a feature id, or none when the session has one,
+draws that feature's blast radius — services from its `plan.md` service map as
+nodes, its Flow steps and Contracts as edges. Given anything else, treats it as a description and pulls what's
 relevant from the knowledge index.
 
 It draws only from files other phases already wrote — never from scanning a
@@ -360,11 +422,11 @@ platform/
     ├── README.md            portfolio: one row per feature
     └── build-checkout/
         ├── README.md        one row per task
-        ├── spec.md
-        ├── architecture.md
-        ├── contracts/       frozen at gate 1
+        ├── spec.md          what it must do — yours
+        ├── plan.md          how, plus the spec and task hashes
+        ├── contracts/       frozen at the plan gate
         ├── tasks/           one self-contained document per unit of work
-        └── artifacts/       build/review reports, and diagram.html
+        └── artifacts/       spec snapshot, planner context, reports, diagram.html
 ```
 
 `config.yaml` holds nothing machine-specific, so it commits and the team shares
@@ -378,19 +440,21 @@ what lets everyone share one policy with their own local layout.
 
 ```mermaid
 flowchart LR
-    planning(["planning"]) -->|both gates pass| ready(["ready"])
+    specifying(["specifying"]) -->|/pave:plan| planning(["planning"])
+    planning -->|gate passes, plan sealed| ready(["ready"])
     ready -->|/pave:build| building(["building"])
     building -->|every task built| done(["done"])
     building -->|agent escalated| blocked(["blocked"])
-    blocked -->|/pave:design| building
+    blocked -->|/pave:plan| building
     done -->|/pave:review finds gaps| failed(["failed"])
     failed -->|/pave:build| building
+    done -.->|spec changed| specifying
 
     classDef step fill:#54aeff26,stroke:#54aeff,stroke-width:1px
     classDef good fill:#2da44e26,stroke:#2da44e,stroke-width:1px
     classDef warn fill:#bf871926,stroke:#bf8719,stroke-width:1px
     classDef bad  fill:#cf222e26,stroke:#cf222e,stroke-width:1px
-    class planning,ready,building step
+    class specifying,planning,ready,building step
     class done good
     class blocked warn
     class failed bad
@@ -398,12 +462,17 @@ flowchart LR
 
 | Status | Means | What to do |
 |---|---|---|
-| `planning` | Design in progress | — |
-| `ready` | Both gates passed, not built | `/pave:build <feature-id>` |
-| `building` | Being built, or a run left work | `/pave:build <feature-id>` resumes |
-| `done` | Every task built | `/pave:review <feature-id>` if you want it checked |
-| `failed` | Review found claims that were not real | `/pave:build <feature-id>` re-runs those tasks |
-| `blocked` | An agent escalated | Read the build report; usually `/pave:design <feature-id>` |
+| `specifying` | The spec changed and has not been planned since | `/pave:plan` once it has no open questions |
+| `planning` | Planning in progress | — |
+| `ready` | Plan approved and sealed, not built | `/pave:build` |
+| `building` | Being built, or a run left work | `/pave:build` resumes |
+| `done` | Every task built | `/pave:review` if you want it checked |
+| `failed` | Review found claims that were not real | `/pave:build` re-runs those tasks |
+| `blocked` | An agent escalated | Read the build report; usually `/pave:plan`, or `/pave:spec` first |
+
+Tasks have their own status: `pending`, `in-progress`, `done`, `reopened`
+(re-planned after it was built), `failed`, `blocked`, and `obsolete` (no longer
+wanted; a revert task removes its work).
 
 ---
 
@@ -419,7 +488,7 @@ agents:
   builder:   { model: sonnet, effort: medium }   # executes one task document
   explorer:  { model: haiku,  effort: low    }   # mechanical repo scanning
   reviewer:  { model: sonnet, effort: low    }   # one per task: plan vs code
-  designer:  { model: opus,   effort: high   }   # planning decides the feature
+  planner:   { model: opus,   effort: high   }   # planning decides the feature
   retriever: { model: sonnet, effort: low    }   # answers hub questions
 
 execution:
@@ -434,10 +503,10 @@ contracts:
   land_contracts: true
 ```
 
-Every model is enforced when its agent is spawned, design included. Skills
-look each one up with `pave.sh agent <name>` rather than parsing YAML. If your
-session model differs from `designer`'s, `/pave:design` spawns a `designer`
-agent on the configured model, once, and resumes it for the second stage.
+Every model is enforced when its agent is spawned, planning included. Skills
+look each one up with `pave.sh agent <name>` rather than parsing YAML.
+`/pave:plan` always spawns the `planner` on its configured model, and resumes
+the same agent for later stages and re-plans within a session.
 
 Agent definitions carry no `model` or `effort`. The orchestrating skill always
 passes both when it spawns, so `config.yaml` is the only place to change them.
@@ -475,7 +544,7 @@ will eventually collide).
 The hub's `CLAUDE.md` is yours. `/pave:init` creates it, and **every agent Pave
 spawns is given it by path as required reading** — the builder writing code in
 a service repo, the reviewer checking it, the analyst and explorer reading a
-repo, the designer planning the feature. Write a rule there and it reaches the
+repo, the planner planning the feature. Write a rule there and it reaches the
 agent doing the work, not only the session that spawned it.
 
 Name it `AGENTS.md` if you prefer. Pave reads either, and `AGENTS.md` wins
@@ -504,18 +573,33 @@ and the agent says so in its summary rather than quietly picking.
 
 ## Why it holds together
 
-**The design phase is the expensive one and gets the strong model.** Build
-agents get a cheaper one — not because they do the same job with less care, but
+**The user owns "what"; the plan owns "how".** The spec is written only with
+your approval, and the planner sends back any question whose answer would
+change what the feature does. So every plan decision traces to something you
+wrote down.
+
+**Nothing is built against a stale plan.** The plan records the spec's hash
+and every task's hash at its gate; build and review check both before doing
+anything. A spec change or a hand-edited task stops them until the feature is
+re-planned.
+
+**Planning is the expensive phase and gets the strong model.** Build agents
+get a cheaper one — not because they do the same job with less care, but
 because their job is genuinely smaller: contracts are frozen, tasks are
 concrete, out-of-scope is explicit, and anything ambiguous escalates instead of
 being improvised.
 
-**Every task traces to the design.** Tasks cite the architecture sections and
-contracts they come from, and design checks coverage in both directions: no
-task without a decision behind it, and no decision without a task. The second
-is the one that gets missed and the more expensive — a decision with no task is
-never built, and review will pass the feature, because review asks whether the
-plan was followed and the plan never asked.
+**Every task traces in both directions.** Tasks cite the plan sections and
+contracts they come from and the acceptance criteria they satisfy, and the
+planner checks coverage every way: no task without a decision behind it, no
+decision without a task, no criterion without a task that satisfies it. The
+missing ones are the expensive ones — a criterion with no task is never built,
+and review will pass the feature, because review asks whether the plan was
+followed and the plan never asked.
+
+**Tasks describe the end state.** A re-planned task is rewritten, not
+patched with a diff, so any builder — reconciling existing code or starting
+from a reset — reaches the same result from the document alone.
 
 **Unhappy paths are specified, not left open.** A task item that changes
 behaviour states what happens on replay, on failure, and at boundaries. This is
@@ -526,4 +610,4 @@ the plan never ruled out.
 unfinished, not done — in build, in review, and in analyse alike.
 
 If build agents routinely need to think their way out of gaps, that is a defect
-in the design phase, not a reason to raise the build model.
+in the plan, not a reason to raise the build model.
