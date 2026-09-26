@@ -71,6 +71,11 @@ Working on <id> — <title>
 feature. Say so explicitly: `Switched: <old> → <new>`. Nothing else switches
 it.
 
+**Sessions are independent.** Another session can work on a different
+feature in the same hub at the same time. That is why the feature lives in
+the conversation and is passed to every feature-scoped script call as
+`SESSION_FEATURE_ID=<id> pave.sh …` - never stored in a shared file.
+
 ## Before starting
 
 Locate the hub by walking up for `.pave-hub`. If there is none, tell the user
@@ -100,7 +105,7 @@ If `features/<id>/plan.md` exists, say which spec version it was planned
 against and whether it is still current:
 
 ```
-"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check <id>
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check
 ```
 
 ## 3. Discuss

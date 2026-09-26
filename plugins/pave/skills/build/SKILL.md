@@ -23,10 +23,17 @@ No feature in this session. Run /pave:spec <feature-id> first.
 
 Say `Working on <id> — <title>` before continuing.
 
+**Every feature-scoped `pave.sh` call names the session's feature in its
+environment**, never as an argument: `SESSION_FEATURE_ID=<id> pave.sh …`.
+The script refuses without it, and prints `feature: <id>` first - check that
+line matches the feature you announced before trusting anything after it.
+Another session may be working on a different feature in the same hub at
+the same moment; the variable is what keeps each call on this session's.
+
 ## 1. The plan must be the one approved for this spec
 
 ```
-"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check <id>
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check
 ```
 
 **Anything but `ok` is a refusal.** Print what it reported and stop:

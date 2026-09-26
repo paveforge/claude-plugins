@@ -5,9 +5,13 @@
 #   pave.sh stale [service]     report what needs discovery or analysis
 #   pave.sh feature propose <args...>   classify a feature argument, create nothing
 #   pave.sh feature create <id> [title] create a confirmed feature's folder
-#   pave.sh seal <feature-id>           record spec and task hashes at the plan gate
-#   pave.sh check <feature-id>          is the plan still the one approved for this spec?
-#   pave.sh prune-obsoleted-tasks <feature-id>  remove reverted obsolete tasks
+#   pave.sh seal                        record spec and task hashes at the plan gate
+#   pave.sh check                       is the plan still the one approved for this spec?
+#   pave.sh prune-obsoleted-tasks       remove reverted obsolete tasks
+#
+# seal, check and prune-obsoleted-tasks act on the session's feature, given
+# only as SESSION_FEATURE_ID=<id> - never as an argument:
+#   SESSION_FEATURE_ID=DGF-8888 pave.sh check
 #   pave.sh agent <name>        model and effort to spawn an agent with
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
@@ -155,14 +159,21 @@ next_feat() {
   printf 'feat-%s' "$((n+1))"
 }
 
-# seal | check | prune-obsoleted-tasks <feature-id>
-# Plan integrity. See pave-plan.py.
+# seal | check | prune-obsoleted-tasks
+# Plan integrity for the session's feature. See pave-plan.py. The feature is
+# taken only from SESSION_FEATURE_ID, set by the caller from the feature
+# /pave:spec chose for its session - each session passes its own, so parallel
+# sessions on different features never share state.
 cmd_plan() {
-  local op="$1" id="${2:-}"
-  [ -n "$id" ] || die "usage: pave.sh $op <feature-id>"
+  local op="$1" py="$2"; shift 2
+  [ $# -eq 0 ] || die "$op takes no arguments. Pass the feature as SESSION_FEATURE_ID=<id> pave.sh $op"
+  local id="${SESSION_FEATURE_ID:-}"
+  [ -n "$id" ] || die "SESSION_FEATURE_ID is not set. Run /pave:spec <feature-id> to choose this session's feature."
   have_python || die "python3 is required for '$op'"
   local hub; hub="$(find_hub)"
-  python3 "$SCRIPTS/pave-plan.py" "$3" "$hub/features/$id"
+  [ -d "$hub/features/$id" ] || die "SESSION_FEATURE_ID=$id: no such feature in $hub/features"
+  printf 'feature: %s\n' "$id"
+  python3 "$SCRIPTS/pave-plan.py" "$py" "$hub/features/$id"
 }
 
 # agent <name>
@@ -232,10 +243,10 @@ case "${1:-}" in
       create)  shift 2; cmd_feature_create "$@" ;;
       *) die "usage: pave.sh feature <propose|create> ..." ;;
     esac ;;
-  seal)  cmd_plan seal "${2:-}" seal ;;
-  check) cmd_plan check "${2:-}" check ;;
-  prune-obsoleted-tasks) cmd_plan prune-obsoleted-tasks "${2:-}" prune ;;
+  seal)  shift; cmd_plan seal seal "$@" ;;
+  check) shift; cmd_plan check check "$@" ;;
+  prune-obsoleted-tasks) shift; cmd_plan prune-obsoleted-tasks prune "$@" ;;
   agent) shift; cmd_agent "$@" ;;
-  ""|-h|--help) sed -n '4,13p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
+  ""|-h|--help) sed -n '4,18p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

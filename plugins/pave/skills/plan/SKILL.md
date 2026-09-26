@@ -30,6 +30,13 @@ No feature in this session. Run /pave:spec <feature-id> first.
 Never guess the feature, and never take one from a file or another session.
 Say `Working on <id> — <title>` before continuing.
 
+**Every feature-scoped `pave.sh` call names the session's feature in its
+environment**, never as an argument: `SESSION_FEATURE_ID=<id> pave.sh …`.
+The script refuses without it, and prints `feature: <id>` first - check that
+line matches the feature you announced before trusting anything after it.
+Another session may be working on a different feature in the same hub at
+the same moment; the variable is what keeps each call on this session's.
+
 ## Before starting
 
 Locate the hub by walking up for `.pave-hub`. Read the hub's config file
@@ -43,7 +50,7 @@ reads them.
 Read `features/<id>/spec.md` **from disk**, never from memory. Then:
 
 ```
-"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check <id>
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check
 ```
 
 | Result | Meaning | Mode |
@@ -220,7 +227,7 @@ and then the change goes through the gate again.
 Once every task document passes readiness:
 
 ```
-"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh seal <id>
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh seal
 ```
 
 It records the spec's hash and every task document's hash in `plan.md`,
