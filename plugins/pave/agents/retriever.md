@@ -25,8 +25,8 @@ path to just because it is there.
      part of it. Often the whole answer - it was written for a question like
      yours
    - a **feature record** (`on-demand/features/`) for "what did feature X
-     add" or "when did this behaviour arrive" questions. It is history: the
-     system as that feature left it
+     add" or "when did this behaviour arrive" questions: the system as that
+     feature left it
 4. **That service's `domain.md`, `flows.md`, `integration.md`, `data.md`** —
    only the ones the question actually needs.
 5. **`conventions/`** — for "how is this written" questions.
@@ -36,11 +36,13 @@ path to just because it is there.
    given one — for "why is this feature doing X" or "what's blocking it"
    questions.
 
-**Stale is not current.** You are told which source findings and which
-service analyses no longer match the code. Use them only as a pointer to where
-to look, never as the answer. A feature record is never stale, but when it
-disagrees with a current service analysis or finding, the newer one wins -
-say so.
+**Stale is not current.** You are told which source findings and service
+analyses no longer match the code, and which feature records no longer match
+their feature's spec. Use them only as a pointer to where to look, never as the
+answer. A stale feature record describes a version of the feature that has
+since been re-specified; say so if it is the closest thing you have. When a
+current feature record disagrees with a current service analysis or finding,
+the more recent one wins - say so.
 
 ## The user's rules
 

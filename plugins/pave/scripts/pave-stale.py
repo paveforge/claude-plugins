@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Report what each registered service needs: discovery, analysis, or nothing,
-and which on-demand source findings no longer match the code they read.
+which on-demand source findings no longer match the code they read, and which
+feature records no longer match their feature's spec.
 
 Reports. Decides nothing - /pave:analyse and /pave:query read this and choose.
 
@@ -10,13 +11,14 @@ CI config invalidates nothing.
 
 Usage: pave-stale.py <hub> [service]
 """
+import hashlib
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 STATES = ["unreachable", "undiscovered", "missing", "stale", "orphan", "current",
-          "finding-stale", "finding-current"]
+          "finding-stale", "finding-current", "record-stale", "record-current"]
 FINDING_SERVICE = re.compile(
     r"^\s*-\s*\{\s*service:\s*([^,\s]+)\s*,\s*commit:\s*([0-9a-fA-F]+)\s*,\s*paths:\s*\[(.*?)\]\s*\}", re.M)
 
@@ -71,7 +73,7 @@ def changed_since(repo, commit, paths):
 
 def classify_finding(f, services):
     """A source finding is current only while every service it read is unchanged
-    under the paths it read. Feature records are history and never go stale."""
+    under the paths it read."""
     text = f.read_text()
     fm = text.split("---", 2)[1] if text.startswith("---") else ""
     reads = FINDING_SERVICE.findall(fm)
@@ -89,6 +91,23 @@ def classify_finding(f, services):
         if changed:
             return "finding-stale", f"{svc}: {len(changed)} file(s) changed under {', '.join(paths)}", read
     return "finding-current", f"unchanged in {', '.join(read)}", read
+
+
+def classify_record(f, hub):
+    """A feature record is current only while its feature's spec.md is the one
+    it was recorded against - the same sha256 plan.md's spec_hash uses."""
+    text = f.read_text()
+    fm = text.split("---", 2)[1] if text.startswith("---") else ""
+    feature = re.search(r"^feature:\s*([^#\s]+)", fm, re.M)
+    recorded = re.search(r"^spec_hash:\s*([0-9a-f]{64})", fm, re.M)
+    if not feature or not recorded:
+        return "record-stale", "no feature or spec_hash recorded - cannot prove it is current"
+    spec = hub / "features" / feature.group(1) / "spec.md"
+    if not spec.is_file():
+        return "record-stale", f"features/{feature.group(1)}/spec.md no longer exists"
+    if hashlib.sha256(spec.read_text().encode()).hexdigest() != recorded.group(1):
+        return "record-stale", f"features/{feature.group(1)}/spec.md changed since it was recorded"
+    return "record-current", f"matches features/{feature.group(1)}/spec.md"
 
 
 def classify(name, info, kdir):
@@ -155,6 +174,12 @@ def main():
             if only and only not in read:
                 continue
             add(state, f"on-demand/source/{f.name}", note)
+
+    rdir = hub / "artifacts" / "knowledge" / "on-demand" / "features"
+    if rdir.is_dir() and not only:
+        for f in sorted(rdir.glob("*.md")):
+            state, note = classify_record(f, hub)
+            add(state, f"on-demand/features/{f.name}", note)
 
     if not rows:
         print(f"no service named {only}" if only

@@ -50,9 +50,10 @@ code has changed since; do not rely on it until it is asked again.
 | <question> | <services> | current / stale | `on-demand/source/<slug>.md` |
 
 ### Features
-What each reviewed feature added, recorded by `/pave:learn`. History: the
-system as that feature left it.
+What each reviewed feature added, recorded by `/pave:learn`. A `stale` record's
+spec has changed since; it describes a version of the feature that is no
+longer the one specified.
 
-| Feature | Title | Capabilities | Services | Read |
-|---|---|---|---|---|
-| `<feature-id>` | <title> | <capabilities> | <services> | `on-demand/features/<feature-id>.md` |
+| Feature | Title | Capabilities | Services | State | Read |
+|---|---|---|---|---|---|
+| `<feature-id>` | <title> | <capabilities> | <services> | current / stale | `on-demand/features/<feature-id>.md` |

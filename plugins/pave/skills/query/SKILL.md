@@ -48,9 +48,9 @@ Note which exist:
   the hub has exactly one, that feature's `spec.md`, `plan.md` and `README.md`
 
 Then run `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh stale` and keep its
-`finding-stale` and `stale` lines. The retriever must know which findings and
-which service analyses no longer match the code; it cannot run the check
-itself.
+`stale`, `finding-stale` and `record-stale` lines. The retriever must know
+which service analyses and findings no longer match the code, and which
+feature records no longer match their spec; it cannot run the check itself.
 
 ### Spawn the retriever
 
@@ -101,7 +101,7 @@ knowledge base is worse than none: the planner will trust it.
 
 After a finding is written, rebuild **only** the On-demand section of
 `artifacts/knowledge/README.md`, from the frontmatter of every file under
-`on-demand/source/` and `on-demand/features/`, with each finding's state from
+`on-demand/source/` and `on-demand/features/`, with each file's state from
 `pave.sh stale`. Leave every other section as it is - those are
 `/pave:analyse`'s. If there is no index yet, write one from
 `templates/knowledge-README.md` with only the On-demand section filled.

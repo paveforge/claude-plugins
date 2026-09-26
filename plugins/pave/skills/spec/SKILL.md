@@ -185,7 +185,8 @@ spec change means the approved plan, if there is one, no longer describes it.
 ## 6. After a change: offer to re-plan
 
 If a plan exists, it is now stale - build and review will refuse until it is
-re-planned. Say so and ask:
+re-planned. So is the feature's record in the knowledge base, if `/pave:learn`
+wrote one: it describes the previous version. Say so and ask:
 
 ```
 Spec updated to v4 (AC-3 changed). The plan was made for v3.

@@ -70,6 +70,8 @@ current      svc-a       unchanged since 0818f6e
 | `unreachable` | Report it. Do not analyse, do not guess |
 | `finding-stale` | Report it, and nothing else. The next `/pave:query` that needs it reads the code again |
 | `finding-current` | Nothing |
+| `record-stale` | Report it, and nothing else. Its feature's spec changed; `/pave:learn` records it again once the feature is rebuilt and reviewed |
+| `record-current` | Nothing |
 
 Given a service name, the script checks only that one. Given none, it checks
 everything.
@@ -215,7 +217,7 @@ those services did not exist.
 Build it from `templates/knowledge-README.md`, filled from the frontmatter of
 every service README - and its **On-demand** section from the frontmatter of
 every file under `on-demand/source/` and `on-demand/features/`, with each
-finding's state from `pave.sh stale`. Read only frontmatter; never edit those
+file's state from `pave.sh stale`. Read only frontmatter; never edit those
 files.
 
 The **Events** table is the dependency graph. There is no graph database here,

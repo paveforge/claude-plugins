@@ -410,7 +410,12 @@ added, per service with the commit it landed at, its contracts, the decisions a
 later feature will bump into, and links back to `features/<feature-id>/`.
 
 Its capabilities join the knowledge index, so the next spec in the same area is
-planned against what this one added. If the feature isn't finished, it refuses
+planned against what this one added.
+
+The record stores the spec hash it was made against. Once the feature's
+`spec.md` changes, `pave.sh stale` marks the record stale and it stops being
+used as an answer or planned against, until the feature is re-planned,
+rebuilt, reviewed and learned again. If the feature isn't finished, it refuses
 and lists what's missing and which command fixes it.
 
 **What it asks you.** Nothing.

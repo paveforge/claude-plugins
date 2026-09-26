@@ -129,7 +129,9 @@ never redoes discovery:
 - Any **on-demand knowledge** the index matched: the record of an earlier
   feature in the same area (what it added, and the decisions it rests on), and
   any source finding that is `current` and answers a question this plan
-  depends on. Never a stale finding
+  depends on. Never a stale finding or a stale record - and never this
+  feature's own record: on a re-plan it describes the version being replaced,
+  and `plan.md` is the source
 - Anything `check` reported
 - Absolute paths to the hub's `AGENTS.md`, if it exists
 

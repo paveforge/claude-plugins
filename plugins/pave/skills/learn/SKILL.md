@@ -63,6 +63,12 @@ Write `artifacts/knowledge/on-demand/features/<id>.md` from
 and rebuilt since it was last recorded - replace it: the record describes the
 feature as it now stands.
 
+Set `spec_hash` to the `spec_hash` in `plan.md`. The check in §1 has just
+proved it is the hash of the current `spec.md`, and it is what `pave.sh stale`
+compares against: the moment the spec changes, this record is marked stale
+and stops being used as an answer, until the feature is re-planned, rebuilt,
+reviewed and learned again.
+
 Build it from the feature folder only:
 
 | From | Take |
@@ -84,7 +90,7 @@ a copy of it.
 
 Rebuild **only** the On-demand section of `artifacts/knowledge/README.md`,
 from the frontmatter of every file under `on-demand/source/` and
-`on-demand/features/`, with each source finding's state from
+`on-demand/features/`, with each file's state from
 `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh stale`. Leave every other section as
 it is - those are `/pave:analyse`'s. If there is no index yet, write one from
 `templates/knowledge-README.md` with only the On-demand section filled.
@@ -92,6 +98,6 @@ it is - those are `/pave:analyse`'s. If there is no index yet, write one from
 ## 4. Report
 
 One line: where the record was written, and the capabilities it added to the
-index. Mention that `/pave:analyse` never rewrites or deletes it, and that
-later changes to the same code appear in the service analysis and in newer
-source findings rather than here.
+index. Mention that `/pave:analyse` never rewrites or deletes it, and that it
+goes stale when this feature's spec changes - `/pave:learn` again, after the
+feature is rebuilt and reviewed, brings it back.
