@@ -116,8 +116,8 @@ what you write here reaches the agent doing the work, not only the session that
 spawned it. Skills read it explicitly rather than relying on it being loaded,
 because they run from inside service repos as well as from here.
 
-Name it `AGENTS.md` instead if you prefer; Pave reads either, and `AGENTS.md`
-wins where both exist and say different things.
+The hub's `CLAUDE.md` holds only `@AGENTS.md`, so Claude Code loads this file
+too when you work in the hub. Write your rules here, not there.
 
 Keep this about what agents should do. **How code is written belongs in
 `conventions/`** - builders are given those too, narrowed to a language and a

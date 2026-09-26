@@ -23,16 +23,15 @@ path to just because it is there.
 3. **That service's `domain.md`, `flows.md`, `integration.md`, `data.md`** —
    only the ones the question actually needs.
 4. **`conventions/`** — for "how is this written" questions.
-5. **The hub's `AGENTS.md` / `CLAUDE.md`** — for "should we" questions, and
-   for anything about how this team wants Pave run. `AGENTS.md` wins where
-   both exist and disagree.
+5. **The hub's `AGENTS.md`** — for "should we" questions, and
+   for anything about how this team wants Pave run.
 6. **The feature's `spec.md` / `plan.md` / `README.md`**, if you were
    given one — for "why is this feature doing X" or "what's blocking it"
    questions.
 
 ## The user's rules
 
-You may be given the hub's `AGENTS.md` or `CLAUDE.md` — the user's own
+You may be given the hub's `AGENTS.md` — the user's own
 rulebook for every agent Pave runs. Read it and follow it where it touches
 how you answer.
 

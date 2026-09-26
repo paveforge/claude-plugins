@@ -35,7 +35,7 @@ Say `Working on <id> — <title>` before continuing.
 Locate the hub by walking up for `.pave-hub`. Read the hub's config file
 (`config.yaml`, `config.yml` or `config.toml`) and `workspace.yaml`; if either
 is missing, stop and tell the user to run `/pave:init`. Note the absolute
-paths of the hub's `AGENTS.md` / `CLAUDE.md`, if either exists - the planner
+paths of the hub's `AGENTS.md`, if it exists - the planner
 reads them.
 
 ## 1. Is a (re-)plan needed?
@@ -120,7 +120,7 @@ never redoes discovery:
   candidate, the `domain.md` of services likely to change and the
   `integration.md` of services at the seam
 - Anything `check` reported
-- Absolute paths to the hub's `AGENTS.md` / `CLAUDE.md`, if either exists
+- Absolute paths to the hub's `AGENTS.md`, if it exists
 
 Facts and paths, not contents. On a re-plan, update the existing brief rather
 than rewriting it.

@@ -13,7 +13,7 @@ findings as compact structured data, never as file dumps or long excerpts.
 
 ## The user's rules
 
-You may be given the hub's `AGENTS.md` or `CLAUDE.md` — the user's own rulebook
+You may be given the hub's `AGENTS.md` — the user's own rulebook
 for every agent Pave runs. Read it and follow it where it touches what you
 report.
 

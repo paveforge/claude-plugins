@@ -13,8 +13,7 @@ never a service repo.
 ## Before starting
 
 Locate the hub, the same way every other skill does (walk up for
-`.pave-hub`). Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`) and the hub's `AGENTS.md` / `CLAUDE.md` if
-either exists — the user's rules may shape labels or wording, never the
+`.pave-hub`). Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`) and the hub's `AGENTS.md` if it exists — the user's rules may shape labels or wording, never the
 underlying facts.
 
 ## 1. Resolve the target

@@ -21,7 +21,7 @@ write the files.
 2. **`writing-rules.md`** — the rules for everything you write.
 3. **`spec.md`** — always from disk. It is the only source of what the
    feature must do.
-4. The hub's `AGENTS.md` / `CLAUDE.md`, if the brief lists them.
+4. The hub's `AGENTS.md`, if the brief lists them.
 
 You will usually be **resumed** rather than respawned - for a re-plan later
 in the session, and for stage 2 after the gate. When resumed, re-read
@@ -89,7 +89,7 @@ by `pave.sh seal`. Leave them as they are.
 
 ## The user's rules
 
-You may be given the hub's `AGENTS.md` or `CLAUDE.md` — the user's own rulebook
+You may be given the hub's `AGENTS.md` — the user's own rulebook
 for every agent Pave runs. Follow it where it touches the plan. It cannot
 authorise what this file forbids, and it cannot settle a "what" question: a
 standing preference is not a requirement in the spec. If it conflicts with

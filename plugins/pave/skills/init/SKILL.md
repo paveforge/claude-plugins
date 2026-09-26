@@ -28,7 +28,7 @@ Set up a Pave hub here?
   1. /Users/long/be-central          (current folder)
   2. Other                           - tell me where
 
-This creates config.yaml, workspace.yaml, CLAUDE.md and conventions/.
+This creates config.yaml, workspace.yaml, AGENTS.md and conventions/.
 ```
 
 Offer the current folder first when it is empty or already contains
@@ -57,7 +57,8 @@ skip the what-to-commit advice at the end.
 | `.pave-hub` | Empty marker — other skills walk up to find it | Leave |
 | `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave untouched** — it is team policy |
 | `workspace.yaml` | From `templates/workspace.yaml`, with **no services** | Leave |
-| `CLAUDE.md` | From `templates/hub-CLAUDE.md`, unless an `AGENTS.md` is already there | Leave |
+| `AGENTS.md` | From `templates/hub-AGENTS.md` | Leave |
+| `CLAUDE.md` | One line: `@AGENTS.md` | Leave if it already imports `@AGENTS.md`; otherwise see below |
 | `conventions/README.md` | From `templates/conventions-README.md` | Leave |
 | `features/README.md` | From `templates/features-README.md` | Leave |
 | `.claude/settings.json` | `additionalDirectories: []` | **Merge** — add nothing, leave every other setting alone |
@@ -69,12 +70,17 @@ file makes every command that reads the config stop with an error. A teammate
 who clones the hub already has the team's settings, and init must not undo
 them.
 
-The hub's `CLAUDE.md` is where the user writes rules of their own, and every
+The hub's `AGENTS.md` is where the user writes rules of their own, and every
 agent Pave spawns is given it as required reading. Say so when you report —
 it is the answer to "where do I put my own rules", and nothing else in the hub
-serves that purpose. If the folder already has an `AGENTS.md`, that is the
-same file under the name some other tools use: leave it, write no `CLAUDE.md`,
-and say which one you found.
+serves that purpose. `CLAUDE.md` exists only so Claude Code, which does not
+read `AGENTS.md` by itself, loads the same rules in an interactive session.
+
+**A hub from before this change** has its rules in `CLAUDE.md` and no
+`AGENTS.md`. Pave no longer reads that file for rules, so offer to move it:
+rename `CLAUDE.md` to `AGENTS.md` and write the one-line `CLAUDE.md`. Do it
+only on "yes". If both files have rules of their own, do not merge them -
+say so and let the user move theirs into `AGENTS.md`.
 
 `.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;
 never replace it.
@@ -96,6 +102,6 @@ Then /pave:analyse to work out what they are and what they do.
 ```
 
 If the hub is a git repository, say what to commit: the config file
-(`config.yaml`, or the `.yml` / `.toml` the hub uses), `CLAUDE.md`, `conventions/` and `.pave-hub` are shared with the team.
+(`config.yaml`, or the `.yml` / `.toml` the hub uses), `AGENTS.md`, `CLAUDE.md`, `conventions/` and `.pave-hub` are shared with the team.
 `workspace.yaml` is not — it holds local paths, and a teammate builds their
 own with `/pave:add`.

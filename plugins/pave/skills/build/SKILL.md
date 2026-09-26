@@ -41,9 +41,9 @@ gate. This is a script check on purpose: it cannot be talked out of.
 
 Then locate the hub and read the hub's config file (`config.yaml`,
 `config.yml` or `config.toml`), `workspace.yaml`, the feature's task
-documents, and **the hub's own `AGENTS.md` and `CLAUDE.md`** - read them
-explicitly; they load by themselves only when you happen to be standing in
-the hub. Where both exist and disagree, `AGENTS.md` wins.
+documents, and **the hub's own `AGENTS.md`** - read it
+explicitly; Claude Code loads it by itself only when you happen to be
+standing in the hub.
 
 | Feature status | Build |
 |---|---|
@@ -151,7 +151,7 @@ Give each agent, and nothing else:
   | `revert` | `kind: revert` | Remove what the document names, and nothing else |
 
 - Its required reading, by absolute path:
-  1. the hub's `AGENTS.md` / `CLAUDE.md` — the user's rules, if either exists
+  1. the hub's `AGENTS.md` — the user's rules, if it exists
   2. `conventions/README.md`
   3. `conventions/<language>.md` — language from `workspace.yaml`
   4. `conventions/<service>.md` — if present, wins on conflict

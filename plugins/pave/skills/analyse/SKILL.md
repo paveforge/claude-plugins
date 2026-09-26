@@ -26,9 +26,9 @@ faithfully build it.
 ## Before starting
 
 Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, and the hub's own
-`AGENTS.md` and `CLAUDE.md` if it has either — the user's rules for Pave's
-agents. Read them explicitly; they load by themselves only when you happen to
-be standing in the hub. `AGENTS.md` wins where both exist and disagree.
+`AGENTS.md` if it has one — the user's rules for Pave's
+agents. Read it explicitly; Claude Code loads it by itself only when you
+happen to be standing in the hub.
 
 If no services are registered, stop and say to run `/pave:add <folder>` first.
 
@@ -79,8 +79,7 @@ Spawn one `explorer` per service needing discovery, in parallel up to
 `execution.max_parallel`, with the `model` and `effort` printed by
 `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent explorer`.
 
-Give each one the absolute path to the hub's `AGENTS.md` / `CLAUDE.md`, if
-either exists, as required reading — an explorer runs in a service repo and
+Give each one the absolute path to the hub's `AGENTS.md`, if it exists, as required reading — an explorer runs in a service repo and
 will not find it by walking up from there.
 
 Never scan a repo yourself in the main context. One large repo will fill it,
@@ -161,8 +160,8 @@ Give each analyst its path, its language, its entry from `workspace.yaml`, and
 read it itself, and without it the staleness check has nothing to compare
 against.
 
-Give it the absolute path to the hub's `AGENTS.md` / `CLAUDE.md` too, if
-either exists, as required reading.
+Give it the absolute path to the hub's `AGENTS.md` too, if
+it exists, as required reading.
 
 Require a short summary back. Detail belongs in the files; four analysts
 returning full narratives will exhaust this session's context.

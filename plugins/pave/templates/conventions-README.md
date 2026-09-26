@@ -6,7 +6,7 @@ Loaded for every task. Language-specific rules go in `<language>.md` and
 service-specific rules in `<service>.md`, which wins on conflict.
 
 Keep this file about how code is written. Rules of your own - what agents
-should and should not do - belong in the hub's `AGENTS.md` or `CLAUDE.md`,
+should and should not do - belong in the hub's `AGENTS.md`,
 which is given to every agent alongside these files.
 
 These files describe how the code already is, and `/pave:analyse` drafts them

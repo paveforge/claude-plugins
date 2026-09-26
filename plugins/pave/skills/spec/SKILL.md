@@ -74,9 +74,8 @@ it.
 ## Before starting
 
 Locate the hub by walking up for `.pave-hub`. If there is none, tell the user
-to run `/pave:init`. Read the hub's `AGENTS.md` / `CLAUDE.md` if either exists
-— the user's rules may say how specs are written here. `AGENTS.md` wins where
-both exist and disagree.
+to run `/pave:init`. Read the hub's `AGENTS.md` if it exists
+— the user's rules may say how specs are written here.
 
 You may read `artifacts/knowledge/README.md` - the knowledge index, and only
 that - for the platform's **vocabulary**. Its Terms table is how you catch a

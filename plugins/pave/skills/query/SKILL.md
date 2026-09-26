@@ -39,7 +39,7 @@ retriever, not answering the question. Note which of these exist:
 - `artifacts/knowledge/README.md` — the index
 - `conventions/README.md`, and any per-language or per-service file under
   `conventions/`
-- the hub's `AGENTS.md` / `CLAUDE.md` (`AGENTS.md` wins where both exist)
+- the hub's `AGENTS.md`
 - `workspace.yaml`
 - if the question names a feature, `/pave:spec` set one in this session, or
   the hub has exactly one, that

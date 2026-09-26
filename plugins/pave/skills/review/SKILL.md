@@ -55,10 +55,9 @@ edited since the plan was approved, there is no approved document to compare
 against - only `/pave:plan` can make one.
 
 Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, `features/<id>/`,
-and the hub's own `AGENTS.md` and `CLAUDE.md` if it has either — the user's
-rules for Pave's agents. Read them explicitly; they load by themselves only
-when you happen to be standing in the hub. `AGENTS.md` wins where both exist
-and disagree.
+and the hub's own `AGENTS.md` if it has one — the user's
+rules for Pave's agents. Read it explicitly; Claude Code loads it by itself
+only when you happen to be standing in the hub.
 
 | Feature status | Review |
 |---|---|
@@ -94,7 +93,7 @@ Give each reviewer:
 - Its **one** task document
 - The repo path for that task's service
 - The frozen contract files that task names
-- The absolute path to the hub's `AGENTS.md` / `CLAUDE.md`, if either exists —
+- The absolute path to the hub's `AGENTS.md`, if it exists —
   the user's rules
 
 Nothing else about the feature. The user's rules say how this team wants a

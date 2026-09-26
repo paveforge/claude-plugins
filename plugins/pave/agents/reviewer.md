@@ -65,7 +65,7 @@ frozen file, so if each conforms to it, they conform to each other.
 
 ## The user's rules
 
-You may be given the hub's `AGENTS.md` or `CLAUDE.md` — the user's own rulebook
+You may be given the hub's `AGENTS.md` — the user's own rulebook
 for every agent Pave runs. Read it and follow it where it touches how you check
 and how you write up what you find.
 

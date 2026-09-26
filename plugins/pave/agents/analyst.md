@@ -20,7 +20,7 @@ in the hub.
 
 ## The user's rules
 
-You may be given the hub's `AGENTS.md` or `CLAUDE.md` — the user's own rulebook
+You may be given the hub's `AGENTS.md` — the user's own rulebook
 for every agent Pave runs. Read it and follow it where it touches what you are
 doing.
 
@@ -137,7 +137,7 @@ draft in two minutes; they cannot correct a confident invention they did not
 know was one.
 
 Keep it to what a builder needs while writing code. Workflow rules belong in
-the hub `CLAUDE.md`, not here.
+the hub `AGENTS.md`, not here.
 
 ## How to read a service
 

@@ -56,7 +56,7 @@ claude
 /pave:review                           # did the agents follow the plan?
 ```
 
-Then commit `config.yaml`, `CLAUDE.md`, `conventions/` and `.pave-hub` so your
+Then commit `config.yaml`, `AGENTS.md`, `CLAUDE.md`, `conventions/` and `.pave-hub` so your
 team shares them. `workspace.yaml` stays local — it holds *your* repo paths,
 and a teammate generates their own with `/pave:init`.
 
@@ -82,7 +82,7 @@ and a teammate generates their own with `/pave:init`.
 ## `/pave:init` — create the hub
 
 **What it does.** Creates the hub folder's scaffolding: `config.yaml`,
-an empty `workspace.yaml`, `CLAUDE.md`, `conventions/` and a `.pave-hub`
+an empty `workspace.yaml`, `AGENTS.md` (plus a `CLAUDE.md` that imports it), `conventions/` and a `.pave-hub`
 marker that lets every other command find the hub from anywhere.
 
 It does not look for repos, guess what anything is, or scan. Each step does one
@@ -366,7 +366,7 @@ Also not part of the sequence. Run it any time, once you have a hub.
 ```
 
 **What it does.** Spawns a `retriever` agent that reads the knowledge base,
-`conventions/`, and the hub's `AGENTS.md`/`CLAUDE.md` to answer, citing the
+`conventions/`, and the hub's `AGENTS.md` to answer, citing the
 file each fact came from.
 
 It never invents a domain fact. If a service hasn't been analysed yet, or the
@@ -410,7 +410,8 @@ diagram and gives you the link; otherwise it writes a self-contained
 platform/
 ├── config.yaml              team policy — commit this
 ├── workspace.yaml           your services — gitignored, local to you
-├── CLAUDE.md                your rules — every agent is given this
+├── AGENTS.md                your rules — every agent is given this
+├── CLAUDE.md                @AGENTS.md — so Claude Code loads it too
 ├── conventions/             how code is written, by language and service
 │   ├── README.md
 │   └── go.md
@@ -541,14 +542,16 @@ will eventually collide).
 
 ## Your own rules
 
-The hub's `CLAUDE.md` is yours. `/pave:init` creates it, and **every agent Pave
+The hub's `AGENTS.md` is yours. `/pave:init` creates it, and **every agent Pave
 spawns is given it by path as required reading** — the builder writing code in
 a service repo, the reviewer checking it, the analyst and explorer reading a
 repo, the planner planning the feature. Write a rule there and it reaches the
 agent doing the work, not only the session that spawned it.
 
-Name it `AGENTS.md` if you prefer. Pave reads either, and `AGENTS.md` wins
-where both exist and disagree.
+The hub also gets a one-line `CLAUDE.md` — `@AGENTS.md` — because Claude
+Code loads `CLAUDE.md` by itself and not `AGENTS.md`. Your rules go in
+`AGENTS.md`; the `CLAUDE.md` only points at it. On a hub from an older
+version, `/pave:init` offers to move rules from `CLAUDE.md` into `AGENTS.md`.
 
 Skills read it explicitly rather than relying on it being loaded for them —
 they run from inside service repos as well as from the hub, and a file loads by
@@ -556,7 +559,7 @@ itself only when you happen to be standing next to it.
 
 | Where | What belongs there |
 |---|---|
-| hub `AGENTS.md` / `CLAUDE.md` | Your rules — what agents should and should not do |
+| hub `AGENTS.md` | Your rules — what agents should and should not do |
 | `conventions/` | How code is written, by language and service |
 
 The split is worth learning once: `conventions/` is **descriptive** — drafted

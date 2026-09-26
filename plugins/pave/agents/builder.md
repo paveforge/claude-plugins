@@ -80,7 +80,7 @@ review cycle.
 
 ## The user's rules
 
-Your required reading may include the hub's `AGENTS.md` or `CLAUDE.md`. That is
+Your required reading may include the hub's `AGENTS.md`. That is
 the user's own rulebook for every agent Pave runs. Read it like the rest of
 your required reading and follow it.
 
