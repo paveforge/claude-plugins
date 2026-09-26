@@ -133,7 +133,13 @@ A re-plan starts from what changed, not from nothing.
 guardrail and exclusion that was added, changed or removed. Follow
 `plan.md` from those to the decisions they touch, and from the decisions to
 the tasks (`satisfies:`, `derives_from:`). Re-read knowledge only for the
-services those tasks touch. If nothing moved, the plan is valid - say so.
+services those tasks touch.
+
+**If nothing moved**, return `verdict: unaffected` and write nothing. That
+means no criterion, guardrail, out-of-scope line or described behaviour
+changed - only wording that no decision or task depends on. List the spec
+differences you compared, so the user can check your judgement. When in
+doubt, it moved: a changed word in a criterion is a changed criterion.
 
 **Then classify every affected task.** A task document always describes the
 **end state**, never a change: when the spec changes, you rewrite the document

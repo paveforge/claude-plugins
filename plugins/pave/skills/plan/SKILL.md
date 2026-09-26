@@ -181,6 +181,43 @@ Every plan decision must be traceable to something written in the spec. A
 "how" answer that quietly changes what the user gets is a "what" answer - if
 in doubt, it goes to `/pave:spec`.
 
+### Nothing affected: re-seal instead of re-planning
+
+On a re-plan, the planner may find the spec changed without affecting the
+plan - a typo, a reworded sentence, a clarified example: no acceptance
+criterion, guardrail, out-of-scope line or behaviour changed. It then returns
+`verdict: unaffected` with the spec differences it compared, and writes
+nothing.
+
+This path is open **only** when `check` reported nothing but
+`spec.md changed`. A task edited outside `/pave:plan` always needs the full
+re-plan.
+
+Show the differences and ask:
+
+```
+Spec changed (v3 → v4), but no criterion, guardrail or scope line did:
+  ~ What: "checkout page" → "checkout flow"
+  ~ AC-2: typo "recieve" → "receive"
+The plan, contracts and tasks still hold. Re-seal without re-planning? (yes / no)
+```
+
+- **yes** — run `SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh seal`.
+  It records the new spec hash and snapshot; task hashes are unchanged because
+  no task was touched. Set the feature's status back to what its tasks say -
+  the first match of: any task `blocked` → `blocked`; any task started or
+  done but not all `done`/`obsolete` → `building`; every task
+  `done`/`obsolete` → `done`; otherwise `ready` - and rewrite both roll-ups.
+  Skip §5–§6. Mention that a feature record written by `/pave:learn` is now
+  stale, and `/pave:learn` refreshes it without a rebuild if the feature is
+  still reviewed and done.
+- **no** — the user thinks the change matters. Continue with a full re-plan:
+  resume the planner, tell it the user wants the plan revisited, and go on to
+  the gate.
+
+The judgement is the planner's and the decision is the user's; this skill
+never re-seals on its own.
+
 ## 5. The gate — one approval
 
 The planner's stage 1 writes `plan.md` (from `templates/plan.md`) and
