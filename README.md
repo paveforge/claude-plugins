@@ -57,9 +57,16 @@ claude
 /pave:learn                            # record what the feature added
 ```
 
-Then commit `config.yaml`, `AGENTS.md`, `CLAUDE.md`, `conventions/` and `.pave-hub` so your
-team shares them. `workspace.yaml` stays local — it holds *your* repo paths,
-and a teammate generates their own with `/pave:init`.
+**Sharing the hub is optional.** Nothing in Pave depends on the hub being a
+git repository — every hash, snapshot and staleness check works on plain
+files, so a private hub that is never committed works exactly the same. To
+share it with a team, commit `config.yaml`, `AGENTS.md`, `CLAUDE.md`,
+`conventions/`, `.pave-hub` and `artifacts/knowledge/on-demand/`.
+`workspace.yaml` stays local either way — it holds *your* repo paths, and a
+teammate generates their own with `/pave:init`.
+
+The service repos are different: builders branch and commit there, and task
+documents record those commits, so each service must be a git repository.
 
 ---
 
@@ -462,7 +469,7 @@ platform/
 │   └── go.md
 ├── artifacts/               disposable, except knowledge/on-demand/
 │   ├── knowledge/           what each service does, indexed
-│   │   └── on-demand/       kept by every scan — commit it
+│   │   └── on-demand/       kept by every scan — cannot be regenerated
 │   │       ├── source/      answers /pave:query read from the code
 │   │       └── features/    what each finished feature added, from /pave:learn
 │   ├── diagram.html         written by /pave:visualize when freeform

@@ -19,7 +19,9 @@ reachable through `additionalDirectories` and are modified only by build agents.
 - `artifacts/knowledge/on-demand/` - knowledge nobody can regenerate by
   scanning: `source/` holds answers `/pave:query` read from the code, and
   `features/` holds what each finished feature added, recorded by
-  `/pave:learn`. `/pave:analyse` never rewrites or deletes it. Commit it.
+  `/pave:learn`. `/pave:analyse` never rewrites or deletes it, and nothing
+  can regenerate it - do not delete it. If the hub is shared through git,
+  commit it with the rest of the team's files.
 
 ## Workflow
 
