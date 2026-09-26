@@ -531,7 +531,7 @@ what lets everyone share one policy with their own local layout.
 
 ```mermaid
 flowchart LR
-    new(( )) -->|/pave:spec| specifying(["specifying"])
+    newfeat(("new feature")) -->|/pave:spec| specifying(["specifying"])
     specifying -->|/pave:plan| planning(["planning"])
     planning -->|gate passes, plan sealed| ready(["ready"])
     ready -->|/pave:build| building(["building"])
@@ -549,7 +549,7 @@ flowchart LR
     classDef bad  fill:#cf222e26,stroke:#cf222e,stroke-width:1px
     classDef muted fill:none,stroke:#8c959f,stroke-dasharray:3 3
     class specifying,planning,ready,building step
-    class any,new muted
+    class any,newfeat muted
     class done good
     class blocked warn
     class failed bad
