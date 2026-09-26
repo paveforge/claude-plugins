@@ -11,7 +11,7 @@
 #
 # seal, check and prune-obsoleted-tasks act on the session's feature, given
 # only as SESSION_FEATURE_ID=<id> - never as an argument:
-#   SESSION_FEATURE_ID=DGF-8888 pave.sh check
+#   SESSION_FEATURE_ID=FEAT-8888 pave.sh check
 #   pave.sh agent <name>        model and effort to spawn an agent with
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.

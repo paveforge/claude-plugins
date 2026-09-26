@@ -172,9 +172,9 @@ itself for any service whose knowledge is missing or stale.
 ## `/pave:spec` — agree what the feature must do
 
 ```
-/pave:spec DGF-8888 build checkout      →  features/DGF-8888/
+/pave:spec FEAT-8888 build checkout      →  features/FEAT-8888/
 /pave:spec let's build checkout page    →  asks: feat-3 | build-checkout-page | other
-/pave:spec DGF-8888                     →  resume an existing feature
+/pave:spec FEAT-8888                     →  resume an existing feature
 ```
 
 **One feature per session, and this is the command that sets it.**
