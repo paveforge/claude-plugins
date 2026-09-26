@@ -46,7 +46,9 @@ nothing. What it knows is what you left on disk, so leave it small and exact:
 **On a re-plan, read the difference, not everything.** Diff `spec.md`
 against `spec.approved.md`, follow `plan.md` from the changed criteria to
 the decisions and tasks they touch, and read knowledge only for those tasks'
-services. If nothing moved, say the plan is valid and stop.
+services. If nothing moved, return `verdict: unaffected` with the spec
+differences you compared, write nothing, and stop - the orchestrator offers
+the user a re-seal (`writing-rules.md` §4).
 
 ## You will be told which stage to produce
 

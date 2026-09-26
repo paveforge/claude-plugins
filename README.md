@@ -297,6 +297,12 @@ version. When the spec changes:
 | built | still needs it, differently | rewrites it and **reopens** it — the builder reconciles the existing code to it |
 | built | no longer needs it | marks it **obsolete** and adds a **revert** task, high priority |
 
+**A change that affects nothing.** If the spec changed only in wording — a
+typo, a clarified sentence — the planner says so and lists what it compared,
+and you can **re-seal** instead of re-planning: the new spec hash is recorded,
+no task is touched, and the feature goes back to the status its tasks say.
+It's always your call; a changed word in a criterion counts as a change.
+
 **Token cost.** Within a session the planner is resumed rather than
 respawned, so a re-plan costs only the difference. Across sessions it
 recovers from small files: `plan.md` as the index from criteria to decisions
