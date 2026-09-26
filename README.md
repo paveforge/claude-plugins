@@ -54,6 +54,7 @@ claude
 /pave:plan                             # → one approval gate
 /pave:build                            # fan out, one agent per service
 /pave:review                           # did the agents follow the plan?
+/pave:learn                            # record what the feature added
 ```
 
 Then commit `config.yaml`, `AGENTS.md`, `CLAUDE.md`, `conventions/` and `.pave-hub` so your
@@ -73,6 +74,7 @@ and a teammate generates their own with `/pave:init`.
 | `/pave:plan` | Once the spec has no open questions |
 | `/pave:build` | Once the plan is approved |
 | `/pave:review` | On demand |
+| `/pave:learn` | After a clean review — records the feature in the knowledge base |
 | `/pave:help` | Any time you have a question about using Pave |
 | `/pave:query` | Any time you have a question about your hub |
 | `/pave:visualize` | Any time you want a picture instead of tables |
@@ -163,6 +165,11 @@ stale        svc-b       1 file(s) changed under internal/domain
 orphan       old-svc     knowledge folder, no such service in workspace.yaml
 current      svc-a       unchanged since 0818f6e
 ```
+
+**It is the scan, nothing else.** `/pave:analyse` or `/pave:analyse
+<service>`. A question is not a scan — ask it with `/pave:query`, which reads
+the code only for what the question needs. A scan never rewrites or deletes
+on-demand knowledge (below); it only rebuilds the index that lists it.
 
 **You rarely run it by hand after the first time.** `/pave:plan` spawns analysts
 itself for any service whose knowledge is missing or stale.
@@ -358,20 +365,53 @@ guessing at an answer it has no way to check.
 
 ## `/pave:query` — ask about your hub
 
-Also not part of the sequence. Run it any time, once you have a hub.
+Not part of the sequence. Run it any time, once you have a hub.
 
 ```
-/pave:query what does the billing service own?
+/pave:query what happens after an order is submitted?
 /pave:query why did build-checkout end up blocked?
 ```
 
-**What it does.** Spawns a `retriever` agent that reads the knowledge base,
-`conventions/`, and the hub's `AGENTS.md` to answer, citing the
-file each fact came from.
+**What it does.** Answers as cheaply as the question allows:
 
-It never invents a domain fact. If a service hasn't been analysed yet, or the
-knowledge base doesn't cover what you asked, it says so and points at
-`/pave:analyse` rather than guessing.
+1. A `retriever` answers from the knowledge base — service analyses, earlier
+   on-demand findings, feature records — plus `conventions/` and the hub's
+   `AGENTS.md`, citing the file each fact came from.
+2. If that can't answer a question about **how the code behaves**, an
+   `analyst` reads only the code the question needs, across services, and
+   answers with file and line references.
+3. That answer is saved as a **source finding** in
+   `artifacts/knowledge/on-demand/source/`, so the next person to ask gets it
+   from knowledge.
+
+A finding records the commit and the directories it read, and `pave.sh stale`
+marks it stale as soon as that code changes. A stale finding is never used as
+an answer; the next query that needs it reads the code again and replaces it.
+
+A gap reading code can't settle — a decision nobody recorded, a convention
+nobody wrote — is reported as such, never guessed.
+
+**What it asks you.** Nothing.
+
+---
+
+## `/pave:learn` — record a finished feature
+
+```
+/pave:learn
+```
+
+**What it does.** Acts on the session's feature. Once it has been built and
+passed review against its current plan — the plan matches the spec, every task
+is done, every acceptance criterion is satisfied by a done task, and the review
+is of this build — it writes a **feature record** to
+`artifacts/knowledge/on-demand/features/<feature-id>.md`: what the feature
+added, per service with the commit it landed at, its contracts, the decisions a
+later feature will bump into, and links back to `features/<feature-id>/`.
+
+Its capabilities join the knowledge index, so the next spec in the same area is
+planned against what this one added. If the feature isn't finished, it refuses
+and lists what's missing and which command fixes it.
 
 **What it asks you.** Nothing.
 
@@ -415,8 +455,11 @@ platform/
 ├── conventions/             how code is written, by language and service
 │   ├── README.md
 │   └── go.md
-├── artifacts/               disposable — delete it and it regenerates
+├── artifacts/               disposable, except knowledge/on-demand/
 │   ├── knowledge/           what each service does, indexed
+│   │   └── on-demand/       kept by every scan — commit it
+│   │       ├── source/      answers /pave:query read from the code
+│   │       └── features/    what each finished feature added, from /pave:learn
 │   ├── diagram.html         written by /pave:visualize when freeform
 │   └── platform.code-workspace
 └── features/

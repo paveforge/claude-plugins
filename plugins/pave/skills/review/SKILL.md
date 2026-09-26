@@ -209,3 +209,9 @@ It refuses - removing nothing - if any obsolete task's revert is not `done`.
 Add what it printed to the review report under **Cleaned up**, then rewrite
 `features/<id>/README.md` and `features/README.md` from the remaining task
 frontmatter.
+
+## 5. Suggest recording it
+
+After a successful review of a feature whose every task is `done`, say once
+that `/pave:learn` records it in the knowledge base, so the next feature in
+the same area plans against what this one added.

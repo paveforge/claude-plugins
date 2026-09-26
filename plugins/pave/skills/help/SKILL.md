@@ -22,7 +22,8 @@ point at `/pave:query <question>` rather than guessing.
 ## No argument — overview
 
 List the workflow in order (`init` → `add` → `analyse` → `spec` → `plan` →
-`build` → `review`), then the anytime commands (`help`, `query`, `visualize`), each
+`build` → `review` → `learn`), then the anytime commands (`help`, `query`,
+`visualize`), each
 with the one-line `description` read straight from its `SKILL.md`
 frontmatter — never hand-copied, so it can't drift from the real text.
 

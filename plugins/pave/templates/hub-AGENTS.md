@@ -11,10 +11,15 @@ reachable through `additionalDirectories` and are modified only by build agents.
   Hand edits here are never overwritten.
 - `conventions/` - how code is written, by language and service. Yours to edit.
 - `features/` - the durable record of what was decided.
-- `artifacts/` - disposable. Delete anything here and it regenerates.
+- `artifacts/` - disposable. Delete anything here and it regenerates - except
+  `artifacts/knowledge/on-demand/`, see below.
 - `artifacts/knowledge/` - what each service does, written by `/pave:analyse`.
   Derived from code, so it is disposable; its index is what lets planning load
   selectively instead of scanning everything.
+- `artifacts/knowledge/on-demand/` - knowledge nobody can regenerate by
+  scanning: `source/` holds answers `/pave:query` read from the code, and
+  `features/` holds what each finished feature added, recorded by
+  `/pave:learn`. `/pave:analyse` never rewrites or deletes it. Commit it.
 
 ## Workflow
 
@@ -27,6 +32,8 @@ reachable through `additionalDirectories` and are modified only by build agents.
 | `/pave:plan` | Once the spec has no open questions - one approval gate |
 | `/pave:build [03,07]` | Once the plan is approved |
 | `/pave:review` | On demand |
+| `/pave:learn` | After a clean review - records the feature in the knowledge base |
+| `/pave:query <question>` | Any time. Reads the code only when knowledge cannot answer, and saves the answer |
 
 **One feature per session.** `/pave:spec` is the only command that takes a
 feature; `plan`, `build` and `review` act on the feature it set.

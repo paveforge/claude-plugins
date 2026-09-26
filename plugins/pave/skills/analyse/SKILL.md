@@ -1,6 +1,6 @@
 ---
 name: analyse
-description: Work out what the registered services are and what they do. Discovers each one's language, build commands and contracts, then reads its domain model and writes an indexed knowledge base. Use after /pave:add, and when services drift.
+description: Scan the registered services and build the knowledge base - each one's language, build commands and contracts, then its domain model, flows and integrations, indexed. Use after /pave:add, and when services drift. For a question about how something works, use /pave:query instead.
 argument-hint: "[service name, or blank for everything missing or stale]"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 ---
@@ -32,6 +32,17 @@ happen to be standing in the hub.
 
 If no services are registered, stop and say to run `/pave:add <folder>` first.
 
+**This is the scan.** The argument is empty (every service that needs it) or
+exactly a registered service name. Anything else - a question, a sentence -
+is not a scan: say so and point at `/pave:query <question>`, which answers
+from the knowledge base and reads the code only for what it needs.
+
+**It never touches on-demand knowledge.** `artifacts/knowledge/on-demand/`
+holds source findings written by `/pave:query` and feature records written by
+`/pave:learn`. A scan does not rewrite, re-verify or delete them - they are
+answers that cost a source read or a whole feature to produce, and a scan
+would silently erase them. It only rebuilds the index that lists them (§5).
+
 ## 1. Decide what to analyse
 
 Run the script. It checks every registered service and reports what each one
@@ -57,6 +68,8 @@ current      svc-a       unchanged since 0818f6e
 | `orphan` | Delete the knowledge folder and say so |
 | `current` | Nothing |
 | `unreachable` | Report it. Do not analyse, do not guess |
+| `finding-stale` | Report it, and nothing else. The next `/pave:query` that needs it reads the code again |
+| `finding-current` | Nothing |
 
 Given a service name, the script checks only that one. Given none, it checks
 everything.
@@ -200,7 +213,10 @@ capabilities, terms and events tables, and planning would then plan as though
 those services did not exist.
 
 Build it from `templates/knowledge-README.md`, filled from the frontmatter of
-every service README.
+every service README - and its **On-demand** section from the frontmatter of
+every file under `on-demand/source/` and `on-demand/features/`, with each
+finding's state from `pave.sh stale`. Read only frontmatter; never edit those
+files.
 
 The **Events** table is the dependency graph. There is no graph database here,
 but adjacency written down as a generated table answers the same questions and

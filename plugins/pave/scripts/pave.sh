@@ -2,7 +2,7 @@
 # Pave helper. Deterministic hub operations that need no model.
 #
 #   pave.sh add <folder>...    register service folders with the hub
-#   pave.sh stale [service]     report what needs discovery or analysis
+#   pave.sh stale [service]     report what needs discovery or analysis, and stale findings
 #   pave.sh feature propose <args...>   classify a feature argument, create nothing
 #   pave.sh feature create <id> [title] create a confirmed feature's folder
 #   pave.sh seal                        record spec and task hashes at the plan gate

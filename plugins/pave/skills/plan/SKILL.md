@@ -79,7 +79,7 @@ make sure the knowledge it will read exists and is current before spawning it.
 
 | Stage | Load | Purpose |
 |---|---|---|
-| 1 | `artifacts/knowledge/README.md` — **only this** | Match the spec against capabilities, terms and events |
+| 1 | `artifacts/knowledge/README.md` — **only this** | Match the spec against capabilities, terms and events - including the On-demand section: feature records and current source findings |
 | 2 | `knowledge/services/<candidate>/README.md` | Confirm or drop each candidate. ~50 lines each |
 
 Stop there. The planner reads the deep files; opening them here reads each one
@@ -126,6 +126,10 @@ never redoes discovery:
 - **The exact knowledge files to read**, by absolute path - for each
   candidate, the `domain.md` of services likely to change and the
   `integration.md` of services at the seam
+- Any **on-demand knowledge** the index matched: the record of an earlier
+  feature in the same area (what it added, and the decisions it rests on), and
+  any source finding that is `current` and answers a question this plan
+  depends on. Never a stale finding
 - Anything `check` reported
 - Absolute paths to the hub's `AGENTS.md`, if it exists
 

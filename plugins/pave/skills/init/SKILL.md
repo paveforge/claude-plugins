@@ -102,6 +102,6 @@ Then /pave:analyse to work out what they are and what they do.
 ```
 
 If the hub is a git repository, say what to commit: the config file
-(`config.yaml`, or the `.yml` / `.toml` the hub uses), `AGENTS.md`, `CLAUDE.md`, `conventions/` and `.pave-hub` are shared with the team.
+(`config.yaml`, or the `.yml` / `.toml` the hub uses), `AGENTS.md`, `CLAUDE.md`, `conventions/`, `.pave-hub` and, once it exists, `artifacts/knowledge/on-demand/` are shared with the team.
 `workspace.yaml` is not — it holds local paths, and a teammate builds their
 own with `/pave:add`.

@@ -34,3 +34,25 @@ The dependency graph, written as a table.
 | Service | Analysed | Commit | Uncertain |
 |---|---|---|---|
 | <service> | <date> | <sha> | <count> |
+
+## On-demand
+
+<!-- Built from the frontmatter of every file under on-demand/. Those files are
+     never rewritten or deleted by /pave:analyse - they are answers that cost a
+     source read or a whole feature to produce. Only this index is rebuilt. -->
+
+### Source findings
+Answers to questions, read from the code by `/pave:query`. A `stale` finding's
+code has changed since; do not rely on it until it is asked again.
+
+| Question | Services | State | Read |
+|---|---|---|---|
+| <question> | <services> | current / stale | `on-demand/source/<slug>.md` |
+
+### Features
+What each reviewed feature added, recorded by `/pave:learn`. History: the
+system as that feature left it.
+
+| Feature | Title | Capabilities | Services | Read |
+|---|---|---|---|---|
+| `<feature-id>` | <title> | <capabilities> | <services> | `on-demand/features/<feature-id>.md` |
