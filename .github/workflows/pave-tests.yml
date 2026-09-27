@@ -3,8 +3,16 @@ name: pave tests
 on:
   push:
     branches: [main]
+    paths:
+      - "plugins/pave/scripts/**"
+      - "plugins/pave/tests/**"
+      - ".github/workflows/pave-tests.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "plugins/pave/scripts/**"
+      - "plugins/pave/tests/**"
+      - ".github/workflows/pave-tests.yml"
 
 jobs:
   pytest:
