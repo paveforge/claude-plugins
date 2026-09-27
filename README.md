@@ -148,11 +148,11 @@ result: 3 to fix - run /pave:init
 ```
 
 Init asks what to do - add the missing keys, remove the leftovers, both, or
-nothing - and runs `pave.sh config-fix <add|remove|all>`. The script adds
-missing keys with the template's values and rewrites the file in its own
-format (YAML or TOML). The file's opening comment block stays; other comments
-do not, and a removed key's value is not carried over (`designer`'s model does
-not move to `planner` - edit the config afterwards to keep it). The config
+nothing - and makes exactly those edits: missing keys are copied from the
+template with its values, leftovers are removed, and every other line, comment
+and value stays, in the file's own format (YAML or TOML). A removed key's value
+is not carried over (`designer`'s model does not move to `planner` - edit the
+config afterwards to keep it). The config
 records no Pave version; the template is what Pave reads now, which is right
 however old the hub is.
 

@@ -1,9 +1,11 @@
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
 
-TEMPLATE = (Path(__file__).resolve().parents[1] / "templates" / "config.yaml").read_text()
+PAVE = Path(__file__).resolve().parents[1]
+TEMPLATE = (PAVE / "templates" / "config.yaml").read_text()
 
 HAVE_TOML = (importlib.util.find_spec("tomllib") or importlib.util.find_spec("tomli")) is not None
 
@@ -67,12 +69,6 @@ def check(hub, name, text):
     return r.stdout.splitlines()[1:]
 
 
-def fix(hub, mode):
-    r = hub.run("config-fix", mode)
-    assert r.returncode == 0, r.stderr
-    return r.stdout.splitlines()[1:]
-
-
 def test_current_config_is_clean(hub):
     assert check(hub, "config.yaml", TEMPLATE) == ["result: nothing to fix"]
 
@@ -96,61 +92,6 @@ def test_check_changes_nothing(hub):
     assert (hub.path / "config.yaml").read_text() == PRE_04
 
 
-def test_fix_all(hub):
-    check(hub, "config.yaml", PRE_04)
-    out = fix(hub, "all")
-    assert "removed   agents.designer = { model: fable, effort: max }" in out
-    assert "added     agents.planner = { model: opus, effort: high }" in out
-    assert out[-1] == "result: nothing to fix"
-    text = (hub.path / "config.yaml").read_text()
-    assert text.startswith("# Pave policy. Shared by the team - commit this file.\n\nagents:\n")
-    assert "model_ranking" not in text and "Model capability order" not in text
-    assert "  planner: { model: opus, effort: high }\n" in text
-    assert "  pattern: feature/{feature-slug}\n" in text  # values are kept as they are
-    assert check(hub, "config.yaml", text) == ["result: nothing to fix"]
-    assert hub.run("agent", "planner").stdout == "model=opus\neffort=high\n"
-
-
-def test_fix_add_keeps_leftovers(hub):
-    check(hub, "config.yaml", PRE_04)
-    out = fix(hub, "add")
-    assert [x.split()[0] for x in out] == ["added", "added", "added", "result:"]
-    assert out[-1] == "result: 4 left - run /pave:init"
-    text = (hub.path / "config.yaml").read_text()
-    assert "designer: { model: fable, effort: max }" in text
-    assert "planner: { model: opus, effort: high }" in text
-
-
-def test_fix_remove_keeps_missing(hub):
-    check(hub, "config.yaml", PRE_04)
-    out = fix(hub, "remove")
-    assert [x.split()[0] for x in out] == ["removed"] * 4 + ["result:"]
-    assert out[-1] == "result: 3 left - run /pave:init"
-    assert "no entry for agents.planner" in hub.run("agent", "planner").stderr
-
-
-def test_fix_nothing_to_change(hub):
-    check(hub, "config.yaml", TEMPLATE)
-    assert fix(hub, "all") == ["result: nothing to change"]
-    assert (hub.path / "config.yaml").read_text() == TEMPLATE
-
-
-def test_fix_keeps_nested_leftovers_readable(hub):
-    check(hub, "config.yaml", TEMPLATE + "phases:\n  design:\n    model: opus\n    effort: high\n")
-    fix(hub, "add")
-    assert "phases:\n  design:\n    model: opus\n    effort: high\n" in (hub.path / "config.yaml").read_text()
-    assert check(hub, "config.yaml", (hub.path / "config.yaml").read_text())[0] == \
-        "leftover  phases = { design: { model: opus, effort: high } }"
-
-
-def test_fix_bad_option(hub):
-    check(hub, "config.yaml", PRE_04)
-    r = hub.run("config-fix", "everything")
-    assert r.returncode != 0
-    assert "usage" in r.stderr
-    assert (hub.path / "config.yaml").read_text() == PRE_04
-
-
 @pytest.mark.skipif(not HAVE_TOML, reason="needs tomllib or tomli")
 def test_toml_config(hub):
     out = check(hub, "config.toml", TOML)
@@ -161,27 +102,32 @@ def test_toml_config(hub):
     ]
 
 
-@pytest.mark.skipif(not HAVE_TOML, reason="needs tomllib or tomli")
-def test_toml_fix_all(hub):
-    check(hub, "config.toml", "# Team policy\n" + TOML)
-    out = fix(hub, "all")
-    assert out[-1] == "result: nothing to fix"
-    text = (hub.path / "config.toml").read_text()
-    assert text.startswith("# Team policy\n\n[agents]\n")
-    assert 'planner = { model = "opus", effort = "high" }\n' in text
-    assert "model_ranking" not in text
-    assert check(hub, "config.toml", text) == ["result: nothing to fix"]
-    assert hub.run("agent", "planner").stdout == "model=opus\neffort=high\n"
-
-
 def test_no_config_is_error(hub):
-    for args in (["config-check"], ["config-fix", "all"]):
-        r = hub.run(*args)
-        assert r.returncode != 0
-        assert "/pave:init" in r.stderr
+    r = hub.run("config-check")
+    assert r.returncode != 0
+    assert "/pave:init" in r.stderr
 
 
 def test_unparseable_config_is_error(hub):
     (hub.path / "config.yaml").write_text("agents:\n  builder: { model: [x }\n")
     r = hub.run("config-check")
     assert r.returncode != 0
+
+
+def test_every_config_key_pave_names_is_in_the_template():
+    # templates/config.yaml is the single source of truth for config: every key
+    # a skill, an agent or the README names must be in it.
+    from importlib.machinery import SourceFileLoader
+    from importlib.util import module_from_spec, spec_from_loader
+    loader = SourceFileLoader("yaml_reader", str(PAVE / "scripts" / "yaml-reader"))
+    yr = module_from_spec(spec_from_loader(loader.name, loader))
+    loader.exec_module(yr)
+    template = yr.load(TEMPLATE)
+
+    files = [*(PAVE / "skills").rglob("*.md"), *(PAVE / "agents").glob("*.md"), PAVE.parents[1] / "README.md"]
+    named = {m for f in files
+             for m in re.findall(r"`((?:agents|execution|branch|contracts)\.[a-z_]+)`", f.read_text())}
+    assert named
+    for key in sorted(named):
+        section, name = key.split(".")
+        assert name in template.get(section, {}), f"{key} is named but not in templates/config.yaml"

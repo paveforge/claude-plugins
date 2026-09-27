@@ -15,7 +15,6 @@
 #
 #   pave.sh agent <name>        model and effort to spawn an agent with
 #   pave.sh config-check        compare the hub's config with Pave's template
-#   pave.sh config-fix <add|remove|all>  add missing keys, remove leftovers, or both
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -206,21 +205,16 @@ cmd_agent() {
 }
 
 # config-check
-# Compares the hub's config with the template this version of Pave ships:
-# keys the template does not have, keys it has that the config lacks.
-# Changes nothing.
-#
-# config-fix <add|remove|all>
-# Adds the missing keys with the template's values, removes the leftovers,
-# or both, and writes the config again in its own format. /pave:init runs it
-# with the option the user chose.
-cmd_config() {
-  local op="$1"; shift
+# Compares the hub's config with templates/config.yaml, the single source of
+# truth for what Pave reads: keys the template does not have, keys it has that
+# the config lacks. Changes nothing - /pave:init makes the edits.
+cmd_config_check() {
+  [ $# -eq 0 ] || die "usage: pave.sh config-check"
   local hub; hub="$(find_hub)"
   find_config "$hub"
   [ -n "$CONFIG" ] || die "no config file in $hub. Run /pave:init to write one."
   have_python || die "python3 is required to read $CONFIG"
-  python3 "$SCRIPTS/pave-config.py" "$op" "$CONFIG" "$SCRIPTS/../templates/config.yaml" "$@"
+  python3 "$SCRIPTS/pave-config.py" "$CONFIG" "$SCRIPTS/../templates/config.yaml"
 }
 
 # find_config <hub>
@@ -253,15 +247,7 @@ case "${1:-}" in
   check) shift; cmd_plan check check "$@" ;;
   prune-obsoleted-tasks) shift; cmd_plan prune-obsoleted-tasks prune "$@" ;;
   agent) shift; cmd_agent "$@" ;;
-  config-check)
-    [ $# -eq 1 ] || die "usage: pave.sh config-check"
-    cmd_config check ;;
-  config-fix)
-    case "${2:-}" in
-      add|remove|all) [ $# -eq 2 ] || die "usage: pave.sh config-fix <add|remove|all>"
-                      cmd_config fix "$2" ;;
-      *) die "usage: pave.sh config-fix <add|remove|all>" ;;
-    esac ;;
-  ""|-h|--help) sed -n '4,20p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
+  config-check) shift; cmd_config_check "$@" ;;
+  ""|-h|--help) sed -n '4,19p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

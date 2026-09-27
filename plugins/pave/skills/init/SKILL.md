@@ -68,8 +68,8 @@ skip the what-to-commit advice at the end.
 | `.claude/settings.json` | `additionalDirectories: []` | **Merge** — add nothing, leave every other setting alone |
 | `.gitignore` | Add `workspace.yaml`, if git | Add the line if missing |
 
-The config file is rewritten only by `pave.sh config-fix`, on the user's
-choice below, and never added beside another one. A hub
+The config file is changed only as the user chooses below, never rewritten
+from scratch, and never added beside another one. A hub
 may use `config.yaml`, `config.yml` or `config.toml`, but only one: a second
 file makes every command that reads the config stop with an error. A teammate
 who clones the hub already has the team's settings, and init must not undo
@@ -113,21 +113,25 @@ config.yaml differs from what this version of Pave reads:
   3. Remove leftovers only
   4. Leave the config as it is
 
-Pave rewrites the file: its opening comment block stays, other comments do not.
-A removed key's value is not carried over - edit the config afterwards to keep it.
+Only those lines change. A removed key's value is not carried over - edit the
+config afterwards to keep it.
 ```
 
-Run the script with the option chosen, and nothing else:
+Then edit the config yourself, doing exactly what was chosen and nothing else:
 
-| Choice | Command |
-|---|---|
-| 1 | `pave.sh config-fix all` |
-| 2 | `pave.sh config-fix add` |
-| 3 | `pave.sh config-fix remove` |
-| 4 | none |
+- **Remove a leftover**: delete that key's lines, and a comment that only
+  described it.
+- **Add a missing key**: copy it from `templates/config.yaml` with the
+  template's value and its comment, in the config's own format (YAML or TOML)
+  and the style of its neighbours, placed where the template has it. A missing
+  section is added whole.
+- Leave every other line as it is - values, comments, order and layout. Never
+  rewrite the file from scratch, change a value or carry a removed key's value
+  over.
 
-Report its lines as they are. Never edit the config yourself. If missing keys
-remain, say that commands needing them will stop until they are added.
+Then run `config-check` again and report its `result:`. On 4, change nothing.
+If missing keys remain, say that commands needing them will stop until they
+are added.
 
 `.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;
 never replace it.
