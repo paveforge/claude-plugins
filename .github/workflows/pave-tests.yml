@@ -1,0 +1,48 @@
+name: pave tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/pave/scripts/**"
+      - "plugins/pave/tests/**"
+      - ".github/workflows/pave-tests.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "plugins/pave/scripts/**"
+      - "plugins/pave/tests/**"
+      - ".github/workflows/pave-tests.yml"
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
+        pyyaml: ["with-pyyaml", "without-pyyaml"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies
+        run: pip install pytest
+      - name: Install PyYAML
+        if: matrix.pyyaml == 'with-pyyaml'
+        run: pip install pyyaml
+      - name: Run pave tests
+        run: python3 -m pytest plugins/pave/tests
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n
+        run: bash -n plugins/pave/scripts/pave.sh
+      - name: shellcheck
+        env:
+          LANG: C.UTF-8
+          LC_ALL: C.UTF-8
+        run: shellcheck --severity=warning plugins/pave/scripts/pave.sh
