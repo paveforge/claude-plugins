@@ -213,7 +213,8 @@ that cannot be reverted automatically. Stop. Do not write task documents yet.
 
 Write one document per task in the approved table into
 `features/<feature-id>/tasks/`, named `NN-<short-slug>.md`, from
-`templates/task.md`.
+`templates/task.md`. Set `branch:` in every task to the branch the brief
+gives - the same name in every service.
 
 This is the most important output of the phase. Everything downstream executes
 these documents without question: a builder does what the document says, and

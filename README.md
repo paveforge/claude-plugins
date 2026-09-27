@@ -109,7 +109,7 @@ The philosophy is in how the steps relate:
 
 | Command | When you run it |
 |---|---|
-| `/pave:init` | Once, to create the hub |
+| `/pave:init` | Once, to create the hub; again after upgrading Pave |
 | `/pave:add <folder>` | Whenever a service joins the platform |
 | `/pave:analyse` | After adding services, then as they drift |
 | `/pave:spec` | Every feature — sets the session's feature, then what it must do |
@@ -135,6 +135,26 @@ thing you can check before moving on.
 **What it asks you.** Where the hub goes — this folder, or somewhere else. It
 never guesses. It also offers `git init` if the folder isn't a repository,
 since the config split depends on version control.
+
+**After upgrading Pave, run it again.** On an existing hub it creates only
+what is missing and leaves everything else. It runs `pave.sh config-check`,
+which compares the hub's config with the template this version of Pave ships:
+
+```
+leftover  model_ranking = [haiku, sonnet, opus, fable]
+leftover  agents.designer = { model: fable, effort: max }
+missing   agents.planner = { model: opus, effort: high }
+result: 3 to fix - run /pave:init
+```
+
+Init asks what to do - add the missing keys, remove the leftovers, both, or
+nothing - and makes exactly those edits: missing keys are copied from the
+template with its values, leftovers are removed, and every other line, comment
+and value stays, in the file's own format (YAML or TOML). A removed key's value
+is not carried over (`designer`'s model does not move to `planner` - edit the
+config afterwards to keep it). The config
+records no Pave version; the template is what Pave reads now, which is right
+however old the hub is.
 
 ---
 
@@ -614,10 +634,7 @@ execution:
   max_parallel: 4
 
 branch:
-  pattern: feature/{feature-id}
-
-contracts:
-  land_contracts: true
+  pattern: feature/{feature-id}  # every task's branch, in every service
 ```
 
 Every model is enforced when its agent is spawned, planning included. Skills
@@ -627,8 +644,10 @@ the same agent for later stages and re-plans within a session.
 
 Agent definitions carry no `model` or `effort`. The orchestrating skill always
 passes both when it spawns, so `config.yaml` is the only place to change them.
-If an agent has no entry there, `pave.sh agent` falls back to Pave's default
-and reports `source=default`.
+There are no defaults anywhere else. If an agent has no entry, `pave.sh agent`
+stops with an error, and a skill that needs a setting the config lacks stops
+too; both point you to `/pave:init`, which brings the config up to date.
+Commands never change the config themselves.
 
 **What the platform can enforce.** Pave passes both values, but the agent
 platform decides what it honours. In Claude Code the model is enforced when an
@@ -653,8 +672,8 @@ effort=low
 A config file that can't be parsed stops the command with an error rather than
 falling back to defaults.
 
-**Monorepos.** When several services share a repo, `monorepo_strategy` decides
-whether their tasks run one at a time (default, safe), in separate git
+**Monorepos.** When several services share a repo, `execution.monorepo_strategy` decides
+whether their tasks run one at a time (the template's choice, safe), in separate git
 worktrees (parallel, costs disk), or concurrently in one checkout (fastest,
 will eventually collide).
 

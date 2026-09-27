@@ -57,6 +57,22 @@ downstream by giving the builder or reviewer more judgement, more modes or
 more to search. Cheap agents doing expensive thinking is the failure this
 design exists to avoid.
 
+### The config template is the only source of truth for config
+
+`plugins/pave/templates/config.yaml` lists every key Pave reads, with the
+value a new hub starts with. Adding, renaming or removing an agent or a
+setting changes the template in the same change as the code that reads it.
+Nothing else holds a default: not `pave.sh`, not a skill, not an agent. A
+command that needs a key the hub's config lacks stops and points to
+`/pave:init`, which compares the config with the template (`pave.sh
+config-check`) and brings it up to date. A key missing from the template is
+a key Pave cannot read.
+
+Name a config key in a prompt in full, as `` `section.key` `` -
+`` `execution.max_parallel` ``, never `` `max_parallel` `` or "the parallel limit".
+A test checks every key written that way against the template; a key written
+any other way is invisible to it.
+
 ### No new concept when an existing one will do
 
 A revert is a task. A removal is an item. Before adding a status, a mode, a

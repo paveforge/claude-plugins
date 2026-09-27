@@ -1,12 +1,16 @@
 ---
 name: init
-description: Set up a Pave hub in a folder. Creates config.yaml, an empty workspace.yaml and the hub scaffolding. Use once, before anything else. Services are added afterwards with /pave:add.
+description: Set up a Pave hub in a folder, or bring an existing hub up to date after a Pave upgrade. Creates config.yaml, an empty workspace.yaml and the hub scaffolding; on an existing hub, offers to fix config drift. Services are added afterwards with /pave:add.
 argument-hint: "[hub path]"
 ---
 
 # Pave — init
 
 Set up the hub. Nothing else.
+
+Re-running it on an existing hub is also the upgrade step after a Pave update:
+it creates what is missing, leaves what exists, and offers to bring the config
+up to date (§3, *An existing hub's config*).
 
 Init does not look for repos, does not guess what anything is, and does not
 scan. It creates a hub and leaves `workspace.yaml` empty. Services are
@@ -55,7 +59,7 @@ skip the what-to-commit advice at the end.
 | File | If absent | If present |
 |---|---|---|
 | `.pave-hub` | Empty marker — other skills walk up to find it | Leave |
-| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave untouched** — it is team policy |
+| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave as it is** — it is team policy. Offer to bring it up to date, below |
 | `workspace.yaml` | From `templates/workspace.yaml`, with **no services** | Leave |
 | `AGENTS.md` | From `templates/hub-AGENTS.md` | Leave |
 | `CLAUDE.md` | One line: `@AGENTS.md` | Leave if it already imports `@AGENTS.md`; otherwise see below |
@@ -64,7 +68,8 @@ skip the what-to-commit advice at the end.
 | `.claude/settings.json` | `additionalDirectories: []` | **Merge** — add nothing, leave every other setting alone |
 | `.gitignore` | Add `workspace.yaml`, if git | Add the line if missing |
 
-The config file is never rewritten, and never added beside another one. A hub
+The config file is changed only as the user chooses below, never rewritten
+from scratch, and never added beside another one. A hub
 may use `config.yaml`, `config.yml` or `config.toml`, but only one: a second
 file makes every command that reads the config stop with an error. A teammate
 who clones the hub already has the team's settings, and init must not undo
@@ -82,12 +87,59 @@ rename `CLAUDE.md` to `AGENTS.md` and write the one-line `CLAUDE.md`. Do it
 only on "yes". If both files have rules of their own, do not merge them -
 say so and let the user move theirs into `AGENTS.md`.
 
+**An existing hub's config.** Pave has no defaults: every command reads its
+agents and settings from the config, and stops when one is missing. After an
+upgrade the config may also hold keys Pave no longer reads, which do nothing.
+Run:
+
+```
+"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh config-check
+```
+
+It compares the config with `templates/config.yaml` and prints a `leftover`
+line for each key the template does not have, a `missing` line for each key
+the template has and the config lacks, and a `result:` line. If there is
+nothing to fix, say nothing about it. Otherwise show its lines as they are and
+ask one question:
+
+```
+config.yaml differs from what this version of Pave reads:
+
+  leftover  agents.designer = { model: fable, effort: max }
+  missing   agents.planner = { model: opus, effort: high }
+
+  1. Add missing keys and remove leftovers   (recommended)
+  2. Add missing keys only
+  3. Remove leftovers only
+  4. Leave the config as it is
+
+Only those lines change. A removed key's value is not carried over - edit the
+config afterwards to keep it.
+```
+
+Then edit the config yourself, doing exactly what was chosen and nothing else:
+
+- **Remove a leftover**: delete that key's lines, and a comment that only
+  described it.
+- **Add a missing key**: copy it from `templates/config.yaml` with the
+  template's value and its comment, in the config's own format (YAML or TOML)
+  and the style of its neighbours, placed where the template has it. A missing
+  section is added whole.
+- Leave every other line as it is - values, comments, order and layout. Never
+  rewrite the file from scratch, change a value or carry a removed key's value
+  over.
+
+Then run `config-check` again and report its `result:`. On 4, change nothing.
+If missing keys remain, say that commands needing them will stop until they
+are added.
+
 `.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;
 never replace it.
 
 ## 4. Report
 
-Say where the hub is and which files were created versus left alone.
+Say where the hub is and which files were created versus left alone, and
+whether the config was brought up to date.
 
 Then say what is next, and be concrete — an empty hub does nothing:
 

@@ -64,7 +64,8 @@ against - only `/pave:plan` can make one.
 Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, `features/<id>/`,
 and the hub's own `AGENTS.md` if it has one — the user's
 rules for Pave's agents. Read it explicitly; Claude Code loads it by itself
-only when you happen to be standing in the hub.
+only when you happen to be standing in the hub. If the config lacks a setting this command uses, stop: name the setting and
+tell the user to run `/pave:init`. Never assume a value.
 
 | Feature status | Review |
 |---|---|
@@ -84,6 +85,8 @@ the task that reverts one is, like any other `done` task.
 Spawn a `reviewer` for **every `done` task** in the feature, in parallel up to
 `execution.max_parallel`, passing the `model` and `effort` printed by
 `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent reviewer`.
+If it fails, the hub's config has no usable entry for that agent: stop,
+pass its message on, and never choose a model yourself.
 
 Re-review checks every `done` task again, including ones that passed last
 time. That is deliberate, not waste: a re-run builder fixing three items may

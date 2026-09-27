@@ -50,7 +50,8 @@ Then locate the hub and read the hub's config file (`config.yaml`,
 `config.yml` or `config.toml`), `workspace.yaml`, the feature's task
 documents, and **the hub's own `AGENTS.md`** - read it
 explicitly; Claude Code loads it by itself only when you happen to be
-standing in the hub.
+standing in the hub. If the config lacks a setting this command uses, stop: name the setting and
+tell the user to run `/pave:init`. Never assume a value.
 
 | Feature status | Build |
 |---|---|
@@ -106,7 +107,7 @@ Three rules, applied in this order:
    `execution.max_parallel`. If `execution.mode` is `sequential`, groups run
    one at a time.
 3. **Priority** — inside each builder's queue, `high` before `low`, then by
-   task number. When `max_parallel` limits how many services run at once,
+   task number. When `execution.max_parallel` limits how many services run at once,
    start first the service whose next task has the highest priority.
 
 So a `high` revert in stock-service goes first in stock-service's queue, and
@@ -121,7 +122,7 @@ repo lists more than one service - apply `execution.monorepo_strategy`:
 
 | Strategy | Behaviour |
 |---|---|
-| `sequential` (default) | Services in that repo run one at a time |
+| `sequential` | Services in that repo run one at a time |
 | `worktree` | Each gets its own git worktree, same branch name; parallel |
 | `shared-tree` | Parallel in one checkout. Concurrent git operations will collide eventually |
 
@@ -143,7 +144,8 @@ else writes there.
 
 Spawn one `builder` per service group, passing the `model` and `effort`
 printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent builder`. Never
-substitute your own.
+substitute your own. If it fails, the hub's config has no usable entry for that agent: stop,
+pass its message on, and never choose a model yourself.
 
 Give each agent, and nothing else:
 

@@ -28,7 +28,8 @@ faithfully build it.
 Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, and the hub's own
 `AGENTS.md` if it has one — the user's rules for Pave's
 agents. Read it explicitly; Claude Code loads it by itself only when you
-happen to be standing in the hub.
+happen to be standing in the hub. If the config lacks a setting this command uses, stop: name the setting and
+tell the user to run `/pave:init`. Never assume a value.
 
 If no services are registered, stop and say to run `/pave:add <folder>` first.
 
@@ -93,6 +94,8 @@ against a service nobody can build.
 Spawn one `explorer` per service needing discovery, in parallel up to
 `execution.max_parallel`, with the `model` and `effort` printed by
 `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent explorer`.
+If it fails, the hub's config has no usable entry for that agent: stop,
+pass its message on, and never choose a model yourself.
 
 Give each one the absolute path to the hub's `AGENTS.md`, if it exists, as required reading — an explorer runs in a service repo and
 will not find it by walking up from there.

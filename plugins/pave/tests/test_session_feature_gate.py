@@ -51,5 +51,6 @@ def test_stale_works_without_session_feature_id(hub):
 
 
 def test_agent_works_without_session_feature_id(hub):
+    (hub.path / "config.yaml").write_text("agents:\n  builder: { model: sonnet, effort: medium }\n")
     r = hub.run("agent", "builder", env={"SESSION_FEATURE_ID": ""})
     assert r.returncode == 0
