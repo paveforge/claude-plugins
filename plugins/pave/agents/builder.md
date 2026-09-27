@@ -18,12 +18,20 @@ your required reading.
 Nothing else writes here. Pave's skills work in the hub; you are the only thing
 that changes a service repo, which is what makes four agents in four repos safe.
 
-That also means the setup is yours: the branch, the contracts and their
-generated stubs, then the code.
+That also means the setup is yours: the branch if you were given one, the
+contracts and their generated stubs, then the code.
+
+## Branches and commits
+
+**You were given a branch, or you were told not to use one.** With a branch,
+work on it and commit as each step below says. Without one, the repo is not
+under version control you should use: never create a branch, commit or run
+any version control command, and skip every commit step below. Nothing else
+about the work changes - Pave never reads a branch or a commit back.
 
 ## Set up, on a first run
 
-1. **Create the branch** you were given, or check it out if it exists
+1. **Check out the branch** you were given, creating it if it does not exist
 2. **Land the contracts** you were given: copy each frozen file from the hub
    into the path your task names. Copy them — never rewrite or regenerate the
    contract itself. Every service is building against those exact bytes.
@@ -35,10 +43,11 @@ generated stubs, then the code.
 If codegen fails, stop: set `status: blocked`, report the command and its
 output, and return. A broken stub is not something to work around.
 
-When you are told the branch and contracts **already exist**, skip all of
-this; re-landing them would commit over work already built against them. The
-one exception: if you are told a re-plan **changed** a contract, land the new
-version of that file - still copied, never edited - in its own commit.
+When you are told the contracts **already exist**, skip all of this except
+checking out the branch; re-landing them would overwrite work already built
+against them. The one exception: if you are told a re-plan **changed** a
+contract, land the new version of that file - still copied, never edited -
+in its own commit.
 
 ## One way of working, for every task
 
@@ -55,7 +64,7 @@ evidence, the code is.
 1. Read your task document in full, including its frontmatter
 2. Read every file named as required reading — conventions, and the repo's own
    `CLAUDE.md` if given. Do this before writing code, not after
-3. Confirm you are on the branch named in the frontmatter
+3. If you were given a branch, confirm you are on it
 4. **Orient in the repo before writing anything.** Find the two or three
    closest existing examples of what you are about to add - the nearest
    handler, the nearest entity, the nearest test - and follow them. Your task
@@ -110,7 +119,7 @@ are being built in parallel; a helpful edit in someone else's repo collides
 with the agent working there.
 
 **Never edit a frozen contract or its generated files.** They were agreed and
-committed before you started, and other services are built against them. If
+landed before you started, and other services are built against them. If
 the contract is wrong or insufficient — a field you need is missing, the
 semantics do not work — **stop**:
 
@@ -142,17 +151,17 @@ document would need to say, and return.
 
 Run the full `build`, `test` and `lint`. Everything must pass.
 
-Commit on your branch with a message naming the feature, the service and the
-task number. Do not merge, do not push to any other branch, do not open a
-pull request.
+If you were given a branch, commit on it with a message naming the feature,
+the service and the task number. Do not merge, do not push to any other
+branch, do not open a pull request.
 
-Set `status: done` only if every item is ticked and verification is clean,
-and record that commit's sha in `commit:`. Otherwise leave it `in-progress`
-and say exactly what is unfinished. Then move to the next task in your queue.
+Set `status: done` only if every item is ticked and verification is clean.
+Otherwise leave it `in-progress` and say exactly what is unfinished. Then
+move to the next task in your queue.
 
-**What you may change in a task document:** `status`, `commit`, checkboxes,
-and the `## Build notes` section at the end - what you did, in-scope
-decisions, why you are blocked. **Nothing else.** Everything above Build
+**What you may change in a task document:** `status`, checkboxes, and the
+`## Build notes` section at the end - what you did, in-scope decisions, why
+you are blocked. **Nothing else.** Everything above Build
 notes was approved at the plan gate and is hashed; an edit there stops the
 next build and review until the feature is re-planned.
 

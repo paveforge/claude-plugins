@@ -3,6 +3,7 @@
 #
 #   pave.sh add <folder>...    register service folders with the hub
 #   pave.sh stale [service]     report what needs discovery or analysis, and stale findings
+#   pave.sh stamp <file>        record the source hash in a knowledge file an analyst wrote
 #   pave.sh feature propose <args...>   classify a feature argument, create nothing
 #   pave.sh feature create <id> [title] create a confirmed feature's folder
 #   pave.sh seal                        record spec and task hashes at the plan gate
@@ -66,8 +67,10 @@ cmd_add() {
       continue
     fi
 
+    # Information only: Pave works the same with or without a VCS.
     local note=""
-    git -C "$path" rev-parse --git-dir >/dev/null 2>&1 || note="  (not a git repository — builders cannot branch here)"
+    [ -e "$path/.git" ] || git -C "$path" rev-parse --git-dir >/dev/null 2>&1 \
+      || note="  (not a git repository — builders will not branch or commit here)"
 
     printf '\n  - name: %s\n    path: %s\n' "$name" "$path" >> "$ws"
     printf 'added  %s → %s%s\n' "$name" "$path" "$note"
@@ -106,6 +109,18 @@ cmd_stale() {
   local hub; hub="$(find_hub)"
   have_python || die "python3 is required for 'stale'"
   python3 "$SCRIPTS/pave-stale.py" "$hub" "$@"
+}
+
+# stamp <knowledge file>
+# Records the content hash of the source directories a knowledge file names:
+# source_hash in a service README, hash on each services: line of a finding.
+# Run after an analyst writes the file - the analyst has no Bash. A relative
+# path is taken from the hub when it is not found from the current folder.
+cmd_stamp() {
+  [ $# -eq 1 ] || die "usage: pave.sh stamp <knowledge file>"
+  local hub; hub="$(find_hub)"
+  have_python || die "python3 is required for 'stamp'"
+  python3 "$SCRIPTS/pave-stale.py" --stamp "$hub" "$1"
 }
 
 # feature propose <ticket-id|feature-id|description...>
@@ -237,6 +252,7 @@ find_config() {
 case "${1:-}" in
   add) shift; cmd_add "$@" ;;
   stale) shift; cmd_stale "$@" ;;
+  stamp) shift; cmd_stamp "$@" ;;
   feature)
     case "${2:-}" in
       propose) shift 2; cmd_feature_propose "$@" ;;
@@ -248,6 +264,6 @@ case "${1:-}" in
   prune-obsoleted-tasks) shift; cmd_plan prune-obsoleted-tasks prune "$@" ;;
   agent) shift; cmd_agent "$@" ;;
   config-check) shift; cmd_config_check "$@" ;;
-  ""|-h|--help) sed -n '4,19p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
+  ""|-h|--help) sed -n '4,20p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

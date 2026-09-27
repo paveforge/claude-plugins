@@ -10,8 +10,15 @@ Which task reverts which obsolete one is the planner's record, kept in the
 Reverts column of plan.md's task table; task documents never carry it.
 
 A task hash covers only what the planner wrote. It ignores the fields a
-builder or reviewer legitimately changes - status, commit, checkbox state and
-the Build notes section - so a normal build does not look like an edit.
+builder or reviewer legitimately changes - status, checkbox state and the
+Build notes section - so a normal build does not look like an edit.
+
+The hashes plan.md holds are also the record of what was built: check
+refuses to build or review a task that differs from its sealed hash, so a
+done task was built from the text sealed for it. When seal finds a done task
+whose hash differs from the one the previous seal recorded, the task was
+rewritten after it was built, and seal reopens it. Nothing here reads a
+version control system.
 
 usage: pave-plan.py <seal|check|prune> <feature-dir>
 """
@@ -22,6 +29,8 @@ import sys
 
 TASK_FILE = re.compile(r"^(\d+)-.*\.md$")
 CHECKBOX = re.compile(r"^(\s*[-*]\s+)\[[xX]\]", re.M)
+# commit is no longer written; it stays volatile so task documents from
+# before 0.6 keep the hash they were sealed with.
 VOLATILE = re.compile(r"^(status|commit):.*$\n?", re.M)
 NOTES = re.compile(r"^## Build notes\s*$", re.M)
 
@@ -126,7 +135,7 @@ def write_plan(plan, fm, body, spec_hash, hashes, next_task):
 
 
 def cmd_seal(fdir):
-    plan, fm, body, _ = read_plan(fdir)
+    plan, fm, body, sealed = read_plan(fdir)
     if plan is None:
         die("no plan.md - nothing to seal")
     spec = fdir / "spec.md"
@@ -134,6 +143,16 @@ def cmd_seal(fdir):
         die("no spec.md - a plan cannot be sealed against nothing")
     all_tasks = tasks(fdir)
     hashes = {n: task_hash(p.read_text()) for n, p in all_tasks.items()}
+    # A done task was built from the text the previous seal recorded. If that
+    # text changed and the task was not reopened, what was built is not what
+    # the task now says.
+    for n, p in sorted(all_tasks.items()):
+        text = p.read_text()
+        tfm, body_ = split_frontmatter(text)
+        if scalar(tfm, "status") == "done" and n in sealed and sealed[n] != hashes[n]:
+            tfm = re.sub(r"^status:[^\n]*", "status: reopened", tfm, count=1, flags=re.M)
+            p.write_text("---\n" + tfm + "---\n" + body_)
+            print(f"reopened: {p.name} - done, but changed since it was sealed and built")
     try:
         declared = int(scalar(fm, "next_task") or 1)
     except ValueError:

@@ -42,17 +42,17 @@ almost always a mistake.
 
 Never guess. Never silently use the working directory.
 
-## 2. Check for git
+## 2. Git, only for sharing
 
-The config split depends on it: `config.yaml` is committed and shared,
-`workspace.yaml` is gitignored and local to each person. Without git neither
-happens.
+Pave does not need git. Every hash, snapshot and staleness check works on
+plain files, so a hub that is never committed works exactly the same.
 
-If the hub is not a git repository, say so and offer `git init -b main` (so
-the hub starts on `main`, not `master`). If the user
-declines, carry on, but tell them plainly that nothing can be shared with the
-team until the hub is version controlled — and then write no `.gitignore`, and
-skip the what-to-commit advice at the end.
+Git is only how a team shares a hub: `config.yaml` is committed and shared,
+`workspace.yaml` is gitignored and local to each person. If the hub is not a
+git repository, say so in one line and offer `git init -b main` (so the hub
+starts on `main`, not `master`) for sharing it later. If the user declines,
+carry on - nothing is missing - and then write no `.gitignore`, and skip the
+what-to-commit advice at the end.
 
 ## 3. Write
 

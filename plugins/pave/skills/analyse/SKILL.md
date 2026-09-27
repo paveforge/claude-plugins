@@ -56,9 +56,9 @@ needs:
 ```
 undiscovered svc-d       no language in workspace.yaml
 missing      svc-c       no knowledge folder
-stale        svc-b       1 file(s) changed under internal/domain
+stale        svc-b       files changed under internal/domain
 orphan       old-svc     knowledge folder, no such service in workspace.yaml
-current      svc-a       unchanged since 0818f6e
+current      svc-a       unchanged since 3f9a1c2
 ```
 
 | State | Do |
@@ -78,10 +78,12 @@ Given a service name, the script checks only that one. Given none, it checks
 everything.
 
 **Staleness is path-scoped, not time-based**, which is what the script
-implements: a service is stale only when the source directories its analysis
-rested on have changed. A month of commits to CI config, READMEs or unrelated
-packages invalidates nothing, and re-reading a service that has not moved is
-pure cost.
+implements: a service is stale only when the content of the source
+directories its analysis rested on has changed. A month of changes to CI
+config, READMEs or unrelated packages invalidates nothing, and re-reading a
+service that has not moved is pure cost. It compares file content, never
+version control history, so it works the same whether a repo uses git,
+another VCS or none.
 
 Report what needs doing, and why, before spawning anything.
 
@@ -139,8 +141,9 @@ fails in CI and nobody can explain.
 
 Record per service: `kind` (service | library | app | infra), `language`,
 `commands`, `contracts`, `consumes` where imports make it clear, the repo's own
-`CLAUDE.md` if it has one, and `repo_root` — the git root, so that two services
-sharing one are recognised as a monorepo and `execution.monorepo_strategy`
+`CLAUDE.md` if it has one, and `repo_root` — the root of the repository the
+service lives in (its VCS root, or the top folder of the project when there
+is no VCS), so that two services sharing one are recognised as a monorepo and `execution.monorepo_strategy`
 applies to them.
 
 ### Filling in workspace.yaml
@@ -173,13 +176,21 @@ Each writes only its own folder under
 `templates/knowledge-service-README.md`. One writer per directory, the same
 rule as the builders.
 
-Give each analyst its path, its language, its entry from `workspace.yaml`, and
-**the current commit sha of its repo** — the analyst has no Bash and cannot
-read it itself, and without it the staleness check has nothing to compare
-against.
-
-Give it the absolute path to the hub's `AGENTS.md` too, if
+Give each analyst its path, its language and its entry from
+`workspace.yaml`. Give it the absolute path to the hub's `AGENTS.md` too, if
 it exists, as required reading.
+
+**When an analyst returns having finished**, stamp its README:
+
+```
+"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh stamp artifacts/knowledge/services/<service>/README.md
+```
+
+It records `source_hash`, the hash of the content of the `source_paths` the
+analyst listed - what `pave.sh stale` compares against. The analyst has no
+Bash and cannot compute it itself. A README that is never stamped is
+reported `missing`, so an analysis that did not finish is never mistaken for
+a current one.
 
 Require a short summary back. Detail belongs in the files; four analysts
 returning full narratives will exhaust this session's context.
@@ -244,9 +255,9 @@ and every `uncertain` entry the analysts raised. Those last ones are the points
 planning must verify against code rather than trust.
 
 **Do not report a service as done if its agent returned blocked, incomplete or
-nothing at all.** Leave its previous state, do not update its `commit`, and say
-it still needs analysing — otherwise the next run sees a current `commit` and
-skips a service that was never read. A repo that could not be reached is the
+nothing at all.** Do not stamp its README, and say it still needs analysing
+— otherwise the next run sees a current `source_hash` and skips a service
+that was never read. A repo that could not be reached is the
 same case.
 
 Then say what is next: `/pave:spec <feature>`.

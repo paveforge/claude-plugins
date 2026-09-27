@@ -31,9 +31,9 @@ The dependency graph, written as a table.
 | <Event> | <service> | <services> |
 
 ## Services
-| Service | Analysed | Commit | Uncertain |
-|---|---|---|---|
-| <service> | <date> | <sha> | <count> |
+| Service | Analysed | Uncertain |
+|---|---|---|
+| <service> | <date> | <count> |
 
 ## On-demand
 

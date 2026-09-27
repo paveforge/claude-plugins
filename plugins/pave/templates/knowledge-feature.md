@@ -7,11 +7,11 @@ spec_hash: <sha256>          # copied from plan.md at recording. `pave.sh stale`
                              # record stale the moment features/<feature-id>/spec.md changes
 recorded_at: <date>
 reviewed_at: <review-report timestamp>
-# Per service: the commit its last task landed at. The system as the feature
-# left it. Later changes to the same code by other work are found in the
-# service analysis and in newer source findings.
+# Per service: the tasks built there. The system as the feature left it.
+# Later changes to the same code by other work are found in the service
+# analysis and in newer source findings.
 services:
-  - { service: <service>, commit: <sha> }
+  - { service: <service>, tasks: [<NN>, <NN>] }
 capabilities: [<business phrases the feature added, the way people ask for them>]
 terms: [<terms the feature introduced or changed>]
 emits: [<events added>]
@@ -36,9 +36,9 @@ consumes: [<events newly consumed>]
 | AC-1 | <criterion> | 01, 03 |
 
 ## What changed, per service
-| Service | Change | Commit |
+| Service | Change | Tasks |
 |---|---|---|
-| <service> | <one line per task outcome> | `<sha>` |
+| <service> | <one line per task outcome> | <NN, NN> |
 
 ## Contracts
 | Contract | Producer | Consumers |

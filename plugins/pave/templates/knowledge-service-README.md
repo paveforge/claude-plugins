@@ -1,8 +1,9 @@
 ---
 service: <service-name>
 analysed_at: <date>
-commit: <sha the analysis was based on>
-source_paths: [<dirs the analysis actually rests on - these decide staleness>]
+source_paths: [<dirs the analysis actually rests on - these decide staleness. Never build output, dependencies or generated code>]
+# source_hash is added here by `pave.sh stamp` once the analysis is finished:
+# the hash of the content under source_paths. Never write it by hand.
 capabilities: [<business phrases, not function names>]
 terms: [<domain vocabulary this service owns>]
 emits: [<events>]

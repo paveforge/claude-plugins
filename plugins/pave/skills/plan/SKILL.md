@@ -105,7 +105,8 @@ further if the spec change plainly reaches a capability none of them has.
 **Staleness.** For every candidate, run `pave.sh stale <service>`. Spawn
 `analyst` agents for anything missing or stale, with the `model` and `effort`
 that `pave.sh agent analyst` prints and the required reading `/pave:analyse`
-§3 gives them, and continue once they return. Say what you are doing in one
+§3 gives them, stamp each README they write as that section says, and
+continue once they return. Say what you are doing in one
 line; do not ask permission. Never plan against stale knowledge.
 
 Knowledge is where the planner starts, not where it stops: it reads the code
@@ -133,8 +134,6 @@ never redoes discovery:
   feature's own record: on a re-plan it describes the version being replaced,
   and `plan.md` is the source
 - Every `uncertain:` entry on a candidate that bears on the spec
-- **The branch** every task builds on: `branch.pattern` from the config, with
-  `{feature-id}` replaced by the feature id
 - Anything `check` reported
 - Absolute paths to the hub's `AGENTS.md`, if it exists
 
@@ -199,9 +198,10 @@ For each code question, exactly as `/pave:query` §2 does it:
   reusing a stale finding's file if it answers the same question
 - spawn one `analyst` in question mode, with the `model` and `effort`
   `pave.sh agent analyst` prints, given the question verbatim, the services it
-  concerns with their repo path, `path` and current commit, their knowledge
-  files as a map, the finding's path, `templates/knowledge-finding.md`, and
-  the hub's `AGENTS.md` if it exists
+  concerns with their repo path and `path`, their knowledge files as a map,
+  the finding's path, `templates/knowledge-finding.md`, and the hub's
+  `AGENTS.md` if it exists
+- stamp each finding it writes: `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh stamp <finding>`
 
 Run them in parallel, up to `execution.max_parallel`. Then rebuild the
 index's On-demand section (`/pave:query` §3) and resume the planner with the
@@ -291,8 +291,7 @@ readiness check in `writing-rules.md` §6.
 
 The planner cannot delete files. Delete each task document it lists under
 **Delete** - unbuilt tasks the plan dropped, which have nothing to revert -
-and check each one really is unbuilt (`pending`, no `commit`) before removing
-it. Anything else is a planner error: resume it rather than deleting.
+and check each one really is unbuilt (`pending`) before removing it. Anything else is a planner error: resume it rather than deleting.
 
 A readiness failure is the planner's defect, not the user's decision: resume
 it to fix the documents. Go back to the user only if a fix needs a decision -
@@ -308,7 +307,12 @@ SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh seal
 
 It records the spec's hash and every task document's hash in `plan.md`,
 advances `next_task`, and snapshots the approved spec to
-`artifacts/spec.approved.md` for the next re-plan to diff against. From here,
+`artifacts/spec.approved.md` for the next re-plan to diff against. It also
+reopens any `done` task whose hash differs from the one the previous seal
+recorded - the text it was built from - because the planner rewrote it
+without reopening it, and prints a `reopened:` line
+for each. Pass those lines on; the planner's summary should have listed them
+as reopened. From here,
 `/pave:build` and `/pave:review` run `pave.sh check` and refuse on any
 mismatch.
 

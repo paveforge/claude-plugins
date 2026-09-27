@@ -1,4 +1,6 @@
-from conftest import commit_all, make_feature
+import re
+
+from conftest import make_feature
 
 
 def seal(hub, feature_id):
@@ -17,8 +19,8 @@ def add_revert(fdir, n, reverts, status):
     """A task that reverts others: an ordinary task, linked only in plan.md's Reverts column."""
     (fdir / "tasks" / f"{n:02d}-revert.md").write_text(
         f"---\nservice: svc\nfeature: feat-1\npriority: high\nstatus: {status}\n"
-        "depends_on: []\nsatisfies: []\nbranch: feature/feat-1\nderives_from:\n"
-        f"  - plan.md#approach\ncommit:\n---\n# Remove what task {reverts[0]} built\n## Build notes\n"
+        "depends_on: []\nsatisfies: []\nderives_from:\n"
+        f"  - plan.md#approach\n---\n# Remove what task {reverts[0]} built\n## Build notes\n"
     )
     named = ", ".join(f"{r:02d}" for r in reverts)
     plan = fdir / "plan.md"
@@ -61,7 +63,6 @@ def test_check_passes_after_builder_only_changes(hub):
     task = fdir / "tasks" / "01-task.md"
     text = task.read_text()
     text = text.replace("status: pending", "status: done")
-    text = text.replace("commit:\n", "commit: abc1234\n")
     text = text.replace("- [ ] Do the thing.", "- [x] Do the thing.")
     text = text.replace("## Build notes\n", "## Build notes\n\nDid the thing.\n")
     task.write_text(text)
@@ -215,3 +216,77 @@ def test_prune_nothing_to_prune(hub):
     r = prune(hub, "feat-1")
     assert r.returncode == 0
     assert "nothing to prune" in r.stdout
+
+
+
+def mark_done(task):
+    """What a builder does to a task when it finishes it."""
+    text = task.read_text().replace("status: pending", "status: done")
+    task.write_text(text.replace("- [ ] ", "- [x] "))
+
+
+def status(task):
+    return re.search(r"^status: (\S+)", task.read_text(), re.M).group(1)
+
+
+def test_seal_reopens_a_done_task_rewritten_since_it_was_built(hub, vcs):
+    fdir = make_feature(hub.path, "feat-1", n_tasks=2)
+    seal(hub, "feat-1")
+    t1, t2 = fdir / "tasks" / "01-task.md", fdir / "tasks" / "02-task.md"
+    mark_done(t1)
+    mark_done(t2)
+    # A re-plan rewrites task 01 in place and forgets to reopen it.
+    t1.write_text(t1.read_text().replace("Do the thing.", "Do the thing, now in blue."))
+    r = seal(hub, "feat-1")
+    assert r.returncode == 0, r.stderr
+    assert "reopened: 01-task.md" in r.stdout
+    assert "02-task.md" not in r.stdout
+    assert status(t1) == "reopened"
+    assert status(t2) == "done"
+    # Only the status changed: the rewrite and the builder's ticks are kept.
+    assert "now in blue" in t1.read_text()
+    assert check(hub, "feat-1").returncode == 0
+
+
+def test_seal_reopens_a_task_edited_during_its_build(hub, vcs):
+    # Built from the sealed text, edited while it was built: the edit is
+    # caught by check, and when a re-plan keeps it, seal reopens the task.
+    fdir = make_feature(hub.path, "feat-1")
+    seal(hub, "feat-1")
+    task = fdir / "tasks" / "01-task.md"
+    task.write_text(task.read_text().replace("Do the thing.", "Do another thing."))
+    mark_done(task)
+    assert check(hub, "feat-1").returncode == 1
+    r = seal(hub, "feat-1")
+    assert "reopened: 01-task.md" in r.stdout
+    assert status(task) == "reopened"
+
+
+def test_reseal_without_changes_leaves_done_tasks_done(hub, vcs):
+    fdir = make_feature(hub.path, "feat-1")
+    seal(hub, "feat-1")
+    task = fdir / "tasks" / "01-task.md"
+    mark_done(task)
+    r = seal(hub, "feat-1")
+    assert "reopened" not in r.stdout
+    assert status(task) == "done"
+
+
+def test_first_seal_reopens_nothing(hub, vcs):
+    # No previous seal: nothing was built from a sealed text yet.
+    fdir = make_feature(hub.path, "feat-1")
+    task = fdir / "tasks" / "01-task.md"
+    mark_done(task)
+    r = seal(hub, "feat-1")
+    assert "reopened" not in r.stdout
+    assert status(task) == "done"
+
+
+def test_legacy_commit_field_does_not_change_the_task_hash(hub, vcs):
+    fdir = make_feature(hub.path, "feat-1")
+    seal(hub, "feat-1")
+    task = fdir / "tasks" / "01-task.md"
+    task.write_text(task.read_text().replace("status: pending", "status: done\ncommit: 0818f6e"))
+    assert check(hub, "feat-1").returncode == 0
+    r = seal(hub, "feat-1")
+    assert "reopened" not in r.stdout
