@@ -634,10 +634,7 @@ execution:
   max_parallel: 4
 
 branch:
-  pattern: feature/{feature-id}
-
-contracts:
-  land_contracts: true
+  pattern: feature/{feature-id}  # every task's branch, in every service
 ```
 
 Every model is enforced when its agent is spawned, planning included. Skills

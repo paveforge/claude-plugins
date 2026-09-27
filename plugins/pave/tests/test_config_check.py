@@ -56,9 +56,6 @@ max_parallel = 4
 
 [branch]
 pattern = "feature/{feature-id}"
-
-[contracts]
-land_contracts = true
 """
 
 
@@ -81,9 +78,8 @@ def test_pre_04_config(hub):
         "leftover  agents.designer = { model: fable, effort: max }",
         "missing   agents.retriever = { model: sonnet, effort: low }",
         "missing   agents.planner = { model: opus, effort: high }",
-        "leftover  contracts.land_before_fanout = true",
-        "missing   contracts.land_contracts = true",
-        "result: 7 to fix - run /pave:init",
+        "leftover  contracts = { land_before_fanout: true }",
+        "result: 6 to fix - run /pave:init",
     ]
 
 

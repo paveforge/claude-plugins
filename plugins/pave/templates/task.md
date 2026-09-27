@@ -5,7 +5,7 @@ priority: low              # low | high (reverts obsolete work) | critical (rese
 status: pending            # pending | in-progress | done | reopened | failed | blocked | obsolete
 depends_on: []
 satisfies: []              # acceptance criteria from spec.md, e.g. [AC-1, AC-3]
-branch: feature/<feature-id>
+branch: <branch>           # the brief's branch: branch.pattern from the hub's config
 derives_from:              # the plan this task projects. No source = invented.
   - plan.md#<section>
   - contracts/<file>

@@ -133,6 +133,8 @@ never redoes discovery:
   feature's own record: on a re-plan it describes the version being replaced,
   and `plan.md` is the source
 - Every `uncertain:` entry on a candidate that bears on the spec
+- **The branch** every task builds on: `branch.pattern` from the config, with
+  `{feature-id}` replaced by the feature id
 - Anything `check` reported
 - Absolute paths to the hub's `AGENTS.md`, if it exists
 

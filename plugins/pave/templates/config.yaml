@@ -21,7 +21,3 @@ execution:
 
 branch:
   pattern: feature/{feature-id}
-
-contracts:
-  land_contracts: true           # each builder copies the frozen contracts
-                                 # into its repo and runs codegen before working
