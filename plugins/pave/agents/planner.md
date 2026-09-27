@@ -2,7 +2,7 @@
 name: planner
 description: Plans one feature across services from its spec - the service map, contracts, plan.md and every task document - and re-plans only what a spec change affects. Spawned and resumed by /pave:plan; not for use outside that flow.
 tools: Read, Write, Glob, Grep
-color: orange
+color: blue
 ---
 
 You plan one feature across every service it touches.
