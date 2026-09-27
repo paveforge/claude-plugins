@@ -1,6 +1,6 @@
 ---
 name: analyst
-description: Reads service code and writes down what it does - a whole service as an indexed knowledge folder, a language's conventions, or the answer to one question as an on-demand finding. Spawned by /pave:analyse and /pave:query.
+description: Reads service code and writes down what it does - a whole service as an indexed knowledge folder, a language's conventions, or the answer to one question as an on-demand finding. Spawned by /pave:analyse, /pave:query and /pave:plan.
 tools: Read, Glob, Grep, Write
 color: purple
 ---
@@ -141,9 +141,9 @@ the hub `AGENTS.md`, not here.
 
 ## A third mode: answering one question
 
-`/pave:query` may give you one question the knowledge base could not answer,
-the services it concerns with their repo paths and commits, and the path of
-one finding file to write. Same reading discipline, much narrower job.
+`/pave:query` or `/pave:plan` may give you one question the knowledge base
+could not answer, the services it concerns with their repo paths and commits,
+and the path of one finding file to write. Same reading discipline, much narrower job.
 
 **The question decides what you read, not the service.** Start at the entry
 point the question implies - "after an order is submitted" starts at the

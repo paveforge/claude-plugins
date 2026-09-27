@@ -80,12 +80,14 @@ what the user wants is an open question for /pave:spec.>
 <!-- One row per task. The whole plan is approved from this table, before the
      task documents are written. `Change` says what this plan revision does to
      the task; it is not stored in the task document, which only ever
-     describes the end state. -->
+     describes the end state. `Reverts` names the obsolete tasks whose work a
+     task removes; /pave:review's clean-up reads it, and the task document
+     never carries it. -->
 
-| # | Task | Service | Kind | Priority | Size | Satisfies | Depends on | Change |
+| # | Task | Service | Priority | Size | Satisfies | Depends on | Reverts | Change |
 |---|---|---|---|---|---|---|---|---|
-| 01 | <outcome> | <service> | build | low | S | AC-1 | - | new |
-| 02 | <outcome> | <service> | revert | high | S | - | - | reverts 01 |
+| 01 | <outcome> | <service> | low | S | AC-1 | - | - | obsolete |
+| 02 | <outcome> | <service> | high | S | - | - | 01 | new |
 
 ## Build order
 

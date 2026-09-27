@@ -1,11 +1,9 @@
 ---
 service: <service-name>
 feature: <feature-id>
-kind: build                # build | revert
-priority: low              # low (build) | high (revert) | critical (reserved)
+priority: low              # low | high (reverts obsolete work) | critical (reserved)
 status: pending            # pending | in-progress | done | reopened | failed | blocked | obsolete
 depends_on: []
-reverts: []                # revert tasks only: the task numbers whose work this removes
 satisfies: []              # acceptance criteria from spec.md, e.g. [AC-1, AC-3]
 branch: feature/<feature-id>
 derives_from:              # the plan this task projects. No source = invented.
@@ -64,10 +62,11 @@ generated files.
   Name the existing code it extends. Under any item that changes behaviour,
   nest what happens when it fails, repeats, or hits a boundary.
 
-  Revert tasks: each item names exactly what is removed - files, routes,
-  config, the migration that reverses a schema change - and what must still
-  work afterwards. Anything that cannot be reversed was settled with the user
-  at the plan gate; write the agreed handling here.
+  Name every place in the code the behaviour lives, one item each - the
+  builder changes only what the items name. What must be gone is an item
+  too, stated as what must be true: "no route `/x` exists", "`y.go` does not
+  exist". Anything that cannot be reversed was settled with the user at the
+  plan gate; write the agreed handling here.
 -->
 
 - [ ] <Extend `Type` (path/to/file) with ...>

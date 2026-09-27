@@ -82,7 +82,9 @@ Build it from the feature folder only:
 ask for them in a later spec - the planner matches specs against them. Use the
 platform's terms from the knowledge index.
 
-Leave obsolete and revert tasks out: they describe work that no longer exists.
+Leave out obsolete tasks and the tasks that reverted them - the `Reverts`
+column of `plan.md`'s task table names those: they describe work that no
+longer exists.
 Keep it within 100 lines. The record is an index into the feature folder, not
 a copy of it.
 

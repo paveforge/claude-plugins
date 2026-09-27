@@ -6,6 +6,9 @@ task document, written at the plan gate. Build and review refuse to run when
 either no longer matches, so nothing is ever built against a stale plan or a
 task edited outside /pave:plan.
 
+Which task reverts which obsolete one is the planner's record, kept in the
+Reverts column of plan.md's task table; task documents never carry it.
+
 A task hash covers only what the planner wrote. It ignores the fields a
 builder or reviewer legitimately changes - status, commit, checkbox state and
 the Build notes section - so a normal build does not look like an edit.
@@ -58,9 +61,27 @@ def scalar(fm, key):
     return m.group(1).strip().strip("'\"") if m else ""
 
 
-def int_list(fm, key):
-    raw = scalar(fm, key)
-    return [int(x) for x in re.findall(r"\d+", raw)] if raw.startswith("[") else []
+def cells(line):
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+def reverts_table(body):
+    """{task: [tasks it reverts]} from the Reverts column of the table under ## Tasks."""
+    section = re.search(r"^## Tasks\s*$(.*?)(?=^## |\Z)", body, re.M | re.S)
+    rows = [l for l in (section.group(1) if section else "").splitlines() if l.strip().startswith("|")]
+    if not rows:
+        return {}
+    head = [c.lower() for c in cells(rows[0])]
+    if "#" not in head or "reverts" not in head:
+        return {}
+    num, rev = head.index("#"), head.index("reverts")
+    out = {}
+    for row in rows[1:]:
+        c = cells(row)
+        if len(c) <= max(num, rev) or not re.fullmatch(r"\d+", c[num]):
+            continue
+        out[int(c[num])] = [int(x) for x in re.findall(r"\d+", c[rev])]
+    return out
 
 
 def tasks(fdir):
@@ -162,18 +183,18 @@ def cmd_prune(fdir):
     meta = {}
     for n, p in tasks(fdir).items():
         tfm, _ = split_frontmatter(p.read_text())
-        meta[n] = {"path": p, "status": scalar(tfm, "status"), "kind": scalar(tfm, "kind"),
-                   "reverts": int_list(tfm, "reverts")}
+        meta[n] = {"path": p, "status": scalar(tfm, "status")}
     obsolete = sorted(n for n, t in meta.items() if t["status"] == "obsolete")
     if not obsolete:
         print("nothing to prune: no obsolete tasks")
         return
-    reverts_of = {n: sorted(r for r, t in meta.items() if t["kind"] == "revert" and n in t["reverts"])
+    table = reverts_table(body)
+    reverts_of = {n: sorted(r for r, named in table.items() if r in meta and n in named)
                   for n in obsolete}
     problems = []
     for n in obsolete:
         if not reverts_of[n]:
-            problems.append(f"{n:02d} is obsolete but no revert task names it")
+            problems.append(f"{n:02d} is obsolete but no task in plan.md's Reverts column names it")
         for r in reverts_of[n]:
             if meta[r]["status"] != "done":
                 problems.append(f"{n:02d} is obsolete but its revert {r:02d} is {meta[r]['status'] or 'unset'}, not done")
@@ -184,7 +205,7 @@ def cmd_prune(fdir):
     for n in obsolete:
         remove.update(reverts_of[n])
     for r in sorted(remove - set(obsolete)):
-        stray = [t for t in meta[r]["reverts"] if t not in remove]
+        stray = [t for t in table[r] if t not in remove]
         if stray:
             die(f"revert {r:02d} also names {', '.join(f'{t:02d}' for t in stray)}, which are not obsolete")
     for n in sorted(remove):

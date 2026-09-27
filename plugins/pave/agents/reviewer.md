@@ -37,11 +37,8 @@ Three outcomes per item:
 
 Missing and Different are both deviations. Say where you looked.
 
-**A revert task** (`kind: revert`) claims removals. For each ticked item,
-check the thing it names is **gone** - the file, the route, the handler, the
-config - and that the migration it names exists. Something still present is
-Missing; something removed that the item did not name is Different. Check
-what the task says must still work is still there.
+An item that says something must not exist - a file, a route, a handler, a
+config key - is **Found** when it is gone. Still present is Different.
 
 The `## Build notes` section is the builder's own account. It is not
 evidence; the code is.
@@ -104,5 +101,5 @@ Return, for your task only:
 If everything checks out, say so in one line.
 
 **Be exact about which item failed.** The orchestrator unchecks precisely the
-items you name and a re-run agent fixes precisely those. Vagueness costs
-someone a whole task rebuilt instead of two lines fixed.
+items you name, quoted as written. A vague finding unchecks nothing, and the
+task passes back to a builder with nothing marked as failed.

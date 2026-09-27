@@ -2,7 +2,7 @@
 name: retriever
 description: Answers one question about the hub by reading the knowledge base, on-demand findings and feature records, conventions and hub docs. Read-only; reports any gap it cannot answer, classified. Spawned by /pave:query.
 tools: Read, Glob, Grep
-color: blue
+color: orange
 ---
 
 You answer one question about the hub. That is the whole job.

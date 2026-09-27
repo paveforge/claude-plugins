@@ -87,12 +87,12 @@ any task document is written. So the table has to be complete and honest:
 |---|---|
 | `#` | From `next_task` in the frontmatter, increasing. **Never reuse a number**, even of a deleted task |
 | Service | Exactly one. A task never spans two services |
-| Kind | `build` or `revert` |
-| Priority | `low` for build, `high` for revert. `critical` is reserved - do not use it |
+| Priority | `low`, or `high` for a task that reverts others. `critical` is reserved - do not use it |
 | Size | `S` (≤3 items), `M` (≤8), `L`. **An `L` must be split before the gate** |
-| Satisfies | Criteria ids. A build task with none is invented work |
+| Satisfies | Criteria ids. A task with none that reverts nothing is invented work |
 | Depends on | Only real cross-service ordering (see §5) |
-| Change | What this revision does: `new`, `rewritten`, `reopened`, `obsolete`, `reverts NN`, `unchanged` |
+| Reverts | The obsolete tasks whose work this one removes, e.g. `05`, or `-` |
+| Change | What this revision does: `new`, `rewritten`, `reopened`, `obsolete`, `unchanged` |
 
 **Always split into tasks, however small the feature.** One change is still
 task `01`. A task is the unit that is built, rebuilt, reviewed and reverted on
@@ -151,21 +151,38 @@ must reach the same result.
 |---|---|---|
 | not built (`pending`, never started) | still needs it, differently | Rewrite it in place. Stays `pending` |
 | not built | no longer needs it | **Drop it** - list it under Delete for the orchestrator to remove. Nothing was built, so nothing needs reverting |
-| built or started (`done`, `in-progress`, `failed`, `blocked`, `reopened`) | still needs it, differently | Rewrite it in place. Set `status: reopened`. **Untick only the items the change affects** |
-| built or started | no longer needs it | Set `status: obsolete`. Add a **revert task** |
+| built or started (`done`, `in-progress`, `failed`, `blocked`, `reopened`) | still needs it, differently | Rewrite it in place. Set `status: reopened`. **Untick every item you rewrote or added** |
+| built or started | no longer needs it | Set `status: obsolete`. Add a task that **reverts** it |
 | any | is unaffected | Leave it untouched - its hash must not change |
 
-**Unticking is how a reopened rebuild stays cheap.** A checkbox records
-progress, not history: an unticked item says "this is not satisfied yet", never
-"this used to say 15". The builder reconciles the existing code to the
-document, working the unticked items; it discovers what differs by reading
-the code.
+**A tick means "checked against this wording".** An item you rewrote or
+added has not been checked by anyone, so it is unticked. That is a fact about
+the document, never a record of what it said before. The builder checks every
+item against the code, ticked or not, so an untick is where it starts, not a
+limit on what it checks.
 
-**A revert task** removes the work of one or more obsolete tasks:
+**Read the code before you rewrite a built task.** It holds the earlier
+build. A changed behaviour usually lives in more than one place - a constant,
+a migration, a schedule, a fixture, a config default. Find every one and
+write an item for each. A builder makes its items hold and nothing more; a
+place you leave out keeps the old behaviour, and review will not catch it,
+because the task never asked.
 
-- `kind: revert`, `priority: high`, `reverts: [NN, …]`, a new number
-- Each item names exactly what is removed - files, routes, handlers, config,
-  flags - and the migration that reverses a schema change
+**What must go is an item too.** When a reopened task stops doing something,
+say what must be true instead - "no email is sent when a hold expires",
+"`internal/hold/notify.go` does not exist". Deleting the old item removes it
+from the document, not from the code.
+
+**Reverting obsolete work is an ordinary task.** It is a new number with
+`priority: high`, and nothing else sets it apart:
+
+- Record which obsolete tasks it removes in the task table's `Reverts`
+  column. That link is yours and the orchestrator's; the builder never sees
+  it and does not need to
+- Each item states what must be true once the work is gone - "no route
+  `/holds/sweep` exists", "table `hold_sweeps` does not exist; migration
+  `0051_drop_hold_sweeps` drops it" - naming every file, route, handler,
+  config and flag the obsolete work left in the code
 - It states what must still work afterwards, and names the test that proves it
 - **Anything that cannot be reversed automatically** - data that would be
   dropped, a published event schema, a migration that has already run in an
@@ -273,7 +290,7 @@ Each item must be:
 
 - **Concrete** — names the file, type, endpoint or migration
 - **Independently checkable** — review ticks and verifies items one at a time
-- **Grounded** — names the existing code it extends, from the knowledge files
+- **Grounded** — names the existing code it extends, as you read it in the code
 
 ```markdown
 - [ ] Extend `StockHold` (internal/domain/hold.go) with expires_at + Expired state
@@ -350,13 +367,14 @@ that is not `done` or `obsolete`:
 | Self-contained | Refers to another task document, to a previous version of itself, or to the plan discussion |
 | End state | Describes a change from before ("change 15 to 30") instead of what must be true |
 | Grounded | Touches existing behaviour without naming the code it extends |
+| Located | Changes or removes a behaviour without an item for every place it lives in the code |
 | Traceable | No `derives_from`, or an item with no plan decision behind it |
-| Satisfies | A build task with no criterion in `satisfies` |
+| Satisfies | No criterion in `satisfies`, and the task reverts nothing |
 | Complete | A criterion, a plan decision or a contract field with no task implementing it |
 | Sized | An item needing "and" to state, a task split by layer, or size `L` |
 | Unhappy paths | A behavioural item states no failure, replay or boundary behaviour |
 | Tested | A behavioural item names no test expectation |
-| Reverts | A revert task that does not name what it removes, or an obsolete task no revert names |
+| Reverts | An obsolete task no row's `Reverts` names, or a task that reverts others without stating what must be gone |
 | Numbering | A number reused, or not from `next_task` |
 
 On failure, name the gap and fix it. A failure you can fix from the approved
