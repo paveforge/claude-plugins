@@ -160,6 +160,24 @@ config afterwards to keep it). The config
 records no Pave version; the template is what Pave reads now, which is right
 however old the hub is.
 
+**Upgrading from 0.5.** 0.6 stops using git to decide anything, and a hub
+from 0.5 notices it in three places:
+
+- **Every service is re-analysed once.** Knowledge from 0.5 records a git
+  commit, not a hash of the source it read, so `pave.sh stale` reports every
+  service `missing` and the next `/pave:analyse` reads them all again. Plan
+  for the cost of one full scan.
+- **Every source finding is stale.** A finding from 0.5 records a commit
+  too. Each is answered again, from the code, the next time `/pave:query` or
+  `/pave:plan` needs it; until then it is not used.
+- **Reports lose their commits.** Build and review reports record the spec
+  and task hashes they ran against, not a branch head or a commit sha, and
+  feature records list tasks per service instead of commits. Anything outside
+  Pave that reads `commit:` from them must change.
+
+Plans and tasks carry over as they are: a feature sealed and built under 0.5
+still passes `pave.sh check`, and its `done` tasks stay done.
+
 ---
 
 ## `/pave:add` — register a service

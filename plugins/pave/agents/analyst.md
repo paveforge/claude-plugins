@@ -76,8 +76,13 @@ things.
 relative to the service's path. They decide staleness later: after you
 return, `/pave:analyse` records a hash of their content, and while it does
 not change your work stays valid. List the code you read, not the whole
-repo, and never a build output or dependency directory - those change on
-every build. Do not write a `source_hash`; it is not yours to compute.
+repo. **Never list a directory that holds anything a tool writes** - build
+output, dependencies, codegen output or generated stubs: it changes on every
+build, whether or not anyone commits it, and every change marks your
+analysis stale. When hand-written code and generated files share a
+directory, list the hand-written subdirectories instead, or say in
+`uncertain` that staleness there follows codegen. Do not write a
+`source_hash`; it is not yours to compute.
 
 **`uncertain`** is where you put what you could not determine. This is data,
 not an admission — planning verifies these points against code instead of
@@ -160,9 +165,10 @@ the index.
 - **`services:`** — one line per service whose code the answer rests on, with
   **only the directories you actually read**, relative to the service's path.
   This decides staleness: list too little and a change that breaks the answer
-  goes unnoticed; list the whole repo and every change marks it stale. Keep
-  the exact one-line form in the template, without a `hash` - a script adds
-  it after you return.
+  goes unnoticed; list the whole repo and every change marks it stale. Never
+  list a directory of build output, dependencies or generated code, as for
+  `source_paths` above. Keep the exact one-line form in the template, without
+  a `hash` - a script adds it after you return.
 - **Answer in the platform's vocabulary**, from the Terms in the knowledge you
   were given - `StockHold`, not "reservation", if that is what the code says.
 - **Cite file and line for every step.** A finding is only as good as its

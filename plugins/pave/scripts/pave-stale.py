@@ -177,7 +177,12 @@ def classify(name, info, kdir):
 def stamp(hub, target):
     """Record the current source hash in one knowledge file. Writes nothing
     unless every service it names can be hashed."""
-    hub, target = Path(hub).resolve(), Path(target).resolve()
+    hub, target = Path(hub).resolve(), Path(target)
+    # A relative path that is not there from here is taken from the hub, so
+    # the skills' hub-relative paths work from any folder.
+    if not target.is_absolute() and not target.exists():
+        target = hub / target
+    target = target.resolve()
     if not target.is_file():
         sys.exit(f"error: no such file: {target}")
     services = read_workspace(hub / "workspace.yaml")

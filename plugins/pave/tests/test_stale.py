@@ -328,3 +328,17 @@ def test_stale_never_runs_git(hub, tmp_path, vcs):
     r = hub.run("stale", env=env)
     assert state_of(r, "svc") == "stale"
     assert "git must not be called" not in r.stderr
+
+
+def test_stamp_takes_a_relative_path_from_the_hub(hub, tmp_path, vcs):
+    # The skills pass hub-relative paths; the shell may be anywhere below it.
+    svc = service(tmp_path, vcs)
+    write_workspace(hub, [{"name": "svc", "path": str(svc), "discovered": True}])
+    knowledge_readme(hub, "svc", ["src"])
+    rel = "artifacts/knowledge/services/svc/README.md"
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    for cwd in (hub.path / "features", elsewhere):
+        r = hub.run("stamp", rel, cwd=cwd)
+        assert r.returncode == 0, r.stderr
+    assert state_of(hub.run("stale"), "svc") == "current"
