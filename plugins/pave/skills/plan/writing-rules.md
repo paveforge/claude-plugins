@@ -228,7 +228,7 @@ asking a question?**
 that executes it never saw the plan and cannot read its sibling documents.
 
 **Everything above `## Build notes` is yours and is hashed at the gate.**
-Builders change only the status, `built_against`, checkboxes and the Build
+Builders change only the status, `executed_hash`, checkboxes and the Build
 notes section. Anything you want a builder to know goes above the line.
 
 ### Derivation is the whole job

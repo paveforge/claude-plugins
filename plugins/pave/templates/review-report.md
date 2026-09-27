@@ -4,7 +4,7 @@ reviewed_at: <timestamp>
 spec_hash: <spec_hash from plan.md - the plan this review checked against>
 verdict: <passed | failed>
 tasks: { total: 0, passed: 0, failed: 0, unreviewed: 0 }
-# The built_against of every task reviewed: the document each was checked against.
+# The executed_hash of every task reviewed: the document each was checked against.
 reviewed:
   "<NN>": <task hash>
 ---

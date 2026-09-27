@@ -8,7 +8,7 @@ satisfies: []              # acceptance criteria from spec.md, e.g. [AC-1, AC-3]
 derives_from:              # the plan this task projects. No source = invented.
   - plan.md#<section>
   - contracts/<file>
-built_against:             # set by `pave.sh done` with status: done - this task's hash
+executed_hash:             # set by `pave.sh done` with status: done - the executed version's hash
 ---
 
 # <What this task achieves, as an outcome>
@@ -29,7 +29,7 @@ built_against:             # set by `pave.sh done` with status: done - this task
 
   Everything above "## Build notes" is the planner's and is hashed at the plan
   gate; an edit anywhere else stops build and review. Builders change only the
-  status and built_against (through `pave.sh done`), checkboxes, and the
+  status and executed_hash (through `pave.sh done`), checkboxes, and the
   Build notes section.
 -->
 

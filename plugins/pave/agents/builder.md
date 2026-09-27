@@ -162,14 +162,14 @@ by running the done command you were given on its document:
 <done command> <task document>
 ```
 
-It sets `status: done` and records `built_against`, the hash of the
-document you built. Never write either by hand. Otherwise leave it
+It sets `status: done` and records `executed_hash`, the hash of the
+version of the document you executed. Never write either by hand. Otherwise leave it
 `in-progress` and say exactly what is unfinished. Then move to the next task
 in your queue.
 
 **What you may change in a task document:** `status`, checkboxes, and the
 `## Build notes` section at the end - what you did, in-scope decisions, why
-you are blocked - and `built_against`, only through the done command.
+you are blocked - and `executed_hash`, only through the done command.
 **Nothing else.** Everything above Build
 notes was approved at the plan gate and is hashed; an edit there stops the
 next build and review until the feature is re-planned.

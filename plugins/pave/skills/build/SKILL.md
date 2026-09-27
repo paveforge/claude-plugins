@@ -179,7 +179,8 @@ Give each agent, and nothing else:
 - **Its branch**, or that it must not use version control (above)
 - **The done command**: `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh done`, with
   the variable expanded to an absolute path. The builder runs it on a task
-  document to mark it done; it records the hash the task was built against
+  document to mark it done; it records `executed_hash`, the hash of the
+  version of the task it executed
 - **The contracts it must land**: the frozen files from
   `features/<id>/contracts/` that its tasks name, and the service's `codegen`
   command. Say whether the contracts already exist in this repo - they do
@@ -232,7 +233,7 @@ decision and the exact command. When nothing needs a person, say so in full.
 List skipped tasks - `done`, `obsolete`, or refused - with the reason.
 
 Record what the build ran against: `spec_hash` from `plan.md`, and the
-`built_against` of every task this run marked done. Those hashes, not a
+`executed_hash` of every task this run marked done. Those hashes, not a
 branch or a commit, are what ties the report to a version of the plan.
 
 The Verification table is load-bearing: `/pave:review` runs nothing, so this

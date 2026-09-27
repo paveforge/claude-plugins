@@ -5,7 +5,7 @@ spec_hash: <spec_hash from plan.md - the plan this build ran against>
 verdict: <complete | partial | blocked>
 tasks: { total: 0, done: 0, blocked: 0, failed: 0 }
 needs_human: <true | false>
-# The built_against of every task this run marked done.
+# The executed_hash of every task this run marked done.
 built:
   "<NN>": <task hash>
 repos:

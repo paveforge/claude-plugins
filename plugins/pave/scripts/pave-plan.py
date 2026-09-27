@@ -11,13 +11,13 @@ Which task reverts which obsolete one is the planner's record, kept in the
 Reverts column of plan.md's task table; task documents never carry it.
 
 A task hash covers only what the planner wrote. It ignores the fields a
-builder or reviewer legitimately changes - status, built_against, checkbox
+builder or reviewer legitimately changes - status, executed_hash, checkbox
 state and the Build notes section - so a normal build does not look like an
 edit.
 
-A done task records built_against: the task hash it was built against. When
-a re-plan rewrites a done task without reopening it, the two no longer match,
-and seal reopens it. Nothing here reads a version control system.
+A done task records executed_hash: the hash of the version of the task that
+was executed. When a re-plan rewrites a done task without reopening it, the
+two no longer match, and seal reopens it. Nothing here reads a version control system.
 
 usage: pave-plan.py <seal|check|prune> <feature-dir>
        pave-plan.py done <task-document>
@@ -30,8 +30,8 @@ import sys
 TASK_FILE = re.compile(r"^(\d+)-.*\.md$")
 CHECKBOX = re.compile(r"^(\s*[-*]\s+)\[[xX]\]", re.M)
 # commit is no longer written; it stays volatile so task documents from
-# before built_against keep the hash they were sealed with.
-VOLATILE = re.compile(r"^(status|built_against|commit):.*$\n?", re.M)
+# before executed_hash keep the hash they were sealed with.
+VOLATILE = re.compile(r"^(status|executed_hash|commit):.*$\n?", re.M)
 NOTES = re.compile(r"^## Build notes\s*$", re.M)
 
 
@@ -158,13 +158,13 @@ def cmd_seal(fdir):
         die("no spec.md - a plan cannot be sealed against nothing")
     all_tasks = tasks(fdir)
     hashes = {n: task_hash(p.read_text()) for n, p in all_tasks.items()}
-    # A done task built against a different text was rewritten without being
+    # A done task whose executed version differs was rewritten without being
     # reopened: what was built is not what the task now says.
     for n, p in sorted(all_tasks.items()):
         text = p.read_text()
         tfm, _ = split_frontmatter(text)
-        built = scalar(tfm, "built_against")
-        if scalar(tfm, "status") == "done" and built and built != hashes[n]:
+        executed = scalar(tfm, "executed_hash")
+        if scalar(tfm, "status") == "done" and executed and executed != hashes[n]:
             p.write_text(set_field(text, "status", "reopened"))
             print(f"reopened: {p.name} - done, but changed since it was built")
     try:
@@ -250,16 +250,16 @@ def cmd_prune(fdir):
 
 
 def cmd_done(task):
-    """Mark one task document done, recording the hash it was built against."""
+    """Mark one task document done, recording the hash of the executed version."""
     if not task.is_file() or not TASK_FILE.match(task.name):
         die(f"not a task document: {task}")
     text = task.read_text()
     if split_frontmatter(text)[0] is None:
         die(f"{task} has no frontmatter")
     h = task_hash(text)
-    text = set_field(set_field(text, "status", "done"), "built_against", h)
+    text = set_field(set_field(text, "status", "done"), "executed_hash", h)
     task.write_text(text)
-    print(f"done: {task.name} built_against {h[:7]}")
+    print(f"done: {task.name} executed_hash {h[:7]}")
 
 
 def main():

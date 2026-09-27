@@ -63,7 +63,7 @@ def test_check_passes_after_builder_only_changes(hub):
     seal(hub, "feat-1")
     task = fdir / "tasks" / "01-task.md"
     text = task.read_text()
-    text = text.replace("status: pending", "status: done\nbuilt_against: " + "a" * 64)
+    text = text.replace("status: pending", "status: done\nexecuted_hash: " + "a" * 64)
     text = text.replace("- [ ] Do the thing.", "- [x] Do the thing.")
     text = text.replace("## Build notes\n", "## Build notes\n\nDid the thing.\n")
     task.write_text(text)
@@ -225,8 +225,8 @@ def done(task, cwd):
     return subprocess.run([str(PAVE_SH), "done", str(task)], capture_output=True, text=True, cwd=str(cwd))
 
 
-def built_against(task):
-    m = re.search(r"^built_against: ([0-9a-f]{64})$", task.read_text(), re.M)
+def executed_hash_of(task):
+    m = re.search(r"^executed_hash: ([0-9a-f]{64})$", task.read_text(), re.M)
     return m.group(1) if m else None
 
 
@@ -240,9 +240,9 @@ def test_done_records_status_and_hash_without_a_hub(hub, tmp_path, vcs):
     r = done(task, repo)
     assert r.returncode == 0, r.stderr
     text = task.read_text()
-    assert "status: done\nbuilt_against: " in text
+    assert "status: done\nexecuted_hash: " in text
     # The recorded hash is the one seal recorded for the task.
-    assert built_against(task) in (fdir / "plan.md").read_text()
+    assert executed_hash_of(task) in (fdir / "plan.md").read_text()
     assert check(hub, "feat-1").returncode == 0
 
 
@@ -251,7 +251,7 @@ def test_done_again_replaces_the_hash(hub, tmp_path, vcs):
     task = fdir / "tasks" / "01-task.md"
     done(task, tmp_path)
     done(task, tmp_path)
-    assert task.read_text().count("built_against:") == 1
+    assert task.read_text().count("executed_hash:") == 1
     assert task.read_text().count("status:") == 1
 
 
@@ -279,8 +279,8 @@ def test_seal_reopens_a_done_task_rewritten_since_it_was_built(hub, tmp_path, vc
     assert check(hub, "feat-1").returncode == 0
 
 
-def test_seal_leaves_a_done_task_with_no_built_against(hub, vcs):
-    # Built before built_against existed: nothing says it changed.
+def test_seal_leaves_a_done_task_with_no_executed_hash(hub, vcs):
+    # Built before executed_hash existed: nothing says it changed.
     fdir = make_feature(hub.path, "feat-1")
     task = fdir / "tasks" / "01-task.md"
     task.write_text(task.read_text().replace("status: pending", "status: done\ncommit: 0818f6e"))
