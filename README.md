@@ -630,6 +630,13 @@ passes both when it spawns, so `config.yaml` is the only place to change them.
 If an agent has no entry there, `pave.sh agent` falls back to Pave's default
 and reports `source=default`.
 
+**What the platform can enforce.** Pave passes both values, but the agent
+platform decides what it honours. In Claude Code the model is enforced when an
+agent is spawned; whether `effort` is depends on your Claude Code version, and
+where it is not supported the agent runs at the platform's default effort. Use
+the model names your platform accepts for spawned agents - in Claude Code,
+`haiku`, `sonnet`, `opus` or `fable` - rather than full model IDs.
+
 The hub's config may be `config.yaml`, `config.yml` or `config.toml`, but only
 one of them. `pave.sh` reads it with `scripts/yaml-reader` or
 `scripts/toml-reader`, both Python 3. The YAML reader uses PyYAML when it is

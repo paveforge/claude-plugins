@@ -183,8 +183,9 @@ returning full narratives will exhaust this session's context.
 
 ## 4. Draft the conventions
 
-For each language found, spawn one `analyst` to sample the repos using it and
-draft `conventions/<language>.md`. Tell the user these are drafts to correct.
+For each language found, spawn one `analyst`, with the `model` and `effort`
+printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent analyst`, to sample
+the repos using it and draft `conventions/<language>.md`. Tell the user these are drafts to correct.
 
 The `analyst`, not the `explorer`. Inferring a house style from source files is
 pattern work, and a convention file drafted too shallowly is worse than none —
