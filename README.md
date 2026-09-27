@@ -672,7 +672,7 @@ effort=low
 A config file that can't be parsed stops the command with an error rather than
 falling back to defaults.
 
-**Monorepos.** When several services share a repo, `monorepo_strategy` decides
+**Monorepos.** When several services share a repo, `execution.monorepo_strategy` decides
 whether their tasks run one at a time (the template's choice, safe), in separate git
 worktrees (parallel, costs disk), or concurrently in one checkout (fastest,
 will eventually collide).

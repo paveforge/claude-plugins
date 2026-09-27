@@ -107,7 +107,7 @@ Three rules, applied in this order:
    `execution.max_parallel`. If `execution.mode` is `sequential`, groups run
    one at a time.
 3. **Priority** — inside each builder's queue, `high` before `low`, then by
-   task number. When `max_parallel` limits how many services run at once,
+   task number. When `execution.max_parallel` limits how many services run at once,
    start first the service whose next task has the highest priority.
 
 So a `high` revert in stock-service goes first in stock-service's queue, and

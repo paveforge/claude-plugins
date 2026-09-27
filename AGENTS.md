@@ -68,6 +68,11 @@ command that needs a key the hub's config lacks stops and points to
 config-check`) and brings it up to date. A key missing from the template is
 a key Pave cannot read.
 
+Name a config key in a prompt in full, as `` `section.key` `` -
+`` `execution.max_parallel` ``, never `` `max_parallel` `` or "the parallel limit".
+A test checks every key written that way against the template; a key written
+any other way is invisible to it.
+
 ### No new concept when an existing one will do
 
 A revert is a task. A removal is an item. Before adding a status, a mode, a
