@@ -600,8 +600,6 @@ wanted; a new, high-priority task removes its work).
 `config.yaml` — team policy, committed:
 
 ```yaml
-model_ranking: [haiku, sonnet, opus, fable]   # weakest to strongest
-
 agents:
   analyst:   { model: sonnet, effort: medium }   # reads business logic
   builder:   { model: sonnet, effort: medium }   # executes one task document
@@ -647,9 +645,6 @@ effort=low
 
 A config file that can't be parsed stops the command with an error rather than
 falling back to defaults.
-
-`model_ranking` lives in config rather than the plugin, so a new model is one
-line you add rather than a plugin release you wait for.
 
 **Monorepos.** When several services share a repo, `monorepo_strategy` decides
 whether their tasks run one at a time (default, safe), in separate git
