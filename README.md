@@ -109,7 +109,7 @@ The philosophy is in how the steps relate:
 
 | Command | When you run it |
 |---|---|
-| `/pave:init` | Once, to create the hub |
+| `/pave:init` | Once, to create the hub; again after upgrading Pave |
 | `/pave:add <folder>` | Whenever a service joins the platform |
 | `/pave:analyse` | After adding services, then as they drift |
 | `/pave:spec` | Every feature — sets the session's feature, then what it must do |
@@ -135,6 +135,24 @@ thing you can check before moving on.
 **What it asks you.** Where the hub goes — this folder, or somewhere else. It
 never guesses. It also offers `git init` if the folder isn't a repository,
 since the config split depends on version control.
+
+**After upgrading Pave, run it again.** On an existing hub it creates only
+what is missing and leaves everything else. It runs `pave.sh config-check`,
+which compares the hub's config with what this version of Pave reads:
+
+```
+leftover  agents.designer: renamed - becomes agents.planner
+leftover  model_ranking: no longer used - remove it
+missing   agents.retriever: runs on Pave's default - add  retriever: { model: sonnet, effort: low }
+invalid   execution.mode: is paralell, must be parallel or sequential - set to parallel
+result: 4 to fix - run /pave:init to review and apply them
+```
+
+It shows you the list and applies the fixes only on "yes", editing just the
+lines involved - your comments, values and format (YAML or TOML) stay. The
+config records no Pave version: it is compared with what Pave reads now, which
+is right however old the hub is. Other commands never change the config; when
+it has drifted they say so in one line and point you here.
 
 ---
 
@@ -628,7 +646,10 @@ the same agent for later stages and re-plans within a session.
 Agent definitions carry no `model` or `effort`. The orchestrating skill always
 passes both when it spawns, so `config.yaml` is the only place to change them.
 If an agent has no entry there, `pave.sh agent` falls back to Pave's default
-and reports `source=default`.
+and reports `source=default`. When the config has drifted from what Pave reads
+(a missing agent, a key Pave no longer reads, a value it will not accept), it
+also prints a `drift=` line, and the command passes it on: re-run `/pave:init`
+to see and apply the fixes, or run `pave.sh config-check` to see them.
 
 **What the platform can enforce.** Pave passes both values, but the agent
 platform decides what it honours. In Claude Code the model is enforced when an

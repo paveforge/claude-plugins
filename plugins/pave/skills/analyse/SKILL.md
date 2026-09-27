@@ -93,6 +93,9 @@ against a service nobody can build.
 Spawn one `explorer` per service needing discovery, in parallel up to
 `execution.max_parallel`, with the `model` and `effort` printed by
 `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent explorer`.
+If it prints a `drift=` line, the hub's config has drifted from what
+Pave reads: pass that line on once, as it is, and never change the config
+yourself - `/pave:init` does that.
 
 Give each one the absolute path to the hub's `AGENTS.md`, if it exists, as required reading — an explorer runs in a service repo and
 will not find it by walking up from there.

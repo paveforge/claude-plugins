@@ -1,12 +1,16 @@
 ---
 name: init
-description: Set up a Pave hub in a folder. Creates config.yaml, an empty workspace.yaml and the hub scaffolding. Use once, before anything else. Services are added afterwards with /pave:add.
+description: Set up a Pave hub in a folder, or bring an existing hub up to date after a Pave upgrade. Creates config.yaml, an empty workspace.yaml and the hub scaffolding; on an existing hub, offers to fix config drift. Services are added afterwards with /pave:add.
 argument-hint: "[hub path]"
 ---
 
 # Pave — init
 
 Set up the hub. Nothing else.
+
+Re-running it on an existing hub is also the upgrade step after a Pave update:
+it creates what is missing, leaves what exists, and offers to bring the config
+up to date (§3, *An existing hub's config*).
 
 Init does not look for repos, does not guess what anything is, and does not
 scan. It creates a hub and leaves `workspace.yaml` empty. Services are
@@ -55,7 +59,7 @@ skip the what-to-commit advice at the end.
 | File | If absent | If present |
 |---|---|---|
 | `.pave-hub` | Empty marker — other skills walk up to find it | Leave |
-| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave untouched** — it is team policy |
+| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave untouched** — it is team policy. Offer drift fixes, below |
 | `workspace.yaml` | From `templates/workspace.yaml`, with **no services** | Leave |
 | `AGENTS.md` | From `templates/hub-AGENTS.md` | Leave |
 | `CLAUDE.md` | One line: `@AGENTS.md` | Leave if it already imports `@AGENTS.md`; otherwise see below |
@@ -82,12 +86,42 @@ rename `CLAUDE.md` to `AGENTS.md` and write the one-line `CLAUDE.md`. Do it
 only on "yes". If both files have rules of their own, do not merge them -
 say so and let the user move theirs into `AGENTS.md`.
 
+**An existing hub's config.** A config from an older Pave does not break
+anything; it drifts. Keys Pave no longer reads are ignored, and an agent with
+no entry runs on Pave's default without anyone being told. Run:
+
+```
+"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh config-check
+```
+
+It compares the config with what this version of Pave reads - keys it no
+longer reads, agents with no entry, values it will not accept - and ends with
+a `result:` line. If there is nothing to fix, say nothing about it. Otherwise
+show its lines as they are and ask once:
+
+```
+config.yaml has drifted from what this version of Pave reads:
+
+  leftover  agents.designer: renamed - becomes agents.planner
+  leftover  model_ranking: no longer used - remove it
+
+Apply these fixes? Only those lines change; comments and format stay.
+```
+
+Only on "yes", run `pave.sh config-check --fix` and report its lines. It edits
+only the lines involved, and writes nothing if it cannot do so safely; anything
+it leaves is marked `by hand` - pass that on and let the user edit the file.
+Never edit the config yourself, and never apply a fix the user did not see.
+Comments that described a removed key stay; say so, so the user can delete
+them.
+
 `.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;
 never replace it.
 
 ## 4. Report
 
-Say where the hub is and which files were created versus left alone.
+Say where the hub is and which files were created versus left alone, and
+whether the config was brought up to date.
 
 Then say what is next, and be concrete — an empty hub does nothing:
 

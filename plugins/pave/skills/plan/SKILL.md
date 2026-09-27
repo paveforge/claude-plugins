@@ -147,8 +147,9 @@ than rewriting it.
 ```
 
 Never substitute your own judgement for the configured model, in either
-direction. `source=default` means the hub's config has no `planner` entry;
-say so in one line.
+direction. If it prints a `drift=` line, the hub's config has drifted from what
+Pave reads: pass that line on once, as it is, and never change the config
+yourself - `/pave:init` does that.
 
 **Resume before you respawn.** The first `/pave:plan` in a session spawns the
 planner. Every later one in the same session - a re-plan after a spec change,

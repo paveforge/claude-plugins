@@ -84,6 +84,9 @@ the task that reverts one is, like any other `done` task.
 Spawn a `reviewer` for **every `done` task** in the feature, in parallel up to
 `execution.max_parallel`, passing the `model` and `effort` printed by
 `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent reviewer`.
+If it prints a `drift=` line, the hub's config has drifted from what
+Pave reads: pass that line on once, as it is, and never change the config
+yourself - `/pave:init` does that.
 
 Re-review checks every `done` task again, including ones that passed last
 time. That is deliberate, not waste: a re-run builder fixing three items may

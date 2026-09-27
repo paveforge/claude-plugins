@@ -12,7 +12,10 @@
 # seal, check and prune-obsoleted-tasks act on the session's feature, given
 # only as SESSION_FEATURE_ID=<id> - never as an argument:
 #   SESSION_FEATURE_ID=FEAT-8888 pave.sh check
+#
 #   pave.sh agent <name>        model and effort to spawn an agent with
+#   pave.sh config-check        compare the hub's config with what Pave reads
+#   pave.sh config-check --fix  apply those fixes (only /pave:init, on "yes")
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -180,6 +183,9 @@ cmd_plan() {
 # Prints the model and effort to spawn an agent with. config.yaml wins; the
 # defaults below cover hubs whose config predates an agent. Agent definitions
 # carry no model or effort, so this is the only place either is decided.
+# When the config has drifted from what Pave reads, a drift= line says so.
+AGENTS="analyst builder explorer reviewer retriever planner"
+
 agent_default() {
   case "$1" in
     analyst)   echo "sonnet medium" ;;
@@ -215,6 +221,39 @@ cmd_agent() {
   [ -n "$model" ] && source=config || model="$dmodel"
   [ -n "$effort" ] || effort="$deffort"
   printf 'model=%s\neffort=%s\nsource=%s\n' "$model" "$effort" "$source"
+
+  local n=0
+  if [ -z "$CONFIG" ]; then
+    printf 'drift=no config file - run /pave:init\n'
+  elif n="$(pave_config count "$CONFIG" 2>/dev/null)" && [ "${n:-0}" -gt 0 ]; then
+    printf 'drift=%s config fixes pending - run /pave:init\n' "$n"
+  fi
+}
+
+# config-check [--fix]
+# Compares the hub's config with what this version of Pave reads: keys it no
+# longer reads, agents with no entry, values it will not accept. --fix edits
+# only the lines involved; /pave:init runs it, and only on "yes".
+cmd_config_check() {
+  local mode=check
+  [ "${1:-}" = "--fix" ] && { mode=fix; shift; }
+  [ $# -eq 0 ] || die "usage: pave.sh config-check [--fix]"
+  local hub; hub="$(find_hub)"
+  find_config "$hub"
+  if [ -z "$CONFIG" ]; then
+    printf 'config: none\nresult: no config file - /pave:init writes one\n'
+    return 0
+  fi
+  have_python || die "python3 is required to read $CONFIG"
+  pave_config "$mode" "$CONFIG"
+}
+
+pave_config() {
+  local a defaults=""
+  for a in $AGENTS; do
+    defaults="$defaults $a=$(agent_default "$a" | tr ' ' :)"
+  done
+  PAVE_AGENT_DEFAULTS="$defaults" python3 "$SCRIPTS/pave-config.py" "$@"
 }
 
 # find_config <hub>
@@ -247,6 +286,7 @@ case "${1:-}" in
   check) shift; cmd_plan check check "$@" ;;
   prune-obsoleted-tasks) shift; cmd_plan prune-obsoleted-tasks prune "$@" ;;
   agent) shift; cmd_agent "$@" ;;
-  ""|-h|--help) sed -n '4,18p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
+  config-check) shift; cmd_config_check "$@" ;;
+  ""|-h|--help) sed -n '4,20p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

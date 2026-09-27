@@ -143,7 +143,9 @@ else writes there.
 
 Spawn one `builder` per service group, passing the `model` and `effort`
 printed by `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent builder`. Never
-substitute your own.
+substitute your own. If it prints a `drift=` line, the hub's config has drifted from what
+Pave reads: pass that line on once, as it is, and never change the config
+yourself - `/pave:init` does that.
 
 Give each agent, and nothing else:
 
