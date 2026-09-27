@@ -14,8 +14,7 @@
 #   SESSION_FEATURE_ID=FEAT-8888 pave.sh check
 #
 #   pave.sh agent <name>        model and effort to spawn an agent with
-#   pave.sh config-check        compare the hub's config with what Pave reads
-#   pave.sh config-check --fix  apply those fixes (only /pave:init, on "yes")
+#   pave.sh config-check        compare the hub's config with Pave's template
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -180,80 +179,42 @@ cmd_plan() {
 }
 
 # agent <name>
-# Prints the model and effort to spawn an agent with. config.yaml wins; the
-# defaults below cover hubs whose config predates an agent. Agent definitions
-# carry no model or effort, so this is the only place either is decided.
-# When the config has drifted from what Pave reads, a drift= line says so.
-AGENTS="analyst builder explorer reviewer retriever planner"
-
-agent_default() {
-  case "$1" in
-    analyst)   echo "sonnet medium" ;;
-    builder)   echo "sonnet medium" ;;
-    explorer)  echo "haiku low" ;;
-    reviewer)  echo "sonnet low" ;;
-    retriever) echo "sonnet low" ;;
-    planner)   echo "opus high" ;;
-    *) return 1 ;;
-  esac
-}
-
+# Prints the model and effort to spawn an agent with, from the hub's config.
+# There is no fallback: agent definitions carry no model or effort, and a
+# config without an entry for the agent stops here, pointing at /pave:init.
 cmd_agent() {
   [ $# -eq 1 ] || die "usage: pave.sh agent <name>"
-  local def; def="$(agent_default "$1")" || die "unknown agent: $1"
-  local dmodel="${def% *}" deffort="${def#* }"
-  local hub; hub="$(find_hub)"
-  local model="" effort="" source=default
-
-  find_config "$hub"
-  if [ -n "$CONFIG" ]; then
-    have_python || die "python3 is required to read $CONFIG"
-    local out rc
-    out="$("$SCRIPTS/$CONFIG_READER" "$CONFIG" "agents.$1")"; rc=$?
-    case $rc in
-      0) model="$(printf '%s\n' "$out" | sed -n 's/^model=//p')"
-         effort="$(printf '%s\n' "$out" | sed -n 's/^effort=//p')" ;;
-      3) ;;
-      *) die "cannot read $CONFIG" ;;
-    esac
-  fi
-
-  [ -n "$model" ] && source=config || model="$dmodel"
-  [ -n "$effort" ] || effort="$deffort"
-  printf 'model=%s\neffort=%s\nsource=%s\n' "$model" "$effort" "$source"
-
-  local n=0
-  if [ -z "$CONFIG" ]; then
-    printf 'drift=no config file - run /pave:init\n'
-  elif n="$(pave_config count "$CONFIG" 2>/dev/null)" && [ "${n:-0}" -gt 0 ]; then
-    printf 'drift=%s config fixes pending - run /pave:init\n' "$n"
-  fi
-}
-
-# config-check [--fix]
-# Compares the hub's config with what this version of Pave reads: keys it no
-# longer reads, agents with no entry, values it will not accept. --fix edits
-# only the lines involved; /pave:init runs it, and only on "yes".
-cmd_config_check() {
-  local mode=check
-  [ "${1:-}" = "--fix" ] && { mode=fix; shift; }
-  [ $# -eq 0 ] || die "usage: pave.sh config-check [--fix]"
+  [ -f "$SCRIPTS/../agents/$1.md" ] || die "unknown agent: $1"
   local hub; hub="$(find_hub)"
   find_config "$hub"
-  if [ -z "$CONFIG" ]; then
-    printf 'config: none\nresult: no config file - /pave:init writes one\n'
-    return 0
-  fi
+  [ -n "$CONFIG" ] || die "no config file in $hub. Run /pave:init to write one."
   have_python || die "python3 is required to read $CONFIG"
-  pave_config "$mode" "$CONFIG"
+
+  local out rc model effort
+  out="$("$SCRIPTS/$CONFIG_READER" "$CONFIG" "agents.$1")"; rc=$?
+  case $rc in
+    0) ;;
+    3) die "$CONFIG has no entry for agents.$1. Run /pave:init to bring the config up to date." ;;
+    *) die "cannot read $CONFIG" ;;
+  esac
+  model="$(printf '%s\n' "$out" | sed -n 's/^model=//p')"
+  effort="$(printf '%s\n' "$out" | sed -n 's/^effort=//p')"
+  [ -n "$model" ] && [ -n "$effort" ] \
+    || die "agents.$1 in $CONFIG needs both model and effort. Run /pave:init to bring the config up to date."
+  printf 'model=%s\neffort=%s\n' "$model" "$effort"
 }
 
-pave_config() {
-  local a defaults=""
-  for a in $AGENTS; do
-    defaults="$defaults $a=$(agent_default "$a" | tr ' ' :)"
-  done
-  PAVE_AGENT_DEFAULTS="$defaults" python3 "$SCRIPTS/pave-config.py" "$@"
+# config-check
+# Compares the hub's config with the template this version of Pave ships:
+# keys the template does not have, keys it has that the config lacks, values
+# of a different kind. Changes nothing - /pave:init makes the edits.
+cmd_config_check() {
+  [ $# -eq 0 ] || die "usage: pave.sh config-check"
+  local hub; hub="$(find_hub)"
+  find_config "$hub"
+  [ -n "$CONFIG" ] || die "no config file in $hub. Run /pave:init to write one."
+  have_python || die "python3 is required to read $CONFIG"
+  python3 "$SCRIPTS/pave-config.py" "$CONFIG" "$SCRIPTS/../templates/config.yaml"
 }
 
 # find_config <hub>
@@ -287,6 +248,6 @@ case "${1:-}" in
   prune-obsoleted-tasks) shift; cmd_plan prune-obsoleted-tasks prune "$@" ;;
   agent) shift; cmd_agent "$@" ;;
   config-check) shift; cmd_config_check "$@" ;;
-  ""|-h|--help) sed -n '4,20p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
+  ""|-h|--help) sed -n '4,19p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

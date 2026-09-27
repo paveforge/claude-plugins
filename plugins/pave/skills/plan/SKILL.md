@@ -41,7 +41,8 @@ the same moment; the variable is what keeps each call on this session's.
 
 Locate the hub by walking up for `.pave-hub`. Read the hub's config file
 (`config.yaml`, `config.yml` or `config.toml`) and `workspace.yaml`; if either
-is missing, stop and tell the user to run `/pave:init`. Note the absolute
+is missing, stop and tell the user to run `/pave:init`. If the config lacks a setting this command uses, stop: name the setting and
+tell the user to run `/pave:init`. Never assume a value. Note the absolute
 paths of the hub's `AGENTS.md`, if it exists - the planner
 reads them.
 
@@ -147,9 +148,8 @@ than rewriting it.
 ```
 
 Never substitute your own judgement for the configured model, in either
-direction. If it prints a `drift=` line, the hub's config has drifted from what
-Pave reads: pass that line on once, as it is, and never change the config
-yourself - `/pave:init` does that.
+direction. If it fails, the hub's config has no usable entry for that agent: stop,
+pass its message on, and never choose a model yourself.
 
 **Resume before you respawn.** The first `/pave:plan` in a session spawns the
 planner. Every later one in the same session - a re-plan after a spec change,

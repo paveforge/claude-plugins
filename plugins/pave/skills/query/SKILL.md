@@ -57,9 +57,8 @@ feature records no longer match their spec; it cannot run the check itself.
 One `retriever`, with the `model` and `effort` printed by
 `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh agent retriever`, given: the question
 verbatim, every path gathered above labelled with what it is, and the stale
-lines. Nothing else. If it prints a `drift=` line, the hub's config has drifted from what
-Pave reads: pass that line on once, as it is, and never change the config
-yourself - `/pave:init` does that.
+lines. Nothing else. If it fails, the hub's config has no usable entry for that agent: stop,
+pass its message on, and never choose a model yourself.
 
 It returns an answer with citations, and - if it could not answer all of it -
 the gap, classified:

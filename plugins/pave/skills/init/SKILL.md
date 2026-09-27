@@ -59,7 +59,7 @@ skip the what-to-commit advice at the end.
 | File | If absent | If present |
 |---|---|---|
 | `.pave-hub` | Empty marker — other skills walk up to find it | Leave |
-| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave untouched** — it is team policy. Offer drift fixes, below |
+| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave as it is** — it is team policy. Offer the edits `config-check` calls for, below, and make them only on "yes" |
 | `workspace.yaml` | From `templates/workspace.yaml`, with **no services** | Leave |
 | `AGENTS.md` | From `templates/hub-AGENTS.md` | Leave |
 | `CLAUDE.md` | One line: `@AGENTS.md` | Leave if it already imports `@AGENTS.md`; otherwise see below |
@@ -86,34 +86,50 @@ rename `CLAUDE.md` to `AGENTS.md` and write the one-line `CLAUDE.md`. Do it
 only on "yes". If both files have rules of their own, do not merge them -
 say so and let the user move theirs into `AGENTS.md`.
 
-**An existing hub's config.** A config from an older Pave does not break
-anything; it drifts. Keys Pave no longer reads are ignored, and an agent with
-no entry runs on Pave's default without anyone being told. Run:
+**An existing hub's config.** Pave has no defaults: every command reads its
+agents and settings from the config, and stops when one is missing. After an
+upgrade the config may also hold keys Pave no longer reads, which do nothing.
+Run:
 
 ```
 "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh config-check
 ```
 
-It compares the config with what this version of Pave reads - keys it no
-longer reads, agents with no entry, values it will not accept - and ends with
-a `result:` line. If there is nothing to fix, say nothing about it. Otherwise
-show its lines as they are and ask once:
+It compares the config with `templates/config.yaml`, the shape this version of
+Pave reads, and prints one line per difference and a `result:` line:
+
+- `leftover` - a key the template does not have, with its current value
+- `missing` - a key the template has and the config lacks, with the
+  template's value
+- `invalid` - a value of a different kind from the template's
+
+If there is nothing to fix, say nothing about it. Otherwise turn each line
+into an edit and show them all before touching the file:
+
+- a `leftover`: remove its lines
+- a `missing` key: add it with the template's value, in the config's own
+  format (YAML or TOML) and the style of its neighbours
+- an `invalid` value: set the template's value
+- where a `leftover` and a `missing` key sit under the same parent and plainly
+  mean the same thing - `agents.designer` and `agents.planner` - propose moving
+  the leftover's value to the missing key instead of taking the template's.
+  Say so; it keeps the team's choice.
 
 ```
 config.yaml has drifted from what this version of Pave reads:
 
-  leftover  agents.designer: renamed - becomes agents.planner
-  leftover  model_ranking: no longer used - remove it
+  agents.designer { model: fable, effort: max } → agents.planner
+  remove   model_ranking
+  add      agents.retriever: { model: sonnet, effort: low }
 
-Apply these fixes? Only those lines change; comments and format stay.
+Apply these? Only those lines change; comments and format stay.
 ```
 
-Only on "yes", run `pave.sh config-check --fix` and report its lines. It edits
-only the lines involved, and writes nothing if it cannot do so safely; anything
-it leaves is marked `by hand` - pass that on and let the user edit the file.
-Never edit the config yourself, and never apply a fix the user did not see.
-Comments that described a removed key stay; say so, so the user can delete
-them.
+Only on "yes", make exactly those edits: the lines involved, never a rewrite
+of the file, and every other line, comment and value left as it is. Then run
+`config-check` again and report its `result:`. On anything but "yes", change
+nothing and say that commands needing a missing key will stop until it is
+there.
 
 `.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;
 never replace it.
