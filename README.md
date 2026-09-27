@@ -66,9 +66,8 @@ share it with a team, commit `config.yaml`, `AGENTS.md`, `CLAUDE.md`,
 teammate generates their own with `/pave:init`.
 
 **So is git in the service repos.** Pave never reads a branch or a commit to
-decide anything. A done task records `executed_hash`, the hash of the version
-of its task document that was executed, and knowledge records a hash of the
-source it read. In a repo
+decide anything. The plan's task hashes record what each task was built
+from, and knowledge records a hash of the source it read. In a repo
 under git, builders work on a branch and commit as they go; in a repo without
 one, they build in the folder as it is. Only `execution.monorepo_strategy:
 worktree` needs git.
@@ -373,10 +372,9 @@ reopened one, one that failed review and one that removes obsolete work are
 all just items to make true.
 
 A `done` task is frozen and never rebuilt, even when named — a task changes
-only by re-planning. The builder marks a task done with `pave.sh done`, which
-records `executed_hash`, the hash of the executed version of the task. If a re-plan
-rewrites a done task without reopening it, `pave.sh seal` sees the hash no
-longer matches and reopens it.
+only by re-planning. A done task was built from the text sealed for it, so
+if a re-plan rewrites a done task without reopening it, `pave.sh seal` sees
+its hash differ from the previous seal's and reopens it.
 
 **Pave writes in the hub; builders write in the repos.** The skill itself never
 touches a service repository — it reads the hub, spawns agents, and writes

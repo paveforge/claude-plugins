@@ -9,7 +9,6 @@
 #   pave.sh seal                        record spec and task hashes at the plan gate
 #   pave.sh check                       is the plan still the one approved for this spec?
 #   pave.sh prune-obsoleted-tasks       remove reverted obsolete tasks
-#   pave.sh done <task document>        mark a task done, recording the executed version's hash
 #
 # seal, check and prune-obsoleted-tasks act on the session's feature, given
 # only as SESSION_FEATURE_ID=<id> - never as an argument:
@@ -121,15 +120,6 @@ cmd_stamp() {
   local hub; hub="$(find_hub)"
   have_python || die "python3 is required for 'stamp'"
   python3 "$SCRIPTS/pave-stale.py" --stamp "$hub" "$1"
-}
-
-# done <task document>
-# Sets status: done and executed_hash: the task's hash, computed here so a
-# builder never does it by hand. Needs no hub: builders run in service repos.
-cmd_done() {
-  [ $# -eq 1 ] || die "usage: pave.sh done <task document>"
-  have_python || die "python3 is required for 'done'"
-  python3 "$SCRIPTS/pave-plan.py" "done" "$1"
 }
 
 # feature propose <ticket-id|feature-id|description...>
@@ -262,7 +252,6 @@ case "${1:-}" in
   add) shift; cmd_add "$@" ;;
   stale) shift; cmd_stale "$@" ;;
   stamp) shift; cmd_stamp "$@" ;;
-  done)  shift; cmd_done "$@" ;;
   feature)
     case "${2:-}" in
       propose) shift 2; cmd_feature_propose "$@" ;;
@@ -274,6 +263,6 @@ case "${1:-}" in
   prune-obsoleted-tasks) shift; cmd_plan prune-obsoleted-tasks prune "$@" ;;
   agent) shift; cmd_agent "$@" ;;
   config-check) shift; cmd_config_check "$@" ;;
-  ""|-h|--help) sed -n '4,21p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
+  ""|-h|--help) sed -n '4,20p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

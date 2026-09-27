@@ -1,7 +1,6 @@
 import re
-import subprocess
 
-from conftest import PAVE_SH, make_feature
+from conftest import make_feature
 
 
 def seal(hub, feature_id):
@@ -63,7 +62,7 @@ def test_check_passes_after_builder_only_changes(hub):
     seal(hub, "feat-1")
     task = fdir / "tasks" / "01-task.md"
     text = task.read_text()
-    text = text.replace("status: pending", "status: done\nexecuted_hash: " + "a" * 64)
+    text = text.replace("status: pending", "status: done")
     text = text.replace("- [ ] Do the thing.", "- [x] Do the thing.")
     text = text.replace("## Build notes\n", "## Build notes\n\nDid the thing.\n")
     task.write_text(text)
@@ -219,74 +218,68 @@ def test_prune_nothing_to_prune(hub):
     assert "nothing to prune" in r.stdout
 
 
-def done(task, cwd):
-    """pave.sh done, run the way a builder runs it: from its service repo,
-    with no hub above it."""
-    return subprocess.run([str(PAVE_SH), "done", str(task)], capture_output=True, text=True, cwd=str(cwd))
+
+def mark_done(task):
+    """What a builder does to a task when it finishes it."""
+    text = task.read_text().replace("status: pending", "status: done")
+    task.write_text(text.replace("- [ ] ", "- [x] "))
 
 
-def executed_hash_of(task):
-    m = re.search(r"^executed_hash: ([0-9a-f]{64})$", task.read_text(), re.M)
-    return m.group(1) if m else None
+def status(task):
+    return re.search(r"^status: (\S+)", task.read_text(), re.M).group(1)
 
 
-def test_done_records_status_and_hash_without_a_hub(hub, tmp_path, vcs):
-    fdir = make_feature(hub.path, "feat-1")
-    seal(hub, "feat-1")
-    task = fdir / "tasks" / "01-task.md"
-    task.write_text(task.read_text().replace("- [ ] Do the thing.", "- [x] Do the thing."))
-    repo = tmp_path / "svc"
-    repo.mkdir()
-    r = done(task, repo)
-    assert r.returncode == 0, r.stderr
-    text = task.read_text()
-    assert "status: done\nexecuted_hash: " in text
-    # The recorded hash is the one seal recorded for the task.
-    assert executed_hash_of(task) in (fdir / "plan.md").read_text()
-    assert check(hub, "feat-1").returncode == 0
-
-
-def test_done_again_replaces_the_hash(hub, tmp_path, vcs):
-    fdir = make_feature(hub.path, "feat-1")
-    task = fdir / "tasks" / "01-task.md"
-    done(task, tmp_path)
-    done(task, tmp_path)
-    assert task.read_text().count("executed_hash:") == 1
-    assert task.read_text().count("status:") == 1
-
-
-def test_done_refuses_what_is_not_a_task(hub, tmp_path, vcs):
-    fdir = make_feature(hub.path, "feat-1")
-    r = done(fdir / "spec.md", tmp_path)
-    assert r.returncode != 0
-    assert "not a task document" in r.stderr
-
-
-def test_seal_reopens_a_done_task_rewritten_since_it_was_built(hub, tmp_path, vcs):
+def test_seal_reopens_a_done_task_rewritten_since_it_was_built(hub, vcs):
     fdir = make_feature(hub.path, "feat-1", n_tasks=2)
     seal(hub, "feat-1")
-    for n in (1, 2):
-        done(fdir / "tasks" / f"{n:02d}-task.md", tmp_path)
+    t1, t2 = fdir / "tasks" / "01-task.md", fdir / "tasks" / "02-task.md"
+    mark_done(t1)
+    mark_done(t2)
     # A re-plan rewrites task 01 in place and forgets to reopen it.
-    t1 = fdir / "tasks" / "01-task.md"
     t1.write_text(t1.read_text().replace("Do the thing.", "Do the thing, now in blue."))
     r = seal(hub, "feat-1")
     assert r.returncode == 0, r.stderr
     assert "reopened: 01-task.md" in r.stdout
-    assert "status: reopened" in t1.read_text()
-    assert "status: done" in (fdir / "tasks" / "02-task.md").read_text()
     assert "02-task.md" not in r.stdout
+    assert status(t1) == "reopened"
+    assert status(t2) == "done"
+    # Only the status changed: the rewrite and the builder's ticks are kept.
+    assert "now in blue" in t1.read_text()
     assert check(hub, "feat-1").returncode == 0
 
 
-def test_seal_leaves_a_done_task_with_no_executed_hash(hub, vcs):
-    # Built before executed_hash existed: nothing says it changed.
+def test_seal_reopens_a_task_edited_during_its_build(hub, vcs):
+    # Built from the sealed text, edited while it was built: the edit is
+    # caught by check, and when a re-plan keeps it, seal reopens the task.
     fdir = make_feature(hub.path, "feat-1")
+    seal(hub, "feat-1")
     task = fdir / "tasks" / "01-task.md"
-    task.write_text(task.read_text().replace("status: pending", "status: done\ncommit: 0818f6e"))
+    task.write_text(task.read_text().replace("Do the thing.", "Do another thing."))
+    mark_done(task)
+    assert check(hub, "feat-1").returncode == 1
+    r = seal(hub, "feat-1")
+    assert "reopened: 01-task.md" in r.stdout
+    assert status(task) == "reopened"
+
+
+def test_reseal_without_changes_leaves_done_tasks_done(hub, vcs):
+    fdir = make_feature(hub.path, "feat-1")
+    seal(hub, "feat-1")
+    task = fdir / "tasks" / "01-task.md"
+    mark_done(task)
     r = seal(hub, "feat-1")
     assert "reopened" not in r.stdout
-    assert "status: done" in task.read_text()
+    assert status(task) == "done"
+
+
+def test_first_seal_reopens_nothing(hub, vcs):
+    # No previous seal: nothing was built from a sealed text yet.
+    fdir = make_feature(hub.path, "feat-1")
+    task = fdir / "tasks" / "01-task.md"
+    mark_done(task)
+    r = seal(hub, "feat-1")
+    assert "reopened" not in r.stdout
+    assert status(task) == "done"
 
 
 def test_legacy_commit_field_does_not_change_the_task_hash(hub, vcs):
@@ -295,3 +288,5 @@ def test_legacy_commit_field_does_not_change_the_task_hash(hub, vcs):
     task = fdir / "tasks" / "01-task.md"
     task.write_text(task.read_text().replace("status: pending", "status: done\ncommit: 0818f6e"))
     assert check(hub, "feat-1").returncode == 0
+    r = seal(hub, "feat-1")
+    assert "reopened" not in r.stdout

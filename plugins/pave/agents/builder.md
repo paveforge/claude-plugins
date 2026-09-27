@@ -155,22 +155,13 @@ If you were given a branch, commit on it with a message naming the feature,
 the service and the task number. Do not merge, do not push to any other
 branch, do not open a pull request.
 
-Only if every item is ticked and verification is clean, mark the task done
-by running the done command you were given on its document:
-
-```
-<done command> <task document>
-```
-
-It sets `status: done` and records `executed_hash`, the hash of the
-version of the document you executed. Never write either by hand. Otherwise leave it
-`in-progress` and say exactly what is unfinished. Then move to the next task
-in your queue.
+Set `status: done` only if every item is ticked and verification is clean.
+Otherwise leave it `in-progress` and say exactly what is unfinished. Then
+move to the next task in your queue.
 
 **What you may change in a task document:** `status`, checkboxes, and the
 `## Build notes` section at the end - what you did, in-scope decisions, why
-you are blocked - and `executed_hash`, only through the done command.
-**Nothing else.** Everything above Build
+you are blocked. **Nothing else.** Everything above Build
 notes was approved at the plan gate and is hashed; an edit there stops the
 next build and review until the feature is re-planned.
 

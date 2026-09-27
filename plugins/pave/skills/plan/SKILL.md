@@ -291,8 +291,7 @@ readiness check in `writing-rules.md` §6.
 
 The planner cannot delete files. Delete each task document it lists under
 **Delete** - unbuilt tasks the plan dropped, which have nothing to revert -
-and check each one really is unbuilt (`pending`, no `executed_hash`) before
-removing it. Anything else is a planner error: resume it rather than deleting.
+and check each one really is unbuilt (`pending`) before removing it. Anything else is a planner error: resume it rather than deleting.
 
 A readiness failure is the planner's defect, not the user's decision: resume
 it to fix the documents. Go back to the user only if a fix needs a decision -
@@ -309,9 +308,9 @@ SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh seal
 It records the spec's hash and every task document's hash in `plan.md`,
 advances `next_task`, and snapshots the approved spec to
 `artifacts/spec.approved.md` for the next re-plan to diff against. It also
-reopens any `done` task whose `executed_hash` no longer matches its hash - a
-task whose text changed after it was executed, because the planner rewrote it
-without reopening it - and prints a `reopened:` line
+reopens any `done` task whose hash differs from the one the previous seal
+recorded - the text it was built from - because the planner rewrote it
+without reopening it, and prints a `reopened:` line
 for each. Pass those lines on; the planner's summary should have listed them
 as reopened. From here,
 `/pave:build` and `/pave:review` run `pave.sh check` and refuse on any
