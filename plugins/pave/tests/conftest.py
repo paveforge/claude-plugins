@@ -52,15 +52,34 @@ class Hub:
         return self.path / "features" / feature_id
 
 
+@pytest.fixture(params=["plain", "git"])
+def vcs(request):
+    """Every test that uses it runs twice: on plain folders, and on git repos.
+    Pave must behave the same either way."""
+    return request.param
+
+
+def make_repo(path, vcs):
+    """A folder for a hub or a service: a git repository only when vcs is "git"."""
+    path.mkdir(parents=True, exist_ok=True)
+    if vcs == "git":
+        git_init(path)
+    return path
+
+
+def snapshot(repo, vcs, message="commit"):
+    """Commit everything when the repo is under git; nothing to do otherwise."""
+    if vcs == "git":
+        commit_all(repo, message)
+
+
 @pytest.fixture
-def hub(tmp_path):
-    h = tmp_path / "hub"
-    h.mkdir()
+def hub(tmp_path, vcs):
+    h = make_repo(tmp_path / "hub", vcs)
     (h / ".pave-hub").write_text("")
     (h / "workspace.yaml").write_text("services:\n")
     (h / "features").mkdir()
-    git_init(h)
-    commit_all(h, "init hub")
+    snapshot(h, vcs, "init hub")
     return Hub(h)
 
 
@@ -100,10 +119,8 @@ priority: low
 status: pending
 depends_on: []
 satisfies: [AC-1]
-branch: feature/{feature_id}
 derives_from:
   - plan.md#approach
-commit:
 ---
 
 # {title}

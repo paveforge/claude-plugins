@@ -54,7 +54,6 @@ Five files in `artifacts/knowledge/services/<service>/`.
 ---
 service: stock-service
 analysed_at: 2026-09-20
-commit: <the sha you were given>
 source_paths: [internal/domain, internal/usecase, internal/repository]
 capabilities: [inventory reservation, stock levels, warehouse allocation, backorder]
 terms: [StockHold, SKU, Warehouse, AllocationPolicy]
@@ -73,9 +72,12 @@ deliberately does not do.
 description against these, so they must sound like the way people ask for
 things.
 
-**`source_paths`** are the directories your analysis actually rests on. They
-decide staleness later: if these paths do not change, your work stays valid.
-List the code you read, not the whole repo.
+**`source_paths`** are the directories your analysis actually rests on,
+relative to the service's path. They decide staleness later: after you
+return, `/pave:analyse` records a hash of their content, and while it does
+not change your work stays valid. List the code you read, not the whole
+repo, and never a build output or dependency directory - those change on
+every build. Do not write a `source_hash`; it is not yours to compute.
 
 **`uncertain`** is where you put what you could not determine. This is data,
 not an admission — planning verifies these points against code instead of
@@ -142,8 +144,8 @@ the hub `AGENTS.md`, not here.
 ## A third mode: answering one question
 
 `/pave:query` or `/pave:plan` may give you one question the knowledge base
-could not answer, the services it concerns with their repo paths and commits,
-and the path of one finding file to write. Same reading discipline, much narrower job.
+could not answer, the services it concerns with their repo paths, and the
+path of one finding file to write. Same reading discipline, much narrower job.
 
 **The question decides what you read, not the service.** Start at the entry
 point the question implies - "after an order is submitted" starts at the
@@ -156,10 +158,11 @@ Write **one** file, at the path you were given, from
 the index.
 
 - **`services:`** — one line per service whose code the answer rests on, with
-  the commit you were given and **only the directories you actually read**.
+  **only the directories you actually read**, relative to the service's path.
   This decides staleness: list too little and a change that breaks the answer
-  goes unnoticed; list the whole repo and every commit marks it stale. Keep
-  the exact one-line form in the template; a script parses it.
+  goes unnoticed; list the whole repo and every change marks it stale. Keep
+  the exact one-line form in the template, without a `hash` - a script adds
+  it after you return.
 - **Answer in the platform's vocabulary**, from the Terms in the knowledge you
   were given - `StockHold`, not "reservation", if that is what the code says.
 - **Cite file and line for every step.** A finding is only as good as its

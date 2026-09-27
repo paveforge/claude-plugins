@@ -70,7 +70,7 @@ tell the user to run `/pave:init`. Never assume a value.
 | `failed` | Yes |
 | `in-progress` | Yes |
 | `blocked` | Only once the blocker is resolved; otherwise report it again |
-| `done` | No - skipped, listed as such |
+| `done` | No - skipped, listed as such. A `done` task a re-plan rewrote is reopened by `pave.sh seal`, so it is never `done` here |
 | `obsolete` | Never. The task that reverts it removes its work |
 
 **Task numbers given** - `/pave:build 03,07` builds exactly those. Commas are
@@ -79,14 +79,8 @@ zeros are optional (`3` is `03`). An unknown number is rejected before
 anything runs. The same table applies, with two refinements:
 
 - **A named `done` task is not rebuilt.** It is frozen: it was built and
-  verified. Skip it and say why - `03 skipped: done (a1b2c3d) - frozen`. If
-  its `commit` is **not on the feature branch** (a reset, a lost commit), do
-  not reset it silently - the commit may have been removed on purpose. Ask:
-
-  ```
-  03 is done, but a1b2c3d is not on feature/<id>.
-  Reset 03 to pending and rebuild? (yes / no)
-  ```
+  verified against the document it has now. Skip it and say why -
+  `03 skipped: done - frozen`.
 - **A named task whose `depends_on` is not `done` is refused**, naming the
   blocker. It is not built implicitly.
 
@@ -123,8 +117,12 @@ repo lists more than one service - apply `execution.monorepo_strategy`:
 | Strategy | Behaviour |
 |---|---|
 | `sequential` | Services in that repo run one at a time |
-| `worktree` | Each gets its own git worktree, same branch name; parallel |
-| `shared-tree` | Parallel in one checkout. Concurrent git operations will collide eventually |
+| `worktree` | Each gets its own git worktree, same branch name; parallel. Needs git |
+| `shared-tree` | Parallel in one checkout. Concurrent commits will collide eventually |
+
+`worktree` on a repo that is not a git repository is refused before anything
+runs: `<repo> is not a git repository, so execution.monorepo_strategy:
+worktree cannot apply. Set it to shared-tree or sequential.`
 
 If a `depends_on` cycle would leave tasks waiting forever, stop and report it
 - that is a plan defect, and waiting will not resolve it.
@@ -139,6 +137,21 @@ Every change inside a repo - the branch, the contracts, the generated stubs,
 the code, the reverts - is made by a `builder` agent in the repo it owns.
 Parallel agents are safe because each one owns exactly one repo and nothing
 else writes there.
+
+## Version control is the repo's choice
+
+A service repo may use git, another VCS, or nothing. Pave works the same in
+each: nothing it decides reads a branch or a commit. For each repo, run
+`git -C <repo> rev-parse --is-inside-work-tree`:
+
+- **`true`** - the repo is under git. Its builder gets a branch:
+  `branch.pattern` from the config, with `{feature-id}` replaced by the
+  feature id - the same name in every repo.
+- **anything else** - no branch. Its builder is told not to use version
+  control, and builds in the folder as it is.
+
+This only decides whether to hand out a branch. Never refuse a build over it,
+except for `worktree` (§3).
 
 ## 4. Fan out
 
@@ -161,13 +174,17 @@ Give each agent, and nothing else:
   3. `conventions/<language>.md` — language from `workspace.yaml`
   4. `conventions/<service>.md` — if present, wins on conflict
   5. the repo's own `CLAUDE.md` — if `workspace.yaml` records one
-- Its repo path, its `path` within that repo, its branch name, and its
-  build/test/lint commands
+- Its repo path, its `path` within that repo, and its build/test/lint
+  commands
+- **Its branch**, or that it must not use version control (above)
+- **The done command**: `"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh done`, with
+  the variable expanded to an absolute path. The builder runs it on a task
+  document to mark it done; it records the hash the task was built against
 - **The contracts it must land**: the frozen files from
   `features/<id>/contracts/` that its tasks name, and the service's `codegen`
-  command. Say whether the branch and contracts already exist in this repo -
-  they do after any earlier build of this feature. If a re-plan changed a
-  contract, say which: the builder lands the new version.
+  command. Say whether the contracts already exist in this repo - they do
+  after any earlier build of this feature. If a re-plan changed a contract,
+  say which: the builder lands the new version.
 
 Name the files; do not paste their contents. None of them overrides the task
 document or a frozen contract: where they disagree, the document wins and the
@@ -213,6 +230,10 @@ question the report can state as a fact: an in-scope judgement goes under
 decision and the exact command. When nothing needs a person, say so in full.
 
 List skipped tasks - `done`, `obsolete`, or refused - with the reason.
+
+Record what the build ran against: `spec_hash` from `plan.md`, and the
+`built_against` of every task this run marked done. Those hashes, not a
+branch or a commit, are what ties the report to a version of the plan.
 
 The Verification table is load-bearing: `/pave:review` runs nothing, so this
 report is the only record that the commands passed. A failing command means

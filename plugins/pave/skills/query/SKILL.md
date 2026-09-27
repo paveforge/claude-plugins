@@ -79,8 +79,6 @@ For each service the gap names (add any the index shows at the seam - an
 event the flow emits, a service that consumes it):
 
 - its repo path and `path` from `workspace.yaml`
-- **its current commit**: `git -C <repo> rev-parse HEAD`. The analyst has no
-  Bash, and without the commit the finding can never be checked for staleness
 - its knowledge files, if it has any that are not stale - as a map of where to
   start, not as the answer
 
@@ -93,6 +91,16 @@ printed by `pave.sh agent analyst`, given: the question verbatim, the services
 above, the finding's path, `templates/knowledge-finding.md`, and the hub's
 `AGENTS.md` if it exists. It reads the code, writes the finding, and returns
 the answer.
+
+Once it has written the finding, stamp it:
+
+```
+"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh stamp artifacts/knowledge/on-demand/source/<slug>.md
+```
+
+It adds to each `services:` line the hash of the content of the paths the
+analyst read - what `pave.sh stale` compares against. The analyst has no Bash
+and cannot compute it. An unstamped finding is always reported stale.
 
 If it returns nothing, or says it could not answer, no finding is written and
 nothing is saved - say what it could not determine. A guessed finding in the

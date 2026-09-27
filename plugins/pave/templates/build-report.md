@@ -1,12 +1,15 @@
 ---
 feature: <feature-id>
 built_at: <timestamp>
-branch: <branch name, same in every repo>
+spec_hash: <spec_hash from plan.md - the plan this build ran against>
 verdict: <complete | partial | blocked>
 tasks: { total: 0, done: 0, blocked: 0, failed: 0 }
 needs_human: <true | false>
+# The built_against of every task this run marked done.
+built:
+  "<NN>": <task hash>
 repos:
-  - { service: <name>, repo: <path>, commit: <sha> }
+  - { service: <name>, repo: <path>, branch: <branch, or none - not under git> }
 ---
 
 # Build — <feature>
@@ -53,9 +56,9 @@ built against it and would break.>
 
 ## Landed
 
-| Service | Repo | Commit | Tasks (in order) | Items |
+| Service | Repo | Branch | Tasks (in order) | Items |
 |---|---|---|---|---|
-| <service> | `<path>` | `<sha>` | <NN, NN, NN> | <done>/<total> |
+| <service> | `<path>` | `<branch>` or — | <NN, NN, NN> | <done>/<total> |
 
 ## Verification
 
@@ -73,13 +76,13 @@ built against it and would break.>
 
 ## Contracts landed
 
-Copied from the hub by each builder into its own repo, as its first commit,
-before any of its own work. Copied and never regenerated, so every service
-built against the same bytes.
+Copied from the hub by each builder into its own repo before any of its own
+work - as its own commit, in a repo under git. Copied and never regenerated,
+so every service built against the same bytes.
 
-| Contract | Service | Codegen | Commit |
-|---|---|---|---|
-| `<contract file>` | <service> | <command> | `<sha>` |
+| Contract | Service | Codegen |
+|---|---|---|
+| `<contract file>` | <service> | <command> |
 
 ## Decisions taken
 
@@ -101,4 +104,4 @@ built against the same bytes.
 
 ## Skipped
 
-- `<task>` · <done (sha) - frozen | obsolete, reverted by NN | depends on NN, not done>
+- `<task>` · <done - frozen | obsolete, reverted by NN | depends on NN, not done>

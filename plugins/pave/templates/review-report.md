@@ -1,9 +1,12 @@
 ---
 feature: <feature-id>
 reviewed_at: <timestamp>
-commit: <head sha of the feature branch when reviewed>
+spec_hash: <spec_hash from plan.md - the plan this review checked against>
 verdict: <passed | failed>
 tasks: { total: 0, passed: 0, failed: 0, unreviewed: 0 }
+# The built_against of every task reviewed: the document each was checked against.
+reviewed:
+  "<NN>": <task hash>
 ---
 
 # Review — <feature>

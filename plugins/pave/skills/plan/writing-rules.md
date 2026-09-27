@@ -213,8 +213,7 @@ that cannot be reverted automatically. Stop. Do not write task documents yet.
 
 Write one document per task in the approved table into
 `features/<feature-id>/tasks/`, named `NN-<short-slug>.md`, from
-`templates/task.md`. Set `branch:` in every task to the branch the brief
-gives - the same name in every service.
+`templates/task.md`.
 
 This is the most important output of the phase. Everything downstream executes
 these documents without question: a builder does what the document says, and
@@ -229,8 +228,8 @@ asking a question?**
 that executes it never saw the plan and cannot read its sibling documents.
 
 **Everything above `## Build notes` is yours and is hashed at the gate.**
-Builders change only the status, the commit, checkboxes and the Build notes
-section. Anything you want a builder to know goes above the line.
+Builders change only the status, `built_against`, checkboxes and the Build
+notes section. Anything you want a builder to know goes above the line.
 
 ### Derivation is the whole job
 
@@ -275,12 +274,12 @@ never asked.
 
 ### How many tasks
 
-One task is **one coherent unit of work in one service that could be
-committed on its own**. Split where the work has a natural seam - the API and
+One task is **one coherent unit of work in one service that could be built
+and reviewed on its own**. Split where the work has a natural seam - the API and
 the background sweeper that expires its rows are two tasks.
 
 Never split by architectural layer. "Domain", then "repository", then
-"handlers" is three tasks that cannot be committed or reviewed independently.
+"handlers" is three tasks that cannot be built or reviewed independently.
 
 ### What an item looks like
 

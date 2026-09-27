@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Plan integrity for one feature: seal, check, prune-obsoleted-tasks.
+"""Plan integrity for one feature: seal, check, prune-obsoleted-tasks - and
+done, which marks one task document built.
 
 plan.md frontmatter carries spec_hash (sha256 of spec.md) and one hash per
 task document, written at the plan gate. Build and review refuse to run when
@@ -10,10 +11,16 @@ Which task reverts which obsolete one is the planner's record, kept in the
 Reverts column of plan.md's task table; task documents never carry it.
 
 A task hash covers only what the planner wrote. It ignores the fields a
-builder or reviewer legitimately changes - status, commit, checkbox state and
-the Build notes section - so a normal build does not look like an edit.
+builder or reviewer legitimately changes - status, built_against, checkbox
+state and the Build notes section - so a normal build does not look like an
+edit.
+
+A done task records built_against: the task hash it was built against. When
+a re-plan rewrites a done task without reopening it, the two no longer match,
+and seal reopens it. Nothing here reads a version control system.
 
 usage: pave-plan.py <seal|check|prune> <feature-dir>
+       pave-plan.py done <task-document>
 """
 import hashlib
 import pathlib
@@ -22,7 +29,9 @@ import sys
 
 TASK_FILE = re.compile(r"^(\d+)-.*\.md$")
 CHECKBOX = re.compile(r"^(\s*[-*]\s+)\[[xX]\]", re.M)
-VOLATILE = re.compile(r"^(status|commit):.*$\n?", re.M)
+# commit is no longer written; it stays volatile so task documents from
+# before built_against keep the hash they were sealed with.
+VOLATILE = re.compile(r"^(status|built_against|commit):.*$\n?", re.M)
 NOTES = re.compile(r"^## Build notes\s*$", re.M)
 
 
@@ -125,6 +134,21 @@ def write_plan(plan, fm, body, spec_hash, hashes, next_task):
     plan.write_text("---\n" + fm + "---\n" + body)
 
 
+def set_field(text, key, value):
+    """Set one frontmatter scalar, adding it after status if absent."""
+    fm, body = split_frontmatter(text)
+    if fm is None:
+        return None
+    line = f"{key}: {value}"
+    if re.search(rf"^{key}:.*$", fm, re.M):
+        fm = re.sub(rf"^{key}:[^\n]*", lambda _: line, fm, count=1, flags=re.M)
+    elif re.search(r"^status:.*$", fm, re.M):
+        fm = re.sub(r"^(status:[^\n]*\n)", lambda m: m.group(1) + line + "\n", fm, count=1, flags=re.M)
+    else:
+        fm += line + "\n"
+    return "---\n" + fm + "---\n" + body
+
+
 def cmd_seal(fdir):
     plan, fm, body, _ = read_plan(fdir)
     if plan is None:
@@ -134,6 +158,15 @@ def cmd_seal(fdir):
         die("no spec.md - a plan cannot be sealed against nothing")
     all_tasks = tasks(fdir)
     hashes = {n: task_hash(p.read_text()) for n, p in all_tasks.items()}
+    # A done task built against a different text was rewritten without being
+    # reopened: what was built is not what the task now says.
+    for n, p in sorted(all_tasks.items()):
+        text = p.read_text()
+        tfm, _ = split_frontmatter(text)
+        built = scalar(tfm, "built_against")
+        if scalar(tfm, "status") == "done" and built and built != hashes[n]:
+            p.write_text(set_field(text, "status", "reopened"))
+            print(f"reopened: {p.name} - done, but changed since it was built")
     try:
         declared = int(scalar(fm, "next_task") or 1)
     except ValueError:
@@ -216,9 +249,25 @@ def cmd_prune(fdir):
     write_plan(plan, fm, body, scalar(fm, "spec_hash"), hashes, scalar(fm, "next_task") or 1)
 
 
+def cmd_done(task):
+    """Mark one task document done, recording the hash it was built against."""
+    if not task.is_file() or not TASK_FILE.match(task.name):
+        die(f"not a task document: {task}")
+    text = task.read_text()
+    if split_frontmatter(text)[0] is None:
+        die(f"{task} has no frontmatter")
+    h = task_hash(text)
+    text = set_field(set_field(text, "status", "done"), "built_against", h)
+    task.write_text(text)
+    print(f"done: {task.name} built_against {h[:7]}")
+
+
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == "done":
+        cmd_done(pathlib.Path(sys.argv[2]))
+        return
     if len(sys.argv) != 3 or sys.argv[1] not in ("seal", "check", "prune"):
-        die("usage: pave-plan.py <seal|check|prune> <feature-dir>")
+        die("usage: pave-plan.py <seal|check|prune> <feature-dir> | done <task-document>")
     fdir = pathlib.Path(sys.argv[2])
     if not fdir.is_dir():
         die(f"no such feature folder: {fdir}")

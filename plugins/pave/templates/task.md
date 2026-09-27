@@ -5,18 +5,17 @@ priority: low              # low | high (reverts obsolete work) | critical (rese
 status: pending            # pending | in-progress | done | reopened | failed | blocked | obsolete
 depends_on: []
 satisfies: []              # acceptance criteria from spec.md, e.g. [AC-1, AC-3]
-branch: <branch>           # the brief's branch: branch.pattern from the hub's config
 derives_from:              # the plan this task projects. No source = invented.
   - plan.md#<section>
   - contracts/<file>
-commit:                    # set by the builder when the task is done
+built_against:             # set by `pave.sh done` with status: done - this task's hash
 ---
 
 # <What this task achieves, as an outcome>
 
 <!--
-  One coherent unit of work in one service, that could be committed on its
-  own. Split by natural seam - the API and the sweeper that expires its rows
+  One coherent unit of work in one service, that could be built and
+  reviewed on its own. Split by natural seam - the API and the sweeper that expires its rows
   are two tasks. Never split by architectural layer.
 
   This document describes the END STATE, never a change from a previous
@@ -30,7 +29,8 @@ commit:                    # set by the builder when the task is done
 
   Everything above "## Build notes" is the planner's and is hashed at the plan
   gate; an edit anywhere else stops build and review. Builders change only the
-  status, the commit, checkboxes, and the Build notes section.
+  status and built_against (through `pave.sh done`), checkboxes, and the
+  Build notes section.
 -->
 
 ## Objective & Context

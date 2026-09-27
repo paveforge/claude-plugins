@@ -5,8 +5,7 @@
 <One-line goal, from spec.md>
 
 **Status** <specifying | planning | ready | building | done | failed | blocked> ·
-**Spec** v<n> · **Plan** for spec v<n> ·
-**Branch** `feature/<feature-id>` · **Last run** <timestamp> · `<skill>`
+**Spec** v<n> · **Plan** for spec v<n> · **Last run** <timestamp> · `<skill>`
 
 | # | Task | Service | Priority | Satisfies | Status | Done |
 |---|---|---|---|---|---|---|

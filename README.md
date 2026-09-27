@@ -65,8 +65,12 @@ share it with a team, commit `config.yaml`, `AGENTS.md`, `CLAUDE.md`,
 `workspace.yaml` stays local either way — it holds *your* repo paths, and a
 teammate generates their own with `/pave:init`.
 
-The service repos are different: builders branch and commit there, and task
-documents record those commits, so each service must be a git repository.
+**So is git in the service repos.** Pave never reads a branch or a commit to
+decide anything. A done task records the hash of the task document it was
+built against, and knowledge records a hash of the source it read. In a repo
+under git, builders work on a branch and commit as they go; in a repo without
+one, they build in the folder as it is. Only `execution.monorepo_strategy:
+worktree` needs git.
 
 ---
 
@@ -133,8 +137,8 @@ It does not look for repos, guess what anything is, or scan. Each step does one
 thing you can check before moving on.
 
 **What it asks you.** Where the hub goes — this folder, or somewhere else. It
-never guesses. It also offers `git init` if the folder isn't a repository,
-since the config split depends on version control.
+never guesses. If the folder isn't a git repository it offers `git init`, for
+sharing the hub later - nothing in Pave needs it.
 
 **After upgrading Pave, run it again.** On an existing hub it creates only
 what is missing and leaves everything else. It runs `pave.sh config-check`,
@@ -182,8 +186,9 @@ That's all it records: name and path. Not the language, not the build commands.
 would mean two answers.
 
 **What it asks you.** Nothing, unless something is wrong — the folder doesn't
-exist, isn't a git repository, is inside the hub, or collides with a name
-already registered.
+exist, is inside the hub, or collides with a name already registered. A
+folder that isn't a git repository is registered like any other, with a note
+that builders will not branch or commit there.
 
 ---
 
@@ -193,7 +198,7 @@ already registered.
 
 **Discovery** reads CI config first, then a task runner, then the manifest,
 then the README, and records the language, build/test/lint commands, contracts
-and git root. That order is deliberate: a manifest tells you a repo is Go; CI
+and repository root. That order is deliberate: a manifest tells you a repo is Go; CI
 tells you how *your team* builds *this repo*, which is the question that
 matters.
 
@@ -211,10 +216,11 @@ it.
 you fix a test command by hand, analyse fills empty fields around it and leaves
 yours alone, reporting the disagreement instead of silently winning.
 
-**Staleness is path-scoped, not age-based.** Each service records the commit
-and the source directories its analysis rested on. A month of commits to CI
-config invalidates nothing; a change under `internal/domain` invalidates
-exactly one service.
+**Staleness is path-scoped, not age-based.** Each service records the source
+directories its analysis rested on, and `pave.sh stamp` records a hash of
+their content. A month of changes to CI config invalidates nothing; a change
+under `internal/domain` invalidates exactly one service. It compares file
+content, not history, so it works the same with git, another VCS or none.
 
 That check runs in `scripts/pave.sh`, which you can also run directly:
 
@@ -223,9 +229,9 @@ pave.sh stale
 
 undiscovered svc-d       no language in workspace.yaml
 missing      svc-c       no knowledge folder
-stale        svc-b       1 file(s) changed under internal/domain
+stale        svc-b       files changed under internal/domain
 orphan       old-svc     knowledge folder, no such service in workspace.yaml
-current      svc-a       unchanged since 0818f6e
+current      svc-a       unchanged since 3f9a1c2
 ```
 
 **It is the scan, nothing else.** `/pave:analyse` or `/pave:analyse
@@ -366,14 +372,16 @@ reopened one, one that failed review and one that removes obsolete work are
 all just items to make true.
 
 A `done` task is frozen and never rebuilt, even when named — a task changes
-only by re-planning. If its recorded commit is no longer on the branch, build
-asks before resetting it.
+only by re-planning. The builder marks a task done with `pave.sh done`, which
+records `built_against`, the hash of the document it built. If a re-plan
+rewrites a done task without reopening it, `pave.sh seal` sees the hash no
+longer matches and reopens it.
 
 **Pave writes in the hub; builders write in the repos.** The skill itself never
 touches a service repository — it reads the hub, spawns agents, and writes
-reports back. Each builder owns exactly one repo: it creates the branch, copies
-the frozen contracts in, runs codegen, commits that on its own, and then starts
-work. One writer per repo is what makes parallel agents safe.
+reports back. Each builder owns exactly one repo: it copies the frozen
+contracts in, runs codegen and then starts work - in a repo under git, on the
+feature's branch, with the contracts in a commit of their own. One writer per repo is what makes parallel agents safe.
 
 Contracts are copied, never regenerated from the spec, so every service builds
 against the same bytes.
@@ -466,8 +474,8 @@ Not part of the sequence. Run it any time, once you have a hub.
    `artifacts/knowledge/on-demand/source/`, so the next person to ask gets it
    from knowledge.
 
-A finding records the commit and the directories it read, and `pave.sh stale`
-marks it stale as soon as that code changes. A stale finding is never used as
+A finding records the directories it read and a hash of their content, and
+`pave.sh stale` marks it stale as soon as that code changes. A stale finding is never used as
 an answer; the next query that needs it reads the code again and replaces it.
 
 A gap reading code can't settle — a decision nobody recorded, a convention
@@ -488,7 +496,7 @@ passed review against its current plan — the plan matches the spec, every task
 is done, every acceptance criterion is satisfied by a done task, and the review
 is of this build — it writes a **feature record** to
 `artifacts/knowledge/on-demand/features/<feature-id>.md`: what the feature
-added, per service with the commit it landed at, its contracts, the decisions a
+added, per service with the tasks built there, its contracts, the decisions a
 later feature will bump into, and links back to `features/<feature-id>/`.
 
 Its capabilities join the knowledge index, so the next spec in the same area is
@@ -634,7 +642,7 @@ execution:
   max_parallel: 4
 
 branch:
-  pattern: feature/{feature-id}  # every task's branch, in every service
+  pattern: feature/{feature-id}  # the branch in every service repo under git
 ```
 
 Every model is enforced when its agent is spawned, planning included. Skills
@@ -674,8 +682,8 @@ falling back to defaults.
 
 **Monorepos.** When several services share a repo, `execution.monorepo_strategy` decides
 whether their tasks run one at a time (the template's choice, safe), in separate git
-worktrees (parallel, costs disk), or concurrently in one checkout (fastest,
-will eventually collide).
+worktrees (parallel, costs disk, needs git - build refuses it for a repo
+without), or concurrently in one checkout (fastest, will eventually collide).
 
 ---
 

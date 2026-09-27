@@ -149,7 +149,9 @@ not add one of your own — you did not read the code.
 ## 3. Report
 
 Write `features/<feature-id>/artifacts/review-report.md` from
-`templates/review-report.md`.
+`templates/review-report.md`. Record `spec_hash` from `plan.md` and the
+`built_against` of every task reviewed: the report is tied to the documents
+it checked, not to a branch or a commit.
 
 It is written for **a person** deciding whether this is mergeable: they read
 the header and the Failed section, and stop. No builder reads it - a re-run

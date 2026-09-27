@@ -19,5 +19,7 @@ execution:
   monorepo_strategy: sequential  # sequential | worktree | shared-tree
   max_parallel: 4
 
+# Only for service repos under git: a builder there works on this branch.
+# A repo without git gets no branch; Pave never reads one back.
 branch:
   pattern: feature/{feature-id}

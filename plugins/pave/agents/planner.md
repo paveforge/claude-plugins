@@ -36,9 +36,10 @@ nothing. What it knows is what you left on disk, so leave it small and exact:
 - **`plan.md`** — the index: criterion → decision → task. Reasoning goes
   here, once; task documents project it, they do not repeat it.
 - **`artifacts/planner-context.md`** — every knowledge file and on-demand
-  finding you relied on, with the `commit` recorded in its frontmatter, and
-  one line on what you took from it. A re-plan reads this instead of
-  rediscovering; a file whose commit has moved is the only one it needs to
+  finding you relied on, with the content hash recorded in its frontmatter
+  (`source_hash` in a service README, each service's `hash` in a finding),
+  and one line on what you took from it. A re-plan reads this instead of
+  rediscovering; a file whose hash has changed is the only one it needs to
   re-read.
 - `artifacts/spec.approved.md` is written by the orchestrator at sealing. It
   is the spec the current plan answers; diffing against it is how a re-plan

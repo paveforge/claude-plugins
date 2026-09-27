@@ -6,21 +6,39 @@ feature records no longer match their feature's spec.
 Reports. Decides nothing - /pave:analyse and /pave:query read this and choose.
 
 Staleness is path-scoped, not time-based: a service is stale only when the
-source directories its analysis rested on have changed. A month of commits to
-CI config invalidates nothing.
+content of the source directories its analysis rested on has changed. A month
+of changes to CI config invalidates nothing. It is decided from the files
+alone, never from a version control system: a repo may use git, another VCS
+or none.
+
+--stamp records the hash of those directories in a knowledge file once an
+analyst has written it: `source_hash` in a service README, `hash` on each
+line of a source finding's `services:`.
 
 Usage: pave-stale.py <hub> [service]
+       pave-stale.py --stamp <hub> <knowledge file>
 """
 import hashlib
+import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
 STATES = ["unreachable", "undiscovered", "missing", "stale", "orphan", "current",
           "finding-stale", "finding-current", "record-stale", "record-current"]
+# One line of a finding's services: `- { service: s, paths: [a, b], hash: h }`.
+# hash is absent until --stamp writes it.
 FINDING_SERVICE = re.compile(
-    r"^\s*-\s*\{\s*service:\s*([^,\s]+)\s*,\s*commit:\s*([0-9a-fA-F]+)\s*,\s*paths:\s*\[(.*?)\]\s*\}", re.M)
+    r"^([ \t]*-[ \t]*)\{[ \t]*service:[ \t]*([^,\s}]+)[ \t]*,[ \t]*paths:[ \t]*\[([^\]\n]*)\]"
+    r"(?:[ \t]*,[ \t]*hash:[ \t]*([0-9a-f]*))?[ \t]*\}[ \t]*$", re.M)
+HASH = re.compile(r"^[0-9a-f]{64}$")
+
+# Never part of what an analysis read: version control metadata, and
+# dependency and cache directories that tools rewrite on every run.
+SKIP_DIRS = {".git", ".hg", ".svn", ".bzr", ".jj", "_darcs", "CVS",
+             "node_modules", "__pycache__", ".venv", ".tox", ".pytest_cache",
+             ".mypy_cache", ".ruff_cache", ".gradle", ".terraform", ".next"}
+SKIP_FILES = {".DS_Store"}
 
 
 def read_workspace(ws):
@@ -41,55 +59,80 @@ def read_workspace(ws):
     return services
 
 
-def frontmatter(readme):
-    """(commit, source_paths) from a knowledge README, or None if unusable."""
-    text = readme.read_text()
+def split_paths(raw):
+    return [p.strip().strip("'\"") for p in raw.split(",") if p.strip()]
+
+
+def frontmatter(text):
+    """The frontmatter block of a knowledge file, or None."""
     if not text.startswith("---"):
         return None
-    fm = text.split("---", 2)[1]
-    commit = re.search(r"^commit:\s*(\S+)", fm, re.M)
+    parts = text.split("---", 2)
+    return parts[1] if len(parts) == 3 else None
+
+
+def readme_fields(text):
+    """(source_paths, source_hash) from a service README's frontmatter."""
+    fm = frontmatter(text) or ""
     inline = re.search(r"^source_paths:\s*\[(.*?)\]", fm, re.M | re.S)
     if inline:
-        paths = [s.strip().strip("'\"") for s in inline.group(1).split(",") if s.strip()]
+        paths = split_paths(inline.group(1))
     else:
         block = re.search(r"^source_paths:\s*$((?:\n\s+-\s*.*)+)", fm, re.M)
         paths = ([l.split("-", 1)[1].strip().strip("'\"")
                   for l in block.group(1).strip().splitlines()] if block else [])
-    if not commit or not paths:
-        return None
-    return commit.group(1), paths
+    recorded = re.search(r"^source_hash:\s*([0-9a-f]{64})\s*$", fm, re.M)
+    return paths, recorded.group(1) if recorded else None
 
 
-def changed_since(repo, commit, paths):
-    """Changed files under paths since commit, or None if the commit is gone."""
-    r = subprocess.run(
-        ["git", "-C", str(repo), "diff", "--name-only", f"{commit}..HEAD", "--", *paths],
-        capture_output=True, text=True,
-    )
-    if r.returncode != 0:
-        return None
-    return [l for l in r.stdout.splitlines() if l.strip()]
+def source_hash(root, paths):
+    """sha256 over the content of every file under paths, relative to root.
+
+    Each file contributes its path and the sha256 of its bytes, in sorted
+    order, so adding, removing, renaming or editing any file changes the
+    hash. A path that does not exist contributes its name and "missing"."""
+    root = Path(root)
+    h = hashlib.sha256()
+    for rel in sorted(set(paths or ["."])):
+        top = root / rel
+        if not top.exists() and not top.is_symlink():
+            h.update(f"{rel}\0missing\n".encode())
+            continue
+        files = [top] if not top.is_dir() or top.is_symlink() else []
+        if not files:
+            for d, dirs, names in os.walk(top):
+                dirs[:] = [n for n in dirs if n not in SKIP_DIRS]
+                files += [Path(d, n) for n in names if n not in SKIP_FILES]
+                # A symlinked directory is recorded as a link, never followed.
+                files += [Path(d, n) for n in dirs if Path(d, n).is_symlink()]
+        for name, f in sorted((Path(os.path.relpath(f, root)).as_posix(), f) for f in files):
+            if f.is_symlink():
+                digest = "link:" + os.readlink(f)
+            else:
+                try:
+                    digest = hashlib.sha256(f.read_bytes()).hexdigest()
+                except OSError:
+                    digest = "unreadable"
+            h.update(f"{name}\0{digest}\n".encode())
+    return h.hexdigest()
 
 
 def classify_finding(f, services):
     """A source finding is current only while every service it read is unchanged
     under the paths it read."""
-    text = f.read_text()
-    fm = text.split("---", 2)[1] if text.startswith("---") else ""
-    reads = FINDING_SERVICE.findall(fm)
-    read = [svc for svc, _, _ in reads]
+    reads = FINDING_SERVICE.findall(frontmatter(f.read_text()) or "")
+    read = [svc for _, svc, _, _ in reads]
     if not reads:
         return "finding-stale", "no services recorded - cannot prove it is current", read
-    for svc, commit, raw in reads:
+    for _, svc, raw, recorded in reads:
         info = services.get(svc)
         if not info or not info["path"] or not Path(info["path"]).is_dir():
             return "finding-stale", f"{svc} is not reachable", read
-        paths = [s.strip().strip("'\"") for s in raw.split(",") if s.strip()]
-        changed = changed_since(info["path"], commit, paths or ["."])
-        if changed is None:
-            return "finding-stale", f"{svc}: cannot diff from {commit[:7]}", read
-        if changed:
-            return "finding-stale", f"{svc}: {len(changed)} file(s) changed under {', '.join(paths)}", read
+        if not HASH.match(recorded or ""):
+            return "finding-stale", f"{svc}: no content hash recorded - cannot prove it is current", read
+        paths = split_paths(raw)
+        if source_hash(info["path"], paths) != recorded:
+            return "finding-stale", f"{svc}: files changed under {', '.join(paths or ['.'])}", read
     return "finding-current", f"unchanged in {', '.join(read)}", read
 
 
@@ -120,23 +163,75 @@ def classify(name, info, kdir):
     readme = kdir / name / "README.md"
     if not readme.exists():
         return "missing", "no knowledge folder"
-    fm = frontmatter(readme)
-    if not fm:
-        return "missing", "knowledge README has no usable commit/source_paths"
+    paths, recorded = readme_fields(readme.read_text())
+    if not paths or not recorded:
+        # Never stamped: the analysis did not finish, or predates content
+        # hashes. Nothing proves it is still valid.
+        return "missing", "knowledge README has no usable source_paths/source_hash"
 
-    commit, paths = fm
-    changed = changed_since(path, commit, paths)
-    if changed is None:
-        # The recorded commit is unreachable - rebased, squashed, or pruned.
-        # Treat as missing rather than current: we cannot prove it is still valid.
-        return "missing", f"cannot diff from {commit[:7]} - history rewritten or commit gone"
+    if source_hash(path, paths) != recorded:
+        return "stale", f"files changed under {', '.join(paths)}"
+    return "current", f"unchanged since {recorded[:7]}"
 
-    if changed:
-        return "stale", f"{len(changed)} file(s) changed under {', '.join(paths)}"
-    return "current", f"unchanged since {commit[:7]}"
+
+def stamp(hub, target):
+    """Record the current source hash in one knowledge file. Writes nothing
+    unless every service it names can be hashed."""
+    hub, target = Path(hub).resolve(), Path(target).resolve()
+    if not target.is_file():
+        sys.exit(f"error: no such file: {target}")
+    services = read_workspace(hub / "workspace.yaml")
+
+    def root_of(svc):
+        info = services.get(svc)
+        if not info or not info["path"] or not Path(info["path"]).is_dir():
+            sys.exit(f"error: {svc} is not a reachable service in workspace.yaml - nothing stamped")
+        return info["path"]
+
+    text = target.read_text()
+    fm = frontmatter(text)
+    if fm is None:
+        sys.exit(f"error: {target} has no frontmatter")
+    kdir = hub / "artifacts" / "knowledge" / "services"
+
+    if target.name == "README.md" and target.parent.parent == kdir:
+        svc = target.parent.name
+        paths, _ = readme_fields(text)
+        if not paths:
+            sys.exit(f"error: {target} has no source_paths - nothing stamped")
+        h = source_hash(root_of(svc), paths)
+        if re.search(r"^source_hash:.*$", fm, re.M):
+            new_fm = re.sub(r"^source_hash:.*$", f"source_hash: {h}", fm, count=1, flags=re.M)
+        else:
+            # Right after source_paths, inline or block form.
+            m = re.search(r"^source_paths:[ \t]*(?:\[[^\]]*\][^\n]*\n|\n(?:[ \t]+-[^\n]*\n)*)",
+                          fm, re.M)
+            new_fm = fm[:m.end()] + f"source_hash: {h}\n" + fm[m.end():]
+        print(f"stamped: {svc} {h[:7]} ({', '.join(paths)})")
+    else:
+        reads = FINDING_SERVICE.findall(fm)
+        if not reads:
+            sys.exit(f"error: {target} records no `- {{ service: ..., paths: [...] }}` line - nothing stamped")
+        hashes = {}
+        for _, svc, raw, _ in reads:
+            hashes[(svc, raw)] = source_hash(root_of(svc), split_paths(raw))
+
+        def line(m):
+            svc, raw = m.group(2), m.group(3)
+            return f"{m.group(1)}{{ service: {svc}, paths: [{raw.strip()}], hash: {hashes[(svc, raw)]} }}"
+        new_fm = FINDING_SERVICE.sub(line, fm)
+        for (svc, raw), h in hashes.items():
+            print(f"stamped: {svc} {h[:7]} ({', '.join(split_paths(raw)) or '.'})")
+
+    target.write_text("---" + new_fm + "---" + text.split("---", 2)[2])
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--stamp":
+        if len(sys.argv) != 4:
+            sys.exit("usage: pave-stale.py --stamp <hub> <knowledge file>")
+        stamp(sys.argv[2], sys.argv[3])
+        return
     if len(sys.argv) < 2:
         sys.exit("usage: pave-stale.py <hub> [service]")
     hub = Path(sys.argv[1])
