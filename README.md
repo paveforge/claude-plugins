@@ -268,8 +268,8 @@ open questions.
 2. **plan.md** — the approach, a **service map** (every service as `modify`,
    `read-only` or `untouched`), each decision with the criteria it serves and
    the alternative it rejected, the flow, failure behaviour, state ownership,
-   and every task in one line: service, kind, priority, size, the criteria it
-   satisfies.
+   and every task in one line: service, priority, size, the criteria it
+   satisfies, and the obsolete tasks it reverts.
 3. **Contracts** — the interfaces between services.
 
    **→ The gate.** You approve `plan.md` and the contracts together.
@@ -294,8 +294,16 @@ version. When the spec changes:
 |---|---|---|
 | not built | still needs it, differently | rewrites it in place |
 | not built | no longer needs it | drops it |
-| built | still needs it, differently | rewrites it and **reopens** it — the builder reconciles the existing code to it |
-| built | no longer needs it | marks it **obsolete** and adds a **revert** task, high priority |
+| built | still needs it, differently | rewrites it and **reopens** it, naming every place in the code the change reaches |
+| built | no longer needs it | marks it **obsolete** and adds a new, high-priority task that removes its work |
+
+**The planner reads the code.** Knowledge tells it where to look; the code
+tells it what is true. It looks up precise things itself — every place a value
+lives, what a handler does on failure — and hands back what it needs
+explained: the skill has a cheaper `analyst` read the code and save the answer
+as an on-demand finding, then resumes the planner with it. A task can only
+name every place a behaviour lives if someone read the code, and that is the
+planner's job, not the builder's.
 
 **A change that affects nothing.** If the spec changed only in wording — a
 typo, a clarified sentence — the planner says so and lists what it compared,
@@ -307,8 +315,9 @@ It's always your call; a changed word in a criterion counts as a change.
 respawned, so a re-plan costs only the difference. Across sessions it
 recovers from small files: `plan.md` as the index from criteria to decisions
 to tasks, a snapshot of the spec it was approved against, and the list of
-knowledge files it relied on. A re-plan diffs the spec, follows the index to
-the affected tasks, and reads knowledge only for their services.
+knowledge files and findings it relied on. A re-plan diffs the spec, follows
+the index to the affected tasks, and reads knowledge and code only for their
+services.
 
 **What it asks you.** To confirm the services, any *how* questions, and the
 one gate.
@@ -327,9 +336,14 @@ spec's hash and every task's hash against the sealed plan. A spec changed
 since, or a task edited by hand, stops it: run `/pave:plan`.
 
 **What it does.** Groups the tasks by service and fans out one agent per
-service. Inside each service's queue, revert tasks (`high`) run before normal
-ones (`low`), then by number; `depends_on` always comes first. A reopened task
-is rebuilt by reconciling the existing code to its document.
+service. Inside each service's queue, `high` tasks — the ones removing obsolete
+work — run before `low` ones, then by number; `depends_on` always comes first.
+
+**One way of building.** Every task is built the same way, whatever its
+status: for each item, the builder reads the code the item names, leaves it
+alone if the item already holds, and makes it hold if not. A new task, a
+reopened one, one that failed review and one that removes obsolete work are
+all just items to make true.
 
 A `done` task is frozen and never rebuilt, even when named — a task changes
 only by re-planning. If its recorded commit is no longer on the branch, build
@@ -375,14 +389,14 @@ approval at the plan gate meaningful. Like build, it refuses to run against a
 plan that no longer matches the spec.
 
 **When something deviates**, review unchecks the specific items that were not
-real, marks that task `failed`, and writes a per-task report. `/pave:build`
-then re-runs only the failed tasks, and each agent reads only its own section —
-so a fix touches three items rather than redoing twenty.
+real, unticks those items, marks that task `failed`, and writes a report for
+you. `/pave:build` then re-runs only the failed tasks; each builder sees only
+its task document, where the failed items are unticked.
 
 **Cleaning up.** After a successful review, if any obsolete tasks have been
 reverted, it asks whether to remove them. On yes, `pave.sh
-prune-obsoleted-tasks` deletes each obsolete task together with its revert
-task and drops their hashes from `plan.md`, leaving the spec hash and every
+prune-obsoleted-tasks` deletes each obsolete task together with the task that
+reverted it (from the `Reverts` column of `plan.md`) and drops their hashes from `plan.md`, leaving the spec hash and every
 other task untouched.
 
 ---
@@ -577,7 +591,7 @@ status; it records a `done`, reviewed feature in the knowledge base.
 
 Tasks have their own status: `pending`, `in-progress`, `done`, `reopened`
 (re-planned after it was built), `failed`, `blocked`, and `obsolete` (no longer
-wanted; a revert task removes its work).
+wanted; a new, high-priority task removes its work).
 
 ---
 
@@ -705,8 +719,8 @@ and review will pass the feature, because review asks whether the plan was
 followed and the plan never asked.
 
 **Tasks describe the end state.** A re-planned task is rewritten, not
-patched with a diff, so any builder — reconciling existing code or starting
-from a reset — reaches the same result from the document alone.
+patched with a diff, so any builder — facing existing code or starting from
+a reset — reaches the same result from the document alone.
 
 **Unhappy paths are specified, not left open.** A task item that changes
 behaviour states what happens on replay, on failure, and at boundaries. This is

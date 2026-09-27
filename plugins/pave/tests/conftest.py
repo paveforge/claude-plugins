@@ -96,11 +96,9 @@ Nothing else.
 TASK_TEMPLATE = """---
 service: {service}
 feature: {feature_id}
-kind: {kind}
 priority: low
 status: pending
 depends_on: []
-reverts: {reverts}
 satisfies: [AC-1]
 branch: feature/{feature_id}
 derives_from:
@@ -133,24 +131,25 @@ Do the thing.
 
 ## Tasks
 
-| # | Task | Service | Kind | Priority | Size | Satisfies | Depends on | Change |
+| # | Task | Service | Priority | Size | Satisfies | Depends on | Reverts | Change |
 |---|---|---|---|---|---|---|---|---|
-| 01 | Do the thing | svc | build | low | S | AC-1 | - | new |
-"""
+{rows}"""
+
+PLAN_ROW = "| {n:02d} | Task {n} | svc | low | S | AC-1 | - | - | new |\n"
 
 
-def make_feature(hub_path, feature_id, title="Test Feature", n_tasks=1, reverts_map=None):
+def make_feature(hub_path, feature_id, title="Test Feature", n_tasks=1):
     fdir = hub_path / "features" / feature_id
     (fdir / "tasks").mkdir(parents=True, exist_ok=True)
     (fdir / "contracts").mkdir(parents=True, exist_ok=True)
     (fdir / "artifacts").mkdir(parents=True, exist_ok=True)
     (fdir / "spec.md").write_text(SPEC_TEMPLATE.format(feature_id=feature_id, title=title))
-    (fdir / "plan.md").write_text(PLAN_TEMPLATE.format(feature_id=feature_id, title=title, next_task=n_tasks + 1))
-    reverts_map = reverts_map or {}
+    rows = "".join(PLAN_ROW.format(n=i) for i in range(1, n_tasks + 1))
+    (fdir / "plan.md").write_text(
+        PLAN_TEMPLATE.format(feature_id=feature_id, title=title, next_task=n_tasks + 1, rows=rows)
+    )
     for i in range(1, n_tasks + 1):
-        reverts = reverts_map.get(i, [])
         (fdir / "tasks" / f"{i:02d}-task.md").write_text(
-            TASK_TEMPLATE.format(service="svc", feature_id=feature_id, kind="build",
-                                  title=f"Task {i}", reverts=reverts)
+            TASK_TEMPLATE.format(service="svc", feature_id=feature_id, title=f"Task {i}")
         )
     return fdir

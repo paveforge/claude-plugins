@@ -77,7 +77,7 @@ only when you happen to be standing in the hub.
 **Only review tasks that are `done`.** A `pending` or `reopened` task has no
 code that claims to match its document yet, so a reviewer would report items
 missing — which is true and useless. `obsolete` tasks are never reviewed:
-their revert task is, like any other `done` task.
+the task that reverts one is, like any other `done` task.
 
 ## 1. Fan out, one reviewer per task
 
@@ -112,9 +112,8 @@ its input narrow is what keeps it accurate.
 Those rules can add something to look for. They cannot add something to fail
 on: a finding that comes from them is a non-blocking improvement. `failed`
 means an agent claimed work it did not do, and §2 unchecks the specific items
-a reviewer names so a re-run builder fixes exactly those — a finding with no
-ticked item behind it has nothing to uncheck, and would send a builder back
-with nothing to act on.
+a reviewer names — a finding with no ticked item behind it has nothing to
+uncheck, and would send a builder back with nothing to act on.
 
 Contracts decompose the same way. Both sides are checked against the same
 frozen file, so if the producer conforms to it and the consumer conforms to
@@ -129,9 +128,9 @@ green review read as a complete feature. Then go to §4.
 
 **For each reviewer reporting a deviation:**
 
-1. **Uncheck** the specific items it named, in that task document. This is
-   what makes the re-run precise — the agent fixes three items rather than
-   redoing a task of twenty.
+1. **Uncheck** the specific items it named, in that task document. The task
+   document is the builder's whole brief: an unticked item is how it learns
+   that item does not hold.
 2. Set that task document to `status: failed`.
 3. Leave conforming tasks untouched at `done`.
 
@@ -149,25 +148,21 @@ not add one of your own — you did not read the code.
 Write `features/<feature-id>/artifacts/review-report.md` from
 `templates/review-report.md`.
 
-Its structure exists to serve two readers at once:
-
-- **A person** deciding whether this is mergeable reads the header and the
-  Failed section, and stops.
-- **A re-run builder** reads only its own subsection. It sees nothing else,
-  exactly as it sees only its own task document — so every subsection names
-  its task file and repo, and quotes the failed items verbatim.
+It is written for **a person** deciding whether this is mergeable: they read
+the header and the Failed section, and stop. No builder reads it - a re-run
+builder gets only its task document, where the failed items are unticked.
 
 Three rules the template encodes, all of them load-bearing:
 
-**Quote items exactly** as they appear in the task document. The builder
-matches on that text to find what to fix.
+**Quote items exactly** as they appear in the task document, and name the
+task file and repo, so the reader can find each one.
 
 **Never omit the Not reviewed section** when a reviewer returned nothing or
 errored. A task with no section reads as a pass, and silence must never mean
 approval.
 
-**Keep improvements in a section builders do not read.** A suggestion that
-reaches a re-run agent becomes work it does, and the builder's authority is
+**Keep improvements apart from failures.** A suggestion is not a deviation;
+mixed in with the failed items, it reads as one. The builder's authority is
 the task document, not a reviewer's opinion.
 
 Then summarise in the session: what failed, in which service, and the single
@@ -181,8 +176,9 @@ none unreviewed. A failed or partial review never offers clean-up.
 
 An obsolete task whose revert is `done` and has just passed review describes
 nothing left in the code - and neither does its revert. Both are noise in the
-task list. Look for them in the task frontmatter: `status: obsolete`, and a
-`kind: revert` task whose `reverts:` names it. If there are any, ask:
+task list. Find them from `status: obsolete` in the task frontmatter, and the
+task that reverts each in the `Reverts` column of `plan.md`'s task table. If
+there are any, ask:
 
 ```
 Review passed. 2 obsolete tasks have been reverted:

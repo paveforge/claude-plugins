@@ -13,6 +13,23 @@ def prune(hub, feature_id):
     return hub.run("prune-obsoleted-tasks", env={"SESSION_FEATURE_ID": feature_id})
 
 
+def add_revert(fdir, n, reverts, status):
+    """A task that reverts others: an ordinary task, linked only in plan.md's Reverts column."""
+    (fdir / "tasks" / f"{n:02d}-revert.md").write_text(
+        f"---\nservice: svc\nfeature: feat-1\npriority: high\nstatus: {status}\n"
+        "depends_on: []\nsatisfies: []\nbranch: feature/feat-1\nderives_from:\n"
+        f"  - plan.md#approach\ncommit:\n---\n# Remove what task {reverts[0]} built\n## Build notes\n"
+    )
+    named = ", ".join(f"{r:02d}" for r in reverts)
+    plan = fdir / "plan.md"
+    plan.write_text(plan.read_text() + f"| {n:02d} | Remove it | svc | high | S | - | - | {named} | new |\n")
+
+
+def obsolete(fdir, n):
+    task = fdir / "tasks" / f"{n:02d}-task.md"
+    task.write_text(task.read_text().replace("status: pending", "status: obsolete"))
+
+
 def test_check_no_plan(hub):
     fdir = hub.feature_dir("feat-1")
     fdir.mkdir(parents=True)
@@ -76,7 +93,7 @@ def test_check_fails_on_added_task(hub):
     fdir = make_feature(hub.path, "feat-1")
     seal(hub, "feat-1")
     (fdir / "tasks" / "02-extra.md").write_text(
-        "---\nservice: svc\nfeature: feat-1\nkind: build\nstatus: pending\n---\n# Extra\n## Build notes\n"
+        "---\nservice: svc\nfeature: feat-1\nstatus: pending\n---\n# Extra\n## Build notes\n"
     )
     r = check(hub, "feat-1")
     assert r.returncode == 1
@@ -114,13 +131,8 @@ def test_crlf_spec_hashes_agree_between_seal_and_stale(hub):
 
 def test_prune_refuses_when_revert_not_done(hub):
     fdir = make_feature(hub.path, "feat-1", n_tasks=1)
-    task = fdir / "tasks" / "01-task.md"
-    task.write_text(task.read_text().replace("status: pending", "status: obsolete"))
-    (fdir / "tasks" / "02-revert.md").write_text(
-        "---\nservice: svc\nfeature: feat-1\nkind: revert\npriority: high\nstatus: pending\n"
-        "depends_on: []\nreverts: [1]\nsatisfies: []\nbranch: feature/feat-1\nderives_from:\n"
-        "  - plan.md#approach\ncommit:\n---\n# Revert task 1\n## Build notes\n"
-    )
+    obsolete(fdir, 1)
+    add_revert(fdir, 2, [1], "pending")
     seal(hub, "feat-1")
     r = prune(hub, "feat-1")
     assert r.returncode == 1
@@ -131,13 +143,8 @@ def test_prune_refuses_when_revert_not_done(hub):
 
 def test_prune_removes_obsolete_and_revert_and_keeps_check_ok(hub):
     fdir = make_feature(hub.path, "feat-1", n_tasks=1)
-    task = fdir / "tasks" / "01-task.md"
-    task.write_text(task.read_text().replace("status: pending", "status: obsolete"))
-    (fdir / "tasks" / "02-revert.md").write_text(
-        "---\nservice: svc\nfeature: feat-1\nkind: revert\npriority: high\nstatus: done\n"
-        "depends_on: []\nreverts: [1]\nsatisfies: []\nbranch: feature/feat-1\nderives_from:\n"
-        "  - plan.md#approach\ncommit: deadbee\n---\n# Revert task 1\n## Build notes\n"
-    )
+    obsolete(fdir, 1)
+    add_revert(fdir, 2, [1], "done")
     seal(hub, "feat-1")
     r = prune(hub, "feat-1")
     assert r.returncode == 0, r.stdout + r.stderr
@@ -155,13 +162,8 @@ def test_prune_removes_obsolete_and_revert_and_keeps_check_ok(hub):
 
 def test_prune_never_lowers_next_task(hub):
     fdir = make_feature(hub.path, "feat-1", n_tasks=2)
-    task1 = fdir / "tasks" / "01-task.md"
-    task1.write_text(task1.read_text().replace("status: pending", "status: obsolete"))
-    (fdir / "tasks" / "03-revert.md").write_text(
-        "---\nservice: svc\nfeature: feat-1\nkind: revert\npriority: high\nstatus: done\n"
-        "depends_on: []\nreverts: [1]\nsatisfies: []\nbranch: feature/feat-1\nderives_from:\n"
-        "  - plan.md#approach\ncommit: deadbee\n---\n# Revert task 1\n## Build notes\n"
-    )
+    obsolete(fdir, 1)
+    add_revert(fdir, 3, [1], "done")
     seal(hub, "feat-1")
     plan_before = (fdir / "plan.md").read_text()
     assert "next_task: 4" in plan_before
@@ -173,18 +175,38 @@ def test_prune_never_lowers_next_task(hub):
 
 def test_prune_refuses_revert_naming_non_obsolete_task(hub):
     fdir = make_feature(hub.path, "feat-1", n_tasks=2)
-    task1 = fdir / "tasks" / "01-task.md"
-    task1.write_text(task1.read_text().replace("status: pending", "status: obsolete"))
-    (fdir / "tasks" / "03-revert.md").write_text(
-        "---\nservice: svc\nfeature: feat-1\nkind: revert\npriority: high\nstatus: done\n"
-        "depends_on: []\nreverts: [1, 2]\nsatisfies: []\nbranch: feature/feat-1\nderives_from:\n"
-        "  - plan.md#approach\ncommit: deadbee\n---\n# Revert tasks 1 and 2\n## Build notes\n"
-    )
+    obsolete(fdir, 1)
+    add_revert(fdir, 3, [1, 2], "done")
     seal(hub, "feat-1")
     r = prune(hub, "feat-1")
     assert r.returncode != 0
     assert "not obsolete" in (r.stdout + r.stderr)
     assert (fdir / "tasks" / "02-task.md").exists()
+
+
+def test_prune_refuses_obsolete_task_no_row_reverts(hub):
+    fdir = make_feature(hub.path, "feat-1", n_tasks=2)
+    obsolete(fdir, 1)
+    seal(hub, "feat-1")
+    r = prune(hub, "feat-1")
+    assert r.returncode == 1
+    assert "Reverts column" in r.stdout
+    assert (fdir / "tasks" / "01-task.md").exists()
+
+
+def test_prune_ignores_reverts_in_task_frontmatter(hub):
+    # The link lives only in plan.md. A task document claiming it is not enough.
+    fdir = make_feature(hub.path, "feat-1", n_tasks=1)
+    obsolete(fdir, 1)
+    (fdir / "tasks" / "02-revert.md").write_text(
+        "---\nservice: svc\nfeature: feat-1\npriority: high\nstatus: done\n"
+        "reverts: [1]\n---\n# Remove it\n## Build notes\n"
+    )
+    seal(hub, "feat-1")
+    r = prune(hub, "feat-1")
+    assert r.returncode == 1
+    assert (fdir / "tasks" / "01-task.md").exists()
+    assert (fdir / "tasks" / "02-revert.md").exists()
 
 
 def test_prune_nothing_to_prune(hub):

@@ -55,7 +55,7 @@ built against it and would break.>
 
 | Service | Repo | Commit | Tasks (in order) | Items |
 |---|---|---|---|---|
-| <service> | `<path>` | `<sha>` | <NN (revert), NN (reconcile), NN> | <done>/<total> |
+| <service> | `<path>` | `<sha>` | <NN, NN, NN> | <done>/<total> |
 
 ## Verification
 

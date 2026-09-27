@@ -105,14 +105,12 @@ further if the spec change plainly reaches a capability none of them has.
 `analyst` agents for anything missing or stale, with the `model` and `effort`
 that `pave.sh agent analyst` prints and the required reading `/pave:analyse`
 §3 gives them, and continue once they return. Say what you are doing in one
-line; do not ask permission. Never plan against stale knowledge - and never
-let the planner compensate by reading service code.
+line; do not ask permission. Never plan against stale knowledge.
 
-**Uncertainty is not knowledge.** Every `uncertain:` entry on a candidate
-that bears on the spec must be resolved by reading the code yourself, here -
-the analyst flagged it because it could not tell, and the planner does not
-read code. Record what the code showed in the brief. If you cannot resolve
-it, say so at the gate rather than planning over it.
+Knowledge is where the planner starts, not where it stops: it reads the code
+its plan depends on, and asks for what it needs explained (§4). So do not
+read code here. An `uncertain:` entry on a candidate goes into the brief as
+it is; the planner resolves the ones its plan rests on.
 
 ## 3. Write the plan brief
 
@@ -121,8 +119,9 @@ never redoes discovery:
 
 - The feature id, title, and absolute paths to `spec.md` and the feature folder
 - The mode: `initial` or `replan`
-- The confirmed candidate services, each with its role and your confidence,
-  and any the user added or removed
+- The confirmed candidate services, each with its role, your confidence, and
+  its repo path and `path` from `workspace.yaml` - the planner reads the code
+  there - and any the user added or removed
 - **The exact knowledge files to read**, by absolute path - for each
   candidate, the `domain.md` of services likely to change and the
   `integration.md` of services at the seam
@@ -132,6 +131,7 @@ never redoes discovery:
   depends on. Never a stale finding or a stale record - and never this
   feature's own record: on a re-plan it describes the version being replaced,
   and `plan.md` is the source
+- Every `uncertain:` entry on a candidate that bears on the spec
 - Anything `check` reported
 - Absolute paths to the hub's `AGENTS.md`, if it exists
 
@@ -169,17 +169,46 @@ Do not read `writing-rules.md` yourself; the planner reads it.
 
 ### Questions from the planner
 
-The planner returns questions it cannot answer from the spec and the
-knowledge. Each is marked as one of two kinds:
+The planner returns questions it cannot answer from the spec, the knowledge
+and its own look at the code. Each is marked as one of three kinds:
 
 | Kind | Example | Do |
 |---|---|---|
+| **code** | how does stock-service expire holds today? | Not for the user. Have it answered from the code - below |
 | **how** | synchronous call or event? which service owns the hold? | Ask the user. Resume the planner with the answer; it records the decision in `plan.md`, citing the criterion it serves |
 | **what** | the answer would change behaviour, scope, a criterion or a guardrail | **Stop.** Tell the user: `This is a spec decision: <question>. Settle it with /pave:spec, then re-plan.` Do not answer it, and do not let the planner pick |
 
 Every plan decision must be traceable to something written in the spec. A
 "how" answer that quietly changes what the user gets is a "what" answer - if
 in doubt, it goes to `/pave:spec`.
+
+### Code questions
+
+The planner looks up what it can itself - a definition, every place a value
+appears. A **code question** is what it needs explained: how a flow or a
+subsystem works. It hands those back rather than reading its way through
+them on the strongest model; you have them answered by cheaper agents, and
+the answers stay in the knowledge base for the next plan.
+
+For each code question, exactly as `/pave:query` §2 does it:
+
+- choose the finding's file, `artifacts/knowledge/on-demand/source/<slug>.md`,
+  reusing a stale finding's file if it answers the same question
+- spawn one `analyst` in question mode, with the `model` and `effort`
+  `pave.sh agent analyst` prints, given the question verbatim, the services it
+  concerns with their repo path, `path` and current commit, their knowledge
+  files as a map, the finding's path, `templates/knowledge-finding.md`, and
+  the hub's `AGENTS.md` if it exists
+
+Run them in parallel, up to `execution.max_parallel`. Then rebuild the
+index's On-demand section (`/pave:query` §3) and resume the planner with the
+finding paths - and, for any question the analyst could not answer, what it
+could not determine. Repeat until the planner returns no code questions. It
+may raise them in stage 2 too; handle them the same way.
+
+Say what you are doing in one line; do not ask the user. A code question the
+code cannot answer is not a guess the planner may fill: it goes to the gate
+as an open point.
 
 ### Nothing affected: re-seal instead of re-planning
 
@@ -223,8 +252,9 @@ never re-seals on its own.
 The planner's stage 1 writes `plan.md` (from `templates/plan.md`) and
 `contracts/`. `plan.md` holds the whole plan in one place: the approach, the
 service map, every decision with the criterion it serves, the contracts, and
-the task table - every task in one line with its service, kind, priority,
-size and the criteria it satisfies, plus what this revision does to it.
+the task table - every task in one line with its service, priority, size,
+the criteria it satisfies and the tasks it reverts, plus what this revision
+does to it.
 
 Present a summary, not the files:
 

@@ -65,12 +65,12 @@ standing in the hub.
 | Task status | Build? |
 |---|---|
 | `pending` | Yes |
-| `reopened` | Yes, in **reconcile mode** (§4) |
-| `failed` | Yes - only the items review unticked |
-| `in-progress` | Yes - a previous run did not finish; resume it |
+| `reopened` | Yes |
+| `failed` | Yes |
+| `in-progress` | Yes |
 | `blocked` | Only once the blocker is resolved; otherwise report it again |
 | `done` | No - skipped, listed as such |
-| `obsolete` | Never. Its revert task removes its work |
+| `obsolete` | Never. The task that reverts it removes its work |
 
 **Task numbers given** - `/pave:build 03,07` builds exactly those. Commas are
 the recommended separator; spaces and `03, 07` are accepted too, and leading
@@ -89,7 +89,8 @@ anything runs. The same table applies, with two refinements:
 - **A named task whose `depends_on` is not `done` is refused**, naming the
   blocker. It is not built implicitly.
 
-A named `obsolete` task is skipped: `03 is obsolete; its revert is 09`.
+A named `obsolete` task is skipped: `03 is obsolete; 09 reverts it`. Find
+09 in the `Reverts` column of `plan.md`'s task table.
 
 Never rebuild a `done` task any other way. A task changes only by re-planning,
 which reopens it.
@@ -146,16 +147,11 @@ substitute your own.
 
 Give each agent, and nothing else:
 
-- The absolute paths to its task documents, **in queue order**, each with its
-  mode:
-
-  | Mode | For | Meaning |
-  |---|---|---|
-  | `fresh` | `pending` | Nothing exists yet |
-  | `resume` | `in-progress` | A previous run started it |
-  | `reconcile` | `reopened` | Code for this task already exists at its recorded `commit`. Make that code match the document, changing only what does not; work the unticked items |
-  | `fix` | `failed` | Fix only the items review unticked; give it the review report |
-  | `revert` | `kind: revert` | Remove what the document names, and nothing else |
+- The absolute paths to its task documents, **in queue order**. Nothing
+  else about them - not their status, not why they exist, not the review
+  report. Every task is worked the same way: the builder checks each item
+  against the code and changes what does not hold. The document is its whole
+  brief
 
 - Its required reading, by absolute path:
   1. the hub's `AGENTS.md` — the user's rules, if it exists

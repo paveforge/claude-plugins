@@ -79,11 +79,12 @@ check both first and refuse on any mismatch - a spec changed since, or a task
 edited by hand - until `/pave:plan` runs again.
 
 **Task documents describe the end state.** A re-plan rewrites them in place:
-an unbuilt task is simply rewritten; a built one is **reopened** and rebuilt
-by reconciling the existing code; one the spec no longer wants is marked
-**obsolete** and a **revert** task (high priority) removes its work. Task
-numbers only increase. After a successful review, `/pave:review` offers to
-remove reverted obsolete tasks together with their reverts.
+an unbuilt task is simply rewritten; a built one is **reopened**, and the
+builder checks every item against the existing code and changes what does
+not hold; one the spec no longer wants is marked **obsolete** and a new,
+high-priority task removes its work. Task numbers only increase. After a
+successful review, `/pave:review` offers to remove reverted obsolete tasks
+together with the tasks that reverted them.
 
 Review checks execution against the plan, not whether the feature works. A
 gap in the plan is not a review failure: it is a comment, and you decide

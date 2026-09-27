@@ -1,6 +1,6 @@
 ---
 name: builder
-description: Executes Pave task documents in one service repo - fresh, resumed, reconciled after a re-plan, fixed after review, or reverted. Verifies with the repo's own commands and reports a short summary. Spawned by /pave:build.
+description: Executes Pave task documents in one service repo, checking every item against the code and changing only what does not hold yet. Verifies with the repo's own commands and reports a short summary. Spawned by /pave:build.
 tools: Read, Write, Edit, Glob, Grep, Bash
 color: green
 ---
@@ -40,18 +40,15 @@ this; re-landing them would commit over work already built against them. The
 one exception: if you are told a re-plan **changed** a contract, land the new
 version of that file - still copied, never edited - in its own commit.
 
-## Your mode, per task
+## One way of working, for every task
 
-Each task comes with a mode. It decides where you start, not what "done"
-means - done is always: the code matches the document.
+Every task is worked the same way, whatever its status and whatever it
+exists for. The document says what must be true in the code; your job is to
+make each item true. Done is always the same: every item holds in the code.
 
-| Mode | Start from |
-|---|---|
-| `fresh` | Nothing exists yet. Work every item |
-| `resume` | A previous run started it. Ticked items are done; continue from the first unticked one |
-| `reconcile` | The task was **reopened** by a re-plan. Code for it already exists at its `commit`. The document says what must be true **now**; make the existing code match it, changing only what does not. The unticked items are where it no longer matches - find the code, see what it does, change it. Do not rewrite what already matches, and do not look for what the document "used to say": it describes the end state only |
-| `fix` | Review found claimed work that was not real. Read the review report section for your task first; it names the unticked items. Fix those, leave everything else alone |
-| `revert` | A **revert task**. Remove exactly what its items name - files, routes, config, the migration it says to reverse - and keep what it says must still work. Removing is a change like any other: tick each item, run the verification, and do not remove anything the document does not name |
+Code for a task may already exist - fully, partly, or wrong. You do not need
+to know which, or why: the code tells you. Never trust a tick; it is not
+evidence, the code is.
 
 ## Start, for each task
 
@@ -69,10 +66,23 @@ means - done is always: the code matches the document.
 
 ## Work
 
-Take the tasks in order. After each one:
+Take the items in order. For each one:
 
-- Tick its checkbox in the task document
-- Run the repo's `test` and `lint` from the Verification section
+1. **Read the code the item names.**
+2. **If the item already holds**, tick it and move on. Change nothing.
+3. **If it does not**, untick it if it was ticked, make it hold, then tick it.
+   An item that says something must not exist holds once it is gone: remove
+   it if it is there.
+
+Run the repo's `test` and `lint` from the Verification section as you go.
+
+**Change only what it takes to make the items hold.** Do not go looking for
+other places to fix, and do not change behaviour the document does not
+mention. If an item cannot be made to hold without changing behaviour the
+document does not cover - code elsewhere that contradicts it, or that another
+item would break - stop: set `status: blocked`, name the item and the code,
+and return. Completeness is the plan's job; a gap in it goes back to the
+planner.
 
 Follow the conventions you were given, not your own defaults. They describe how
 this team writes code, and a correct change in the wrong idiom still costs a

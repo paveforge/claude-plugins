@@ -13,14 +13,11 @@ tasks: { total: 0, passed: 0, failed: 0, unreviewed: 0 }
 Next: `<the one command to run>`
 
 <!--
-  Two readers, and the structure serves both:
-
-  A person deciding whether this is mergeable - reads the header, the
-  Failed section, and stops.
-
-  A re-run builder - reads ONLY its own subsection under Failed. It sees
-  nothing else, exactly as it sees only its own task document. So each
-  subsection names its task file, its repo, and quotes items verbatim.
+  Written for a person deciding whether this is mergeable - they read the
+  header, the Failed section, and stop. No builder reads this report: a
+  re-run builder gets only its task document, where the failed items are
+  unticked. Each subsection names its task file, its repo, and quotes items
+  verbatim, so the reader can find them.
 
   Record what the reviewers reported. Do not soften a finding and do not
   add one - the orchestrator did not read the code.
@@ -81,8 +78,7 @@ diverged or the codegen is stale.>
 
 ## Comments — non-blocking
 
-Not deviations. Nothing here fails a task, and no re-run agent reads this
-section.
+Not deviations. Nothing here fails a task, and no builder reads it.
 
 - **<service>** <An improvement. The agent followed the plan; this is what
   you might do differently, noted only.>
@@ -92,8 +88,8 @@ section.
   spec does not say: `/pave:spec` first - it is the user's decision.>
 
 <!--
-  This separation is load-bearing. Suggestions must never reach a re-run
-  builder: its authority is the task document, not a reviewer's opinion.
-  Putting improvements in a section builders do not read is what keeps the
-  approved plan the only thing that gets built.
+  This separation is load-bearing. Suggestions must never reach a builder:
+  its authority is the task document, not a reviewer's opinion. The approved
+  plan is the only thing that gets built; a suggestion worth doing goes
+  through /pave:spec or /pave:plan.
 -->

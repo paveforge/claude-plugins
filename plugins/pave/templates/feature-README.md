@@ -8,5 +8,5 @@
 **Spec** v<n> · **Plan** for spec v<n> ·
 **Branch** `feature/<feature-id>` · **Last run** <timestamp> · `<skill>`
 
-| # | Task | Service | Kind | Priority | Satisfies | Status | Done |
-|---|---|---|---|---|---|---|---|
+| # | Task | Service | Priority | Satisfies | Status | Done |
+|---|---|---|---|---|---|---|
