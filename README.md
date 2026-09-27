@@ -143,17 +143,18 @@ which compares the hub's config with the template this version of Pave ships:
 ```
 leftover  model_ranking = [haiku, sonnet, opus, fable]
 leftover  agents.designer = { model: fable, effort: max }
-missing   agents.planner (template: { model: opus, effort: high })
-invalid   execution.max_parallel = four (template has a number: 4)
-result: 4 to fix - run /pave:init
+missing   agents.planner = { model: opus, effort: high }
+result: 3 to fix - run /pave:init
 ```
 
-Init turns that into edits - remove the leftovers, add what is missing from
-the template, and move a leftover's value where it plainly belongs
-(`designer` → `planner`) - shows them, and makes them only on "yes", editing
-just the lines involved: your comments, values and format (YAML or TOML) stay.
-The config records no Pave version; the template is what Pave reads now, which
-is right however old the hub is.
+Init asks what to do - add the missing keys, remove the leftovers, both, or
+nothing - and runs `pave.sh config-fix <add|remove|all>`. The script adds
+missing keys with the template's values and rewrites the file in its own
+format (YAML or TOML). The file's opening comment block stays; other comments
+do not, and a removed key's value is not carried over (`designer`'s model does
+not move to `planner` - edit the config afterwards to keep it). The config
+records no Pave version; the template is what Pave reads now, which is right
+however old the hub is.
 
 ---
 

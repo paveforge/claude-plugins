@@ -59,7 +59,7 @@ skip the what-to-commit advice at the end.
 | File | If absent | If present |
 |---|---|---|
 | `.pave-hub` | Empty marker — other skills walk up to find it | Leave |
-| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave as it is** — it is team policy. Offer the edits `config-check` calls for, below, and make them only on "yes" |
+| `config.yaml` | From `templates/config.yaml` — **unless `config.yml` or `config.toml` exists**, in which case write nothing | **Leave as it is** — it is team policy. Offer to bring it up to date, below |
 | `workspace.yaml` | From `templates/workspace.yaml`, with **no services** | Leave |
 | `AGENTS.md` | From `templates/hub-AGENTS.md` | Leave |
 | `CLAUDE.md` | One line: `@AGENTS.md` | Leave if it already imports `@AGENTS.md`; otherwise see below |
@@ -68,7 +68,8 @@ skip the what-to-commit advice at the end.
 | `.claude/settings.json` | `additionalDirectories: []` | **Merge** — add nothing, leave every other setting alone |
 | `.gitignore` | Add `workspace.yaml`, if git | Add the line if missing |
 
-The config file is never rewritten, and never added beside another one. A hub
+The config file is rewritten only by `pave.sh config-fix`, on the user's
+choice below, and never added beside another one. A hub
 may use `config.yaml`, `config.yml` or `config.toml`, but only one: a second
 file makes every command that reads the config stop with an error. A teammate
 who clones the hub already has the team's settings, and init must not undo
@@ -95,41 +96,38 @@ Run:
 "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh config-check
 ```
 
-It compares the config with `templates/config.yaml`, the shape this version of
-Pave reads, and prints one line per difference and a `result:` line:
-
-- `leftover` - a key the template does not have, with its current value
-- `missing` - a key the template has and the config lacks, with the
-  template's value
-- `invalid` - a value of a different kind from the template's
-
-If there is nothing to fix, say nothing about it. Otherwise turn each line
-into an edit and show them all before touching the file:
-
-- a `leftover`: remove its lines
-- a `missing` key: add it with the template's value, in the config's own
-  format (YAML or TOML) and the style of its neighbours
-- an `invalid` value: set the template's value
-- where a `leftover` and a `missing` key sit under the same parent and plainly
-  mean the same thing - `agents.designer` and `agents.planner` - propose moving
-  the leftover's value to the missing key instead of taking the template's.
-  Say so; it keeps the team's choice.
+It compares the config with `templates/config.yaml` and prints a `leftover`
+line for each key the template does not have, a `missing` line for each key
+the template has and the config lacks, and a `result:` line. If there is
+nothing to fix, say nothing about it. Otherwise show its lines as they are and
+ask one question:
 
 ```
-config.yaml has drifted from what this version of Pave reads:
+config.yaml differs from what this version of Pave reads:
 
-  agents.designer { model: fable, effort: max } → agents.planner
-  remove   model_ranking
-  add      agents.retriever: { model: sonnet, effort: low }
+  leftover  agents.designer = { model: fable, effort: max }
+  missing   agents.planner = { model: opus, effort: high }
 
-Apply these? Only those lines change; comments and format stay.
+  1. Add missing keys and remove leftovers   (recommended)
+  2. Add missing keys only
+  3. Remove leftovers only
+  4. Leave the config as it is
+
+Pave rewrites the file: its opening comment block stays, other comments do not.
+A removed key's value is not carried over - edit the config afterwards to keep it.
 ```
 
-Only on "yes", make exactly those edits: the lines involved, never a rewrite
-of the file, and every other line, comment and value left as it is. Then run
-`config-check` again and report its `result:`. On anything but "yes", change
-nothing and say that commands needing a missing key will stop until it is
-there.
+Run the script with the option chosen, and nothing else:
+
+| Choice | Command |
+|---|---|
+| 1 | `pave.sh config-fix all` |
+| 2 | `pave.sh config-fix add` |
+| 3 | `pave.sh config-fix remove` |
+| 4 | none |
+
+Report its lines as they are. Never edit the config yourself. If missing keys
+remain, say that commands needing them will stop until they are added.
 
 `.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;
 never replace it.
