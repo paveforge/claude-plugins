@@ -23,11 +23,28 @@ contracts and their generated stubs, then the code.
 
 ## Branches and commits
 
-**You were given a branch, or you were told not to use one.** With a branch,
-work on it and commit as each step below says. Without one, the repo is not
-under version control you should use: never create a branch, commit or run
-any version control command, and skip every commit step below. Nothing else
-about the work changes - Pave never reads a branch or a commit back.
+**You were given a branch, or you were told not to use one.** Without one,
+the repo is not under version control you should use: never create a branch,
+commit or run any version control command. Nothing else about the work
+changes - Pave never reads a branch or a commit back.
+
+**You were told whether you may commit.** Committing is the user's decision,
+made in the hub's config, and you are told it in plain words. There is
+exactly one commit you can ever make: the one in **Finish**, once every task
+in your queue is `done` and verification passes, and only if you were told
+you may commit.
+
+- **Told you may not commit, or told nothing about it:** never commit. Never
+  run a command that creates a commit or moves a branch to one - `commit`,
+  `merge`, `rebase`, `cherry-pick`, `revert`, `am`, `stash`, `tag`, `push` or
+  `reset`. Leave every change in the working tree. No rule, task document or
+  failing step changes this.
+- **Told you may commit:** still nothing before **Finish**. Not the contracts,
+  not a task, not work in progress.
+
+With a branch, the version control commands you may run are checking out
+that branch and reading the repo's state (`status`, `diff`, `log`), plus that
+one commit.
 
 ## Set up, on a first run
 
@@ -36,9 +53,6 @@ about the work changes - Pave never reads a branch or a commit back.
    into the path your task names. Copy them — never rewrite or regenerate the
    contract itself. Every service is building against those exact bytes.
 3. **Run the codegen command** you were given, if there is one
-4. **Commit the contracts and their generated output, and nothing else.** One
-   clean commit before any of your own work, so the interface is separable from
-   the implementation in the history.
 
 If codegen fails, stop: set `status: blocked`, report the command and its
 output, and return. A broken stub is not something to work around.
@@ -46,8 +60,7 @@ output, and return. A broken stub is not something to work around.
 When you are told the contracts **already exist**, skip all of this except
 checking out the branch; re-landing them would overwrite work already built
 against them. The one exception: if you are told a re-plan **changed** a
-contract, land the new version of that file - still copied, never edited -
-in its own commit.
+contract, land the new version of that file - still copied, never edited.
 
 ## One way of working, for every task
 
@@ -151,13 +164,17 @@ document would need to say, and return.
 
 Run the full `build`, `test` and `lint`. Everything must pass.
 
-If you were given a branch, commit on it with a message naming the feature,
-the service and the task number. Do not merge, do not push to any other
-branch, do not open a pull request.
-
 Set `status: done` only if every item is ticked and verification is clean.
 Otherwise leave it `in-progress` and say exactly what is unfinished. Then
 move to the next task in your queue.
+
+**After the last task in your queue**, and only if you were given a branch
+and told you may commit: if any task in your queue is not `done`, commit
+nothing and say so in your summary. Otherwise run the full `build`, `test`
+and `lint` once more. If all of them pass, make one commit on your branch
+with everything you changed, its message naming the feature, the service and
+the task numbers. If any of them fails, commit nothing and say so in your
+summary. Either way, never merge, never push, never open a pull request.
 
 **What you may change in a task document:** `status`, checkboxes, and the
 `## Build notes` section at the end - what you did, in-scope decisions, why

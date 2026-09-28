@@ -23,3 +23,6 @@ execution:
 # A repo without git gets no branch; Pave never reads one back.
 branch:
   pattern: feature/{feature-id}
+  # true: a builder commits once, after every task in its queue passes.
+  # false: builders never commit; /pave:build asks you at the end.
+  autocommit: false
