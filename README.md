@@ -68,9 +68,14 @@ teammate generates their own with `/pave:init`.
 **So is git in the service repos.** Pave never reads a branch or a commit to
 decide anything. The plan's task hashes record what each task was built
 from, and knowledge records a hash of the source it read. In a repo
-under git, builders work on a branch and commit as they go; in a repo without
-one, they build in the folder as it is. Only `execution.monorepo_strategy:
-worktree` needs git.
+under git, builders work on a branch; in a repo without one, they build in
+the folder as it is. Only `execution.monorepo_strategy: worktree` needs git.
+
+**Nothing is committed unless you say so.** With `branch.autocommit: false`,
+the default, no builder commits and `/pave:build` asks at the end whether to
+commit what it built. With `true`, each builder makes one commit on its
+branch, after its whole queue passes verification. Nothing is ever merged or
+pushed.
 
 ---
 
@@ -159,6 +164,11 @@ is not carried over (`designer`'s model does not move to `planner` - edit the
 config afterwards to keep it). The config
 records no Pave version; the template is what Pave reads now, which is right
 however old the hub is.
+
+**Upgrading from 0.6.** 0.7 adds `branch.autocommit`, and builders no longer
+commit by default. `/pave:build` stops until the key is in the config: run
+`/pave:init` to add it as `false`, or set it to `true` to have each builder
+commit once, after its build passes.
 
 **Upgrading from 0.5.** 0.6 stops using git to decide anything, and a hub
 from 0.5 notices it in three places:
@@ -398,7 +408,13 @@ its hash differ from the previous seal's and reopens it.
 touches a service repository — it reads the hub, spawns agents, and writes
 reports back. Each builder owns exactly one repo: it copies the frozen
 contracts in, runs codegen and then starts work - in a repo under git, on the
-feature's branch, with the contracts in a commit of their own. One writer per repo is what makes parallel agents safe.
+feature's branch. One writer per repo is what makes parallel agents safe.
+
+**Commits.** A builder commits only if `branch.autocommit` is `true`, and then
+only once: after its whole queue passes `build`, `test` and `lint`. With
+`false`, the default, nothing is committed during the build; when it ends,
+`/pave:build` asks whether to commit the changes in each repo, and commits
+only on an explicit yes.
 
 Contracts are copied, never regenerated from the spec, so every service builds
 against the same bytes.
@@ -660,6 +676,7 @@ execution:
 
 branch:
   pattern: feature/{feature-id}  # the branch in every service repo under git
+  autocommit: false              # true: builders commit once, after the build passes
 ```
 
 Every model is enforced when its agent is spawned, planning included. Skills

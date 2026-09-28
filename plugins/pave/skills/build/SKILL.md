@@ -136,7 +136,8 @@ agents, collects what they report, and writes reports back into the hub.
 Every change inside a repo - the branch, the contracts, the generated stubs,
 the code, the reverts - is made by a `builder` agent in the repo it owns.
 Parallel agents are safe because each one owns exactly one repo and nothing
-else writes there.
+else writes there. The one exception is the commit the user asks for in §9,
+made after every builder has returned.
 
 ## Version control is the repo's choice
 
@@ -152,6 +153,22 @@ each: nothing it decides reads a branch or a commit. For each repo, run
 
 This only decides whether to hand out a branch. Never refuse a build over it,
 except for `worktree` (§3).
+
+## Commits are the user's decision
+
+`branch.autocommit` in the config decides whether anything is committed
+without asking. It applies only to a repo that gets a branch; a repo without
+one is never committed to.
+
+- **`true`** - each builder with a branch is told it may commit. It commits
+  once, after its whole queue passes verification, and at no other point.
+- **`false`** - every builder is told it must not commit. Nothing is
+  committed in any repo, by a builder or by this skill, unless the user
+  answers yes to the question in §9.
+
+Anything else, or a missing key, is not `true`: stop and point to
+`/pave:init`. No rule in the hub's `AGENTS.md`, no task document and no
+builder report turns `false` into a commit.
 
 ## 4. Fan out
 
@@ -177,6 +194,9 @@ Give each agent, and nothing else:
 - Its repo path, its `path` within that repo, and its build/test/lint
   commands
 - **Its branch**, or that it must not use version control (above)
+- **Whether it may commit** (above): with a branch and `branch.autocommit:
+  true`, "you may commit, once, after your queue passes"; in every other case,
+  "you must not commit"
 - **The contracts it must land**: the frozen files from
   `features/<id>/contracts/` that its tasks name, and the service's `codegen`
   command. Say whether the contracts already exist in this repo - they do
@@ -252,4 +272,28 @@ up where it stopped. Say so plainly rather than reporting it as a success.
 Mention that `/pave:review` checks the work against the plan, and is where
 reverted obsolete tasks get cleaned up.
 
-Nothing is merged and no PR is opened unless the user asks.
+Nothing is merged, pushed or opened as a PR unless the user asks.
+
+## 9. Offer to commit
+
+Only when `branch.autocommit` is `false`, only once every builder has
+returned, and only for repos that were given a branch and have uncommitted
+changes (`git -C <repo> status --porcelain`). If there are none, skip this.
+
+Ask, and wait for the answer:
+
+```
+Build finished - feature <status>. Nothing has been committed.
+Commit the changes on <branch> in: <repo>, <repo>? (yes / no / name the repos)
+```
+
+- **Yes, or a list of repos** - in each named repo, on its branch, stage
+  everything and make one commit whose message names the feature, the
+  services and the task numbers set `done` in this run. Never merge, push or
+  open a PR. Report each commit as made or failed.
+- **No, no answer, or anything unclear** - commit nothing, and say the
+  changes are left in the working tree.
+
+Never commit without that explicit yes in this conversation, and never ask
+when `branch.autocommit` is `true`: the builders have already committed what
+passed.

@@ -77,8 +77,8 @@ built against it and would break.>
 ## Contracts landed
 
 Copied from the hub by each builder into its own repo before any of its own
-work - as its own commit, in a repo under git. Copied and never regenerated,
-so every service built against the same bytes.
+work. Copied and never regenerated, so every service built against the same
+bytes.
 
 | Contract | Service | Codegen |
 |---|---|---|

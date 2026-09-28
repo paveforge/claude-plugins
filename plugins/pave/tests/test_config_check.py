@@ -56,6 +56,7 @@ max_parallel = 4
 
 [branch]
 pattern = "feature/{feature-id}"
+autocommit = false
 """
 
 
@@ -78,8 +79,9 @@ def test_pre_04_config(hub):
         "leftover  agents.designer = { model: fable, effort: max }",
         "missing   agents.retriever = { model: sonnet, effort: low }",
         "missing   agents.planner = { model: opus, effort: high }",
+        "missing   branch.autocommit = false",
         "leftover  contracts = { land_before_fanout: true }",
-        "result: 6 to fix - run /pave:init",
+        "result: 7 to fix - run /pave:init",
     ]
 
 
