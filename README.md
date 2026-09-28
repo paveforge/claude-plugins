@@ -276,6 +276,13 @@ they act on the feature `/pave:spec` last set in the conversation. Picking a
 feature back up in a fresh session is `/pave:spec <id>`: it loads the spec,
 summarises it, and asks nothing unless something needs clarifying.
 
+The choice also survives a compaction. Pave's `SessionStart` hook exports the
+Claude session's id as `PAVE_SESSION_ID`, and `pave.sh` records the feature
+in `.pave-sessions/<session id>` (gitignored, one line per session). When a
+command's conversation has lost the `Working on` line, the script reads the
+feature from there. Each session has its own file, so parallel sessions in one
+hub never share a feature.
+
 A leading ticket reference becomes the id. For a description, it proposes the
 next `feat-N` and a short slug and lets you choose; nothing is created until
 you do. The description becomes the feature's **title**.

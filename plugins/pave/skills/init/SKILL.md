@@ -66,7 +66,7 @@ what-to-commit advice at the end.
 | `conventions/README.md` | From `templates/conventions-README.md` | Leave |
 | `features/README.md` | From `templates/features-README.md` | Leave |
 | `.claude/settings.json` | `additionalDirectories: []` | **Merge** — add nothing, leave every other setting alone |
-| `.gitignore` | Add `workspace.yaml`, if git | Add the line if missing |
+| `.gitignore` | Add `workspace.yaml` and `.pave-sessions/`, if git | Add each line if missing |
 
 The config file is changed only as the user chooses below, never rewritten
 from scratch, and never added beside another one. A hub
@@ -156,4 +156,5 @@ Then /pave:analyse to work out what they are and what they do.
 If the hub is a git repository, say what to commit: the config file
 (`config.yaml`, or the `.yml` / `.toml` the hub uses), `AGENTS.md`, `CLAUDE.md`, `conventions/`, `.pave-hub` and, once it exists, `artifacts/knowledge/on-demand/` are shared with the team.
 `workspace.yaml` is not — it holds local paths, and a teammate builds their
-own with `/pave:add`.
+own with `/pave:add`. Nor is `.pave-sessions/` — it records which feature
+each of your Claude sessions is on.

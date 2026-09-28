@@ -35,10 +35,10 @@ Classify the argument with the script. It creates nothing:
 
 | `kind` | Do |
 |---|---|
-| `existing` | Resume it. Go to §2 |
+| `existing` | Resume it: set it (below), then §2 |
 | `ticket` | Use the ticket as the id. Create it (below) |
 | `description` | Propose ids and **wait** for the user to pick |
-| no argument | If this session already has a feature, continue it. Otherwise list the features in `features/` with their titles and ask which one, or whether to start a new one |
+| no argument | If this session already has a feature, continue it: set it (below). Otherwise list the features in `features/` with their titles and ask which one, or whether to start a new one; the one the user picks is set the same way |
 
 For a description, offer the next sequential id the script printed and a short
 slug you derive from the description - kebab-case, at most four words and 30
@@ -58,9 +58,17 @@ Only once the user has chosen, create it:
 ```
 
 The title is the description, tidied into a heading. It becomes the `#`
-heading of `spec.md` - the id alone says nothing about the work.
+heading of `spec.md` - the id alone says nothing about the work. Then set it.
 
-Then announce the session's feature, in exactly this form, because the other
+**Set it.** Every way of choosing the feature ends here - resumed, created,
+picked from the list, continued or switched. Record it for this session:
+
+```
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh use
+```
+
+It prints `feature: <id>`; if it prints anything else, stop and show it. Then
+announce the session's feature, in exactly this form, because the other
 commands look for this line:
 
 ```
@@ -68,13 +76,17 @@ Working on <id> — <title>
 ```
 
 **Switching.** Running `/pave:spec <other>` later switches the session to that
-feature. Say so explicitly: `Switched: <old> → <new>`. Nothing else switches
-it.
+feature. Set it as above, and say so explicitly: `Switched: <old> → <new>`.
+Nothing else switches it.
 
 **Sessions are independent.** Another session can work on a different
 feature in the same hub at the same time. That is why the feature lives in
 the conversation and is passed to every feature-scoped script call as
-`SESSION_FEATURE_ID=<id> pave.sh …` - never stored in a shared file.
+`SESSION_FEATURE_ID=<id> pave.sh …`. `pave.sh` also records it per Claude
+session, in `.pave-sessions/<session id>`, so a command whose conversation
+lost the line - after a compaction - still finds this session's feature.
+Only the id this command chose ever reaches that file, and each session has
+its own.
 
 ## Before starting
 

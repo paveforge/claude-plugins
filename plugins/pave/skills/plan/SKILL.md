@@ -21,19 +21,28 @@ the gate. The `planner` agent does the thinking and writes the files.
 
 This command takes no argument. It acts on the feature `/pave:spec` set in
 this conversation - the latest `Working on <id> — <title>` or
-`Switched: … → <id>` line. If there is none, or you cannot find it, stop:
+`Switched: … → <id>` line.
+
+If you cannot find that line - after a compaction, say - ask the script for
+the feature this session recorded, **without** `SESSION_FEATURE_ID`:
+
+```
+"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh use
+```
+
+It prints `feature: <id>`; use that id from here on. If it refuses, stop:
 
 ```
 No feature in this session. Run /pave:spec <feature-id> first.
 ```
 
-Never guess the feature, and never take one from a file or another session.
+Never guess the feature, and never take one from another session.
 Say `Working on <id> — <title>` before continuing.
 
 **Every feature-scoped `pave.sh` call names the session's feature in its
 environment**, never as an argument: `SESSION_FEATURE_ID=<id> pave.sh …`.
-The script refuses without it, and prints `feature: <id>` first - check that
-line matches the feature you announced before trusting anything after it.
+The script prints `feature: <id>` first - check that line matches the feature
+you announced before trusting anything after it.
 Another session may be working on a different feature in the same hub at
 the same moment; the variable is what keeps each call on this session's.
 

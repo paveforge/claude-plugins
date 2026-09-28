@@ -40,6 +40,9 @@ class Hub:
 
     def run(self, *args, env=None, cwd=None):
         full_env = {**os.environ, "PAVE_HUB": str(self.path)}
+        # The session hook may have exported a token into this shell; a test
+        # that wants one sets it.
+        full_env.pop("PAVE_SESSION_ID", None)
         if env:
             full_env.update(env)
         return subprocess.run(
