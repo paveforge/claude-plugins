@@ -42,20 +42,27 @@ SKIP_FILES = {".DS_Store"}
 
 
 def read_workspace(ws):
-    """name -> {path, discovered}. Generated format, parsed by line."""
-    services, cur = {}, None
+    """name -> {path, discovered}. Generated format, parsed by line.
+
+    Only a service's own keys count: those indented exactly as its `name`.
+    Deeper lines belong to nested lists - a contract has a `path:` of its
+    own, relative to the repo, and must never be taken for the service's."""
+    services, cur, indent = {}, None, None
     for line in ws.read_text().splitlines():
-        m = re.match(r"\s*-\s*name:\s*(\S+)", line)
-        if m:
-            cur = m.group(1)
+        m = re.match(r"(\s*-\s*)name:\s*(\S+)", line)
+        if m and (indent is None or len(m.group(1)) <= indent):
+            cur, indent = m.group(2), len(m.group(1))
             services[cur] = {"path": None, "discovered": False}
             continue
-        if cur:
-            m = re.match(r"\s+path:\s*(\S.*?)\s*$", line)
-            if m:
-                services[cur]["path"] = m.group(1)
-            if re.match(r"\s+language:\s*\S", line):
-                services[cur]["discovered"] = True
+        if not cur or not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if len(line) - len(line.lstrip()) != indent:
+            continue
+        m = re.match(r"\s*path:\s*(\S.*?)\s*(?:#.*)?$", line)
+        if m:
+            services[cur]["path"] = m.group(1)
+        if re.match(r"\s*language:\s*[^\s#]", line):
+            services[cur]["discovered"] = True
     return services
 
 
