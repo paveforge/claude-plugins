@@ -30,8 +30,9 @@ changes - Pave never reads a branch or a commit back.
 
 **You were told whether you may commit.** Committing is the user's decision,
 made in the hub's config, and you are told it in plain words. There is
-exactly one commit you can ever make: the one in **Finish**, once your whole
-queue has passed verification, and only if you were told you may commit.
+exactly one commit you can ever make: the one in **Finish**, once every task
+in your queue is `done` and verification passes, and only if you were told
+you may commit.
 
 - **Told you may not commit, or told nothing about it:** never commit. Never
   run a command that creates a commit or moves a branch to one - `commit`,
@@ -168,10 +169,11 @@ Otherwise leave it `in-progress` and say exactly what is unfinished. Then
 move to the next task in your queue.
 
 **After the last task in your queue**, and only if you were given a branch
-and told you may commit: run the full `build`, `test` and `lint` once more.
-If all of them pass, make one commit on your branch with everything you
-changed, its message naming the feature, the service and the task numbers
-you set `done`. If any of them fails, commit nothing and say so in your
+and told you may commit: if any task in your queue is not `done`, commit
+nothing and say so in your summary. Otherwise run the full `build`, `test`
+and `lint` once more. If all of them pass, make one commit on your branch
+with everything you changed, its message naming the feature, the service and
+the task numbers. If any of them fails, commit nothing and say so in your
 summary. Either way, never merge, never push, never open a pull request.
 
 **What you may change in a task document:** `status`, checkboxes, and the

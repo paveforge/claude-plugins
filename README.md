@@ -71,11 +71,13 @@ from, and knowledge records a hash of the source it read. In a repo
 under git, builders work on a branch; in a repo without one, they build in
 the folder as it is. Only `execution.monorepo_strategy: worktree` needs git.
 
-**Nothing is committed unless you say so.** With `branch.autocommit: false`,
-the default, no builder commits and `/pave:build` asks at the end whether to
-commit what it built. With `true`, each builder makes one commit on its
-branch, after its whole queue passes verification. Nothing is ever merged or
-pushed.
+**Commits.** With `branch.autocommit: false`, the default, builders are told
+not to commit, and `/pave:build` asks at the end whether to commit what it
+built. With `true`, a builder makes one commit on its branch once every task
+in its queue is done and verification passes. Either way, only a repo that
+had no uncommitted changes before the build is ever committed, and nothing
+is merged or pushed. This is enforced by the agents' instructions, not by a
+guard: a builder can run shell commands, so it is not a hard boundary.
 
 ---
 
@@ -410,10 +412,12 @@ reports back. Each builder owns exactly one repo: it copies the frozen
 contracts in, runs codegen and then starts work - in a repo under git, on the
 feature's branch. One writer per repo is what makes parallel agents safe.
 
-**Commits.** A builder commits only if `branch.autocommit` is `true`, and then
-only once: after its whole queue passes `build`, `test` and `lint`. With
-`false`, the default, nothing is committed during the build; when it ends,
-`/pave:build` asks whether to commit the changes in each repo, and commits
+**Commits.** A builder commits only if `branch.autocommit` is `true`, its
+repo had no uncommitted changes before the build and no other builder works
+there - and then only once, after every task in its queue is done and
+`build`, `test` and `lint` pass. With `false`, the default, builders are told
+not to commit; when the build ends, `/pave:build` offers to commit each repo
+that was clean before the build and whose tasks are all done, and commits
 only on an explicit yes.
 
 Contracts are copied, never regenerated from the spec, so every service builds
@@ -676,7 +680,7 @@ execution:
 
 branch:
   pattern: feature/{feature-id}  # the branch in every service repo under git
-  autocommit: false              # true: builders commit once, after the build passes
+  autocommit: false              # true: builders commit once, after every task passes
 ```
 
 Every model is enforced when its agent is spawned, planning included. Skills
