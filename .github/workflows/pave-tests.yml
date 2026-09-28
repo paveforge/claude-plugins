@@ -40,9 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: bash -n
-        run: bash -n plugins/pave/scripts/pave.sh
+        run: bash -n plugins/pave/scripts/pave.sh && bash -n plugins/pave/scripts/pave-session-start.sh
       - name: shellcheck
         env:
           LANG: C.UTF-8
           LC_ALL: C.UTF-8
-        run: shellcheck --severity=warning plugins/pave/scripts/pave.sh
+        run: shellcheck --severity=warning plugins/pave/scripts/pave.sh plugins/pave/scripts/pave-session-start.sh

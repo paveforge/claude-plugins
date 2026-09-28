@@ -9,10 +9,14 @@
 #   pave.sh seal                        record spec and task hashes at the plan gate
 #   pave.sh check                       is the plan still the one approved for this spec?
 #   pave.sh prune-obsoleted-tasks       remove reverted obsolete tasks
+#   pave.sh use                         record the session's feature
 #
-# seal, check and prune-obsoleted-tasks act on the session's feature, given
-# only as SESSION_FEATURE_ID=<id> - never as an argument:
+# seal, check, prune-obsoleted-tasks and use act on the session's feature,
+# given as SESSION_FEATURE_ID=<id> - never as an argument:
 #   SESSION_FEATURE_ID=FEAT-8888 pave.sh check
+# With SESSION_TOKEN_ID set (by Pave's SessionStart hook), the feature is also
+# recorded in .pave-sessions/<token>, and read from there when
+# SESSION_FEATURE_ID is not set.
 #
 #   pave.sh agent <name>        model and effort to spawn an agent with
 #   pave.sh config-check        compare the hub's config with Pave's template
@@ -151,9 +155,10 @@ cmd_feature_propose() {
 cmd_feature_create() {
   [ $# -ge 1 ] || die "usage: pave.sh feature create <id> [title...]"
   local id="$1"; shift
-  printf '%s' "$id" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$' \
-    || die "invalid id '$id': letters, digits, - and _ only"
-  [ "${#id}" -le 30 ] || die "id '$id' is longer than 30 characters - shorten it"
+  if ! valid_id "$id"; then
+    [ "${#id}" -le 30 ] || die "id '$id' is longer than 30 characters - shorten it"
+    die "invalid id '$id': letters, digits, - and _ only"
+  fi
   local hub; hub="$(find_hub)"
   local path="$hub/features/$id" status="new"
   [ -d "$path" ] && status="exists"
@@ -161,6 +166,11 @@ cmd_feature_create() {
   local title="$*"
   [ -z "$title" ] && title="$(spec_title "$path")"
   printf 'id: %s\ntitle: %s\nstatus: %s\npath: %s\n' "$id" "$title" "$status" "$path"
+}
+
+# valid_id <id>: a feature id - letters, digits, - and _, at most 30 characters.
+valid_id() {
+  printf '%s' "$1" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$' && [ "${#1}" -le 30 ]
 }
 
 spec_title() { [ -f "$1/spec.md" ] && grep -m1 '^# ' "$1/spec.md" | sed 's/^# //'; }
@@ -176,21 +186,57 @@ next_feat() {
   printf 'feat-%s' "$((n+1))"
 }
 
+# resolve_feature <hub>
+# Sets FEATURE to the session's feature and prints `feature: <id>`.
+# SESSION_FEATURE_ID wins. Without it, the feature this session recorded in
+# .pave-sessions/<SESSION_TOKEN_ID> is used. Either way features/<id> must
+# exist. A feature taken from SESSION_FEATURE_ID is recorded for the session,
+# so a later call that has lost it - after a compaction - still finds it.
+# Each session has its own token and file, so parallel sessions on different
+# features never share state.
+resolve_feature() {
+  local hub="$1" token="${SESSION_TOKEN_ID:-}" id="${SESSION_FEATURE_ID:-}" from=env file=""
+  if [ -n "$token" ]; then
+    printf '%s' "$token" | grep -qE '^[A-Za-z0-9_-]+$' \
+      || die "SESSION_TOKEN_ID=$token: letters, digits, - and _ only"
+    file="$hub/.pave-sessions/$token"
+  fi
+  if [ -z "$id" ]; then
+    [ -n "$file" ] || die "SESSION_FEATURE_ID is not set. Run /pave:spec <feature-id> to choose this session's feature."
+    [ -f "$file" ] || die "SESSION_FEATURE_ID is not set and this session recorded no feature. Run /pave:spec <feature-id> to choose this session's feature."
+    id="$(head -n 1 "$file")"; from=session
+    valid_id "$id" || die "$file does not hold a valid feature id. Run /pave:spec <feature-id> to choose this session's feature."
+  fi
+  if [ ! -d "$hub/features/$id" ]; then
+    [ "$from" = env ] && die "SESSION_FEATURE_ID=$id: no such feature in $hub/features"
+    die "this session recorded $id: no such feature in $hub/features. Run /pave:spec <feature-id>."
+  fi
+  if [ "$from" = env ] && [ -n "$file" ] && [ "$(head -n 1 "$file" 2>/dev/null)" != "$id" ]; then
+    mkdir -p "$hub/.pave-sessions" && printf '%s\n' "$id" > "$file.tmp" && mv "$file.tmp" "$file" \
+      || die "cannot record the session's feature in $file"
+  fi
+  FEATURE="$id"
+  printf 'feature: %s\n' "$id"
+}
+
 # seal | check | prune-obsoleted-tasks
-# Plan integrity for the session's feature. See pave-plan.py. The feature is
-# taken only from SESSION_FEATURE_ID, set by the caller from the feature
-# /pave:spec chose for its session - each session passes its own, so parallel
-# sessions on different features never share state.
+# Plan integrity for the session's feature. See pave-plan.py.
 cmd_plan() {
   local op="$1" py="$2"; shift 2
   [ $# -eq 0 ] || die "$op takes no arguments. Pass the feature as SESSION_FEATURE_ID=<id> pave.sh $op"
-  local id="${SESSION_FEATURE_ID:-}"
-  [ -n "$id" ] || die "SESSION_FEATURE_ID is not set. Run /pave:spec <feature-id> to choose this session's feature."
   have_python || die "python3 is required for '$op'"
   local hub; hub="$(find_hub)"
-  [ -d "$hub/features/$id" ] || die "SESSION_FEATURE_ID=$id: no such feature in $hub/features"
-  printf 'feature: %s\n' "$id"
-  python3 "$SCRIPTS/pave-plan.py" "$py" "$hub/features/$id"
+  resolve_feature "$hub"
+  python3 "$SCRIPTS/pave-plan.py" "$py" "$hub/features/$FEATURE"
+}
+
+# use
+# Records the session's feature. /pave:spec runs it the moment it sets the
+# feature, so the record exists before any plan does.
+cmd_use() {
+  [ $# -eq 0 ] || die "use takes no arguments. Pass the feature as SESSION_FEATURE_ID=<id> pave.sh use"
+  local hub; hub="$(find_hub)"
+  resolve_feature "$hub"
 }
 
 # agent <name>
@@ -262,8 +308,9 @@ case "${1:-}" in
   seal)  shift; cmd_plan seal seal "$@" ;;
   check) shift; cmd_plan check check "$@" ;;
   prune-obsoleted-tasks) shift; cmd_plan prune-obsoleted-tasks prune "$@" ;;
+  use) shift; cmd_use "$@" ;;
   agent) shift; cmd_agent "$@" ;;
   config-check) shift; cmd_config_check "$@" ;;
-  ""|-h|--help) sed -n '4,20p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
+  ""|-h|--help) sed -n '4,24p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

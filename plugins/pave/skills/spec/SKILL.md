@@ -60,7 +60,13 @@ Only once the user has chosen, create it:
 The title is the description, tidied into a heading. It becomes the `#`
 heading of `spec.md` - the id alone says nothing about the work.
 
-Then announce the session's feature, in exactly this form, because the other
+Then record it for this session:
+
+```
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh use
+```
+
+and announce the session's feature, in exactly this form, because the other
 commands look for this line:
 
 ```
@@ -68,13 +74,17 @@ Working on <id> — <title>
 ```
 
 **Switching.** Running `/pave:spec <other>` later switches the session to that
-feature. Say so explicitly: `Switched: <old> → <new>`. Nothing else switches
-it.
+feature: run `pave.sh use` with the new id, and say so explicitly:
+`Switched: <old> → <new>`. Nothing else switches it.
 
 **Sessions are independent.** Another session can work on a different
 feature in the same hub at the same time. That is why the feature lives in
 the conversation and is passed to every feature-scoped script call as
-`SESSION_FEATURE_ID=<id> pave.sh …` - never stored in a shared file.
+`SESSION_FEATURE_ID=<id> pave.sh …`. `pave.sh` also records it per Claude
+session, in `.pave-sessions/<session id>`, so a command whose conversation
+lost the line - after a compaction - still finds this session's feature.
+Only the id this command chose ever reaches that file, and each session has
+its own.
 
 ## Before starting
 
