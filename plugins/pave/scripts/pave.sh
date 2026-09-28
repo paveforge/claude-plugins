@@ -14,7 +14,7 @@
 # seal, check, prune-obsoleted-tasks and use act on the session's feature,
 # given as SESSION_FEATURE_ID=<id> - never as an argument:
 #   SESSION_FEATURE_ID=FEAT-8888 pave.sh check
-# With SESSION_TOKEN_ID set (by Pave's SessionStart hook), the feature is also
+# With PAVE_SESSION_ID set (by Pave's SessionStart hook), the feature is also
 # recorded in .pave-sessions/<token>, and read from there when
 # SESSION_FEATURE_ID is not set.
 #
@@ -189,20 +189,21 @@ next_feat() {
 # resolve_feature <hub>
 # Sets FEATURE to the session's feature and prints `feature: <id>`.
 # SESSION_FEATURE_ID wins. Without it, the feature this session recorded in
-# .pave-sessions/<SESSION_TOKEN_ID> is used. Either way features/<id> must
+# .pave-sessions/<PAVE_SESSION_ID> is used. Either way features/<id> must
 # exist. A feature taken from SESSION_FEATURE_ID is recorded for the session,
 # so a later call that has lost it - after a compaction - still finds it.
 # Each session has its own token and file, so parallel sessions on different
 # features never share state.
 resolve_feature() {
-  local hub="$1" token="${SESSION_TOKEN_ID:-}" id="${SESSION_FEATURE_ID:-}" from=env file=""
-  if [ -n "$token" ]; then
-    printf '%s' "$token" | grep -qE '^[A-Za-z0-9_-]+$' \
-      || die "SESSION_TOKEN_ID=$token: letters, digits, - and _ only"
+  local hub="$1" token="${PAVE_SESSION_ID:-}" id="${SESSION_FEATURE_ID:-}" from=env file="" tmp
+  # A token that is not safe as a file name is never used as one. It blocks
+  # nothing while SESSION_FEATURE_ID is given - that call just records nothing.
+  if [ -n "$token" ] && printf '%s' "$token" | grep -qE '^[A-Za-z0-9_-]+$'; then
     file="$hub/.pave-sessions/$token"
   fi
   if [ -z "$id" ]; then
-    [ -n "$file" ] || die "SESSION_FEATURE_ID is not set. Run /pave:spec <feature-id> to choose this session's feature."
+    [ -n "$token" ] || die "SESSION_FEATURE_ID is not set. Run /pave:spec <feature-id> to choose this session's feature."
+    [ -n "$file" ] || die "PAVE_SESSION_ID=$token: letters, digits, - and _ only. Run /pave:spec <feature-id> to choose this session's feature."
     [ -f "$file" ] || die "SESSION_FEATURE_ID is not set and this session recorded no feature. Run /pave:spec <feature-id> to choose this session's feature."
     id="$(head -n 1 "$file")"; from=session
     valid_id "$id" || die "$file does not hold a valid feature id. Run /pave:spec <feature-id> to choose this session's feature."
@@ -212,8 +213,11 @@ resolve_feature() {
     die "this session recorded $id: no such feature in $hub/features. Run /pave:spec <feature-id>."
   fi
   if [ "$from" = env ] && [ -n "$file" ] && [ "$(head -n 1 "$file" 2>/dev/null)" != "$id" ]; then
-    mkdir -p "$hub/.pave-sessions" && printf '%s\n' "$id" > "$file.tmp" && mv "$file.tmp" "$file" \
+    # A temp file of its own, so concurrent calls never move each other's.
+    mkdir -p "$hub/.pave-sessions" && tmp="$(mktemp "$hub/.pave-sessions/.$token.XXXXXX")" \
       || die "cannot record the session's feature in $file"
+    printf '%s\n' "$id" > "$tmp" && mv -f "$tmp" "$file" \
+      || { rm -f "$tmp"; die "cannot record the session's feature in $file"; }
   fi
   FEATURE="$id"
   printf 'feature: %s\n' "$id"

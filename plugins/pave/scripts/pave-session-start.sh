@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pave's SessionStart hook. Exports the Claude session's id as
-# SESSION_TOKEN_ID for the Bash calls that follow, so pave.sh can record the
+# PAVE_SESSION_ID for the Bash calls that follow, so pave.sh can record the
 # session's feature in <hub>/.pave-sessions/<id> and find it again after a
 # compaction. See resolve_feature in pave.sh.
 #
@@ -27,5 +27,5 @@ else
 fi
 
 printf '%s' "$id" | grep -qE '^[A-Za-z0-9_-]+$' || exit 0
-printf 'export SESSION_TOKEN_ID=%s\n' "$id" >> "$CLAUDE_ENV_FILE"
+printf 'export PAVE_SESSION_ID=%s\n' "$id" >> "$CLAUDE_ENV_FILE"
 exit 0
