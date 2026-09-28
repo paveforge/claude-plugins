@@ -342,3 +342,29 @@ def test_stamp_takes_a_relative_path_from_the_hub(hub, tmp_path, vcs):
         r = hub.run("stamp", rel, cwd=cwd)
         assert r.returncode == 0, r.stderr
     assert state_of(hub.run("stale"), "svc") == "current"
+
+
+def test_contract_path_is_not_the_service_path(hub, tmp_path, vcs):
+    """A discovered service lists contracts, each with a `path:` of its own,
+    relative to the repo. Only the service's own path decides where it is."""
+    svc, _ = analysed(hub, tmp_path, vcs)
+    (hub.path / "workspace.yaml").write_text(
+        "services:\n\n"
+        "  - name: svc\n"
+        f"    path: {svc}\n"
+        "    # --- below here: filled by /pave:analyse ---\n"
+        "    language: go   # discovered\n"
+        "    commands:\n"
+        "      build: make build\n"
+        "    contracts:\n"
+        "      - kind: protobuf\n"
+        "        path: proto/order/v1/order.proto\n"
+        "        role: producer\n"
+        "      - name: events\n"
+        "        path: schemas/\n"
+        "    consumes: []\n"
+    )
+    r = hub.run("stale")
+    assert r.returncode == 0, r.stderr
+    assert state_of(r, "svc") == "current", r.stdout
+    assert state_of(r, "events") is None, r.stdout
