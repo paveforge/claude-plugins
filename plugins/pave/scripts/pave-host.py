@@ -112,10 +112,22 @@ def codex_text(text: str, runtime: Path) -> str:
     return text
 
 
+def codex_host_text(text: str, runtime: Path) -> str:
+    """Translate user-facing hub references for the Codex host."""
+    text = codex_text(text, runtime)
+    text = re.sub(
+        r"\bconfig\.(?!codex\.)(toml|yaml|yml)\b",
+        r"config.codex.\1",
+        text,
+    )
+    text = re.sub(r"pave\.sh config-check(?! codex)", "pave.sh config-check codex", text)
+    return text
+
+
 def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
     meta, body = frontmatter(source_skill.read_text(encoding="utf-8"))
     name = meta.get("name", source_skill.parent.name)
-    description = codex_text(meta.get("description", "Pave workflow"), runtime)
+    description = codex_host_text(meta.get("description", "Pave workflow"), runtime)
     if name == "add":
         body = body.replace(
             "Run the deterministic registration script, then the Claude adapter that grants\n"
@@ -168,7 +180,7 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
         f"description: {description}\n"
         "---\n"
         + prefix
-        + codex_text(body, runtime)
+        + codex_host_text(body, runtime)
     )
     return rendered.encode()
 
@@ -251,6 +263,10 @@ def codex_targets(source: Path, scope: str, project_root: Optional[Path]) -> tup
                 "yaml-reader",
             }):
                 content = codex_text(content.decode(), runtime).encode()
+            elif folder == "templates" and (
+                item.name == "hub-AGENTS.md" or item.name.startswith("config.codex.")
+            ):
+                content = codex_host_text(content.decode(), runtime).encode()
             targets.append(Target(runtime / rel, content, os.access(item, os.X_OK)))
 
     portable_manifest = {

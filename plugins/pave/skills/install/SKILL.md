@@ -41,4 +41,6 @@ On success, say that Codex detects skill changes automatically, but a new
 session may be needed if the skills do not appear. The explicit Codex commands
 are `$pave-init`, `$pave-add`, `$pave-analyse`, `$pave-spec`, `$pave-plan`,
 `$pave-build`, `$pave-review`, `$pave-learn`, `$pave-query`, `$pave-visualize`
-and `$pave-help`.
+and `$pave-help`. In each existing hub, run `$pave-init` once to create that
+host's separate `config.codex.yaml` (or `.yml` / `.toml`) before using the
+workflow there.

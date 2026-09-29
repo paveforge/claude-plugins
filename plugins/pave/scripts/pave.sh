@@ -14,8 +14,8 @@
 # only as SESSION_FEATURE_ID=<id> - never as an argument:
 #   SESSION_FEATURE_ID=FEAT-8888 pave.sh check
 #
-#   pave.sh agent <name> [host] model and effort to spawn an agent with
-#   pave.sh config-check        compare the hub's config with Pave's template
+#   pave.sh agent <name> [host] model and effort from that host's config
+#   pave.sh config-check [host] compare that host's config with its template
 #
 # Run from anywhere inside or beside the hub; it walks up for .pave-hub.
 set -uo pipefail
@@ -183,8 +183,8 @@ cmd_agent() {
   [ -f "$SCRIPTS/../agents/$1.md" ] || die "unknown agent: $1"
   local name="$1" host="${2:-}"
   local hub; hub="$(find_hub)"
-  find_config "$hub"
-  [ -n "$CONFIG" ] || die "no config file in $hub. Run /pave:init to write one."
+  find_config "$hub" "$host"
+  [ -n "$CONFIG" ] || die "no ${host:+$host }config file in $hub. Run /pave:init to write one."
   have_python || die "python3 is required to read $CONFIG"
 
   local out rc model effort
@@ -198,39 +198,37 @@ cmd_agent() {
   effort="$(printf '%s\n' "$out" | sed -n 's/^effort=//p')"
   [ -n "$model" ] && [ -n "$effort" ] \
     || die "agents.$name in $CONFIG needs both model and effort. Run /pave:init to bring the config up to date."
-  if [ -n "$host" ]; then
-    local override
-    override="$("$SCRIPTS/$CONFIG_READER" "$CONFIG" "hosts.$host.models.$name")"; rc=$?
-    case $rc in
-      0) model="$override" ;;
-      3) die "$CONFIG has no entry for hosts.$host.models.$name. Run /pave:init to bring the config up to date." ;;
-      *) die "cannot read $CONFIG" ;;
-    esac
-    [ -n "$model" ] || die "hosts.$host.models.$name in $CONFIG is empty. Run /pave:init to bring the config up to date."
-  fi
   printf 'model=%s\neffort=%s\n' "$model" "$effort"
 }
 
-# config-check
-# Compares the hub's config with templates/config.yaml, the single source of
-# truth for what Pave reads: keys the template does not have, keys it has that
-# the config lacks. Changes nothing - /pave:init makes the edits.
+# config-check [host]
+# Compares a host's hub config with its template, the single source of truth
+# for what Pave reads on that host. Changes nothing - /pave:init makes edits.
 cmd_config_check() {
-  [ $# -eq 0 ] || die "usage: pave.sh config-check"
-  local hub; hub="$(find_hub)"
-  find_config "$hub"
-  [ -n "$CONFIG" ] || die "no config file in $hub. Run /pave:init to write one."
+  [ $# -le 1 ] || die "usage: pave.sh config-check [host]"
+  local host="${1:-}" hub template
+  hub="$(find_hub)"
+  find_config "$hub" "$host"
+  [ -n "$CONFIG" ] || die "no ${host:+$host }config file in $hub. Run /pave:init to write one."
   have_python || die "python3 is required to read $CONFIG"
-  python3 "$SCRIPTS/pave-config.py" "$CONFIG" "$SCRIPTS/../templates/config.yaml"
+  template="$SCRIPTS/../templates/config${host:+.$host}.yaml"
+  [ -f "$template" ] || die "unsupported host config: $host"
+  python3 "$SCRIPTS/pave-config.py" "$CONFIG" "$template"
 }
 
-# find_config <hub>
+# find_config <hub> [host]
 # Sets CONFIG to the hub's config file and CONFIG_READER to the script that
-# reads it; both empty when there is none. At most one may exist.
+# reads it. A host uses config.<host>.*; Claude uses config.*. At most one
+# config for the selected host may exist.
 find_config() {
-  local f n=0
+  local f n=0 suffix=""
+  [ $# -ge 1 ] && [ $# -le 2 ] || die "usage: find_config <hub> [host]"
+  if [ -n "${2:-}" ]; then
+    case "$2" in *[!a-zA-Z0-9_-]*) die "invalid host name: $2" ;; esac
+    suffix=".$2"
+  fi
   CONFIG="" CONFIG_READER=""
-  for f in config.toml config.yaml config.yml; do
+  for f in "config$suffix.toml" "config$suffix.yaml" "config$suffix.yml"; do
     [ -f "$1/$f" ] || continue
     n=$((n+1)); CONFIG="$1/$f"
     case "$f" in
@@ -238,7 +236,7 @@ find_config() {
       *)      CONFIG_READER=yaml-reader ;;
     esac
   done
-  [ "$n" -le 1 ] || die "more than one config file in $1. Keep exactly one of config.toml, config.yaml, config.yml."
+  [ "$n" -le 1 ] || die "more than one ${2:+$2 }config file in $1. Keep exactly one of config$suffix.toml, config$suffix.yaml, config$suffix.yml."
 }
 
 case "${1:-}" in

@@ -6,7 +6,8 @@ reachable through `additionalDirectories` and are modified only by build agents.
 
 ## Layout
 
-- `config.yaml` - team policy. Committed, shared.
+- `config.yaml` - this host's team policy. Committed, shared. Other host
+  adapters use a suffixed file such as `config.<host>.yaml`.
 - `workspace.yaml` - your services. Local, gitignored, source of truth.
   Hand edits here are never overwritten.
 - `conventions/` - how code is written, by language and service. Yours to edit.
@@ -48,9 +49,10 @@ any service whose knowledge is missing or stale.
 
 ## Models
 
-Every agent's model comes from `config.yaml` and is enforced when it is
-spawned. The Codex adapter reads `hosts.codex.models.planner` and the matching
-full key for each other agent.
+Every agent's model and effort come from the active host's config file and are
+enforced when it is spawned. Claude Code uses the unsuffixed config; a host
+adapter selects its own suffixed config. Each host file also owns that host's
+execution and branch policy, so platform differences stay explicit.
 `/pave:plan` always runs the `planner` agent on its configured model.
 
 ## Status

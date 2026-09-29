@@ -60,17 +60,22 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     runtime = home / ".codex" / "pave" / "runtime"
     assert (runtime / "scripts" / "pave.sh").stat().st_mode & 0o111
     assert (runtime / "templates" / "config.yaml").exists()
+    assert (runtime / "templates" / "config.codex.yaml").exists()
     assert (runtime / "agents" / "builder.md").exists()
     help_text = installed_skill(home, "help").read_text()
     assert str(home / ".agents" / "skills" / "pave-*" / "SKILL.md") in help_text
     assert "runtime/skills" not in help_text
     init_text = installed_skill(home, "init").read_text()
     assert "`.claude/settings.json`" not in init_text
+    assert "config.codex.yaml" in init_text
+    assert "templates/config.codex.yaml" in init_text
+    assert "config-check codex" in init_text
+    assert "config.yaml" not in init_text.replace("config.codex.yaml", "")
 
     hub = tmp_path / "hub"
     hub.mkdir()
     (hub / ".pave-hub").write_text("")
-    shutil.copy(runtime / "templates" / "config.yaml", hub / "config.yaml")
+    shutil.copy(runtime / "templates" / "config.codex.yaml", hub / "config.codex.yaml")
     lookup = subprocess.run(
         [str(runtime / "scripts" / "pave.sh"), "agent", "builder", "codex"],
         capture_output=True,
