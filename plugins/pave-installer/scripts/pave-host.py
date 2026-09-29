@@ -154,14 +154,17 @@ def codex_runtime_script(text: str, runtime: Path) -> str:
         lambda match: match.group().replace("$pave-", r"\$pave-"),
         text,
     )
-    text = replace_required(text, '  local settings="$hub/.claude/settings.json"\n', "", "pave.sh settings")
+    text = replace_required(
+        text, '  local settings="$hub/.claude/settings.json"\n', "", "pave.sh settings"
+    )
     text = sub_required(
         text,
         r"\n    if have_python; then\n"
         r"      PAVE_DIR=.*?"
         r"\n    fi\n",
         "\n",
-        "pave.sh settings write", flags=re.DOTALL,
+        "pave.sh settings write",
+        flags=re.DOTALL,
     )
     text = sub_required(
         text,
@@ -180,7 +183,8 @@ cmd_config_check() {
 }
 
 """,
-        "pave.sh agent dispatch", flags=re.DOTALL,
+        "pave.sh agent dispatch",
+        flags=re.DOTALL,
     )
     return text
 
@@ -190,29 +194,34 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
     name = meta.get("name", source_skill.parent.name)
     description = codex_host_text(meta.get("description", "Pave workflow"), runtime)
     if name == "add":
-        description = replace_required(description,
+        description = replace_required(
+            description,
             "and grants Claude access to it",
             "for use by Pave on Codex",
             "add skill description",
         )
-        body = replace_required(body,
+        body = replace_required(
+            body,
             "Run the script. It does the whole job:",
             "Run the deterministic registration script. Codex access to sibling service\n"
             "folders follows the sandbox and permission mode selected for this session:",
             "add skill registration",
         )
-        body = replace_required(body,
+        body = replace_required(
+            body,
             "absolute path, append to `workspace.yaml`, merge into `additionalDirectories`.",
             "absolute path and append to `workspace.yaml`. Filesystem access is controlled\n"
             "by the current Codex permission profile.",
             "add skill access",
         )
-        body = sub_required(body,
+        body = sub_required(
+            body,
             r"\| `WARN` \| `settings\.json`.*?\n",
             "",
             "add skill settings warning",
         )
-        body = replace_required(body,
+        body = replace_required(
+            body,
             "Do not edit `workspace.yaml` or `settings.json` yourself.",
             "Do not edit `workspace.yaml` yourself.",
             "add skill settings",
@@ -230,7 +239,8 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
             "because `$pave-add` registered it.\n"
         )
     elif name == "build":
-        body = replace_required(body,
+        body = replace_required(
+            body,
             "Set the feature to `building` before spawning anything.",
             "Before changing the feature status or spawning a builder, confirm "
             "the parent Codex session can write every target service repo. "
@@ -249,15 +259,19 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
             "build skill access gate",
         )
     elif name == "init":
-        body = sub_required(body, r"\| `\.claude/settings\.json` \|.*?\n", "", "init skill settings row")
-        body = replace_required(body,
+        body = sub_required(
+            body, r"\| `\.claude/settings\.json` \|.*?\n", "", "init skill settings row"
+        )
+        body = replace_required(
+            body,
             "`.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;\n"
             "never replace it.\n\n",
             "",
             "init skill settings prose",
         )
     elif name == "help":
-        body = replace_required(body,
+        body = replace_required(
+            body,
             "`${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md`",
             f"`{skill_root}/pave-*/SKILL.md`",
             "help skill listing",

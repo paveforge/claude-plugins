@@ -17,7 +17,7 @@ executed - and only then.
 ## 0. The session's feature
 
 Read `${CLAUDE_PLUGIN_ROOT}/reference/session.md` and apply its session
-feature rule before any feature-scoped operation.
+feature rule before continuing.
 
 ## 1. Was it executed successfully?
 
