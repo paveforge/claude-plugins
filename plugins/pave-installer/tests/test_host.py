@@ -57,6 +57,14 @@ def test_codex_template_has_same_config_keys_as_pave():
     assert "result: nothing to fix" in comparison.stdout
 
 
+def test_marketplace_versions_match_sources():
+    marketplace = json.loads((INSTALLER.parent.parent / ".claude-plugin" / "marketplace.json").read_text())
+    for name, root in (("pave", PAVE), ("pave-installer", INSTALLER)):
+        source = json.loads((root / ".claude-plugin" / "plugin.json").read_text())
+        listed = next(plugin for plugin in marketplace["plugins"] if plugin["name"] == name)
+        assert listed["version"] == source["version"]
+
+
 def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
@@ -157,7 +165,7 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
 
     data = json.loads(manifest(home).read_text())
     assert data["host"] == "codex"
-    assert data["pave_version"] == "0.7.0"
+    assert data["pave_version"] == "0.8.0"
     assert str(skill) in data["files"]
     assert str(runtime / "reference" / "session.md") in data["files"]
 
