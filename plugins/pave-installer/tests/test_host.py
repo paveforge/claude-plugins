@@ -82,6 +82,13 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     assert (runtime / "templates" / "config.codex.yaml").exists()
     assert (runtime / "adapters" / "codex" / "config.py").exists()
     assert (runtime / "agents" / "builder.md").exists()
+    session = (runtime / "reference" / "session.md").read_text()
+    assert "SESSION_FEATURE_ID=<id> pave.sh" in session
+    assert "$pave-spec" in session
+    assert "/pave:" not in session
+    for name in ("plan", "build", "review", "learn"):
+        assert str(runtime / "reference" / "session.md") in installed_skill(home, name).read_text()
+    assert str(home / ".agents" / "skills" / "pave-query" / "SKILL.md") in installed_skill(home, "learn").read_text()
     outside_hub = subprocess.run(
         [str(runtime / "scripts" / "pave.sh"), "stale"],
         capture_output=True,
@@ -95,6 +102,7 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     help_text = installed_skill(home, "help").read_text()
     assert str(home / ".agents" / "skills" / "pave-*" / "SKILL.md") in help_text
     assert "runtime/skills" not in help_text
+    assert "reference/session.md" not in help_text
     init_text = installed_skill(home, "init").read_text()
     assert "`.claude/settings.json`" not in init_text
     assert "config.codex.yaml" in init_text
@@ -151,6 +159,34 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     assert data["host"] == "codex"
     assert data["pave_version"] == "0.7.0"
     assert str(skill) in data["files"]
+    assert str(runtime / "reference" / "session.md") in data["files"]
+
+
+def test_codex_install_refuses_missing_rewrite_anchor(tmp_path):
+    source = copy_source(tmp_path)
+    build = source / "skills" / "build" / "SKILL.md"
+    build.write_text(build.read_text().replace(
+        "Set the feature to `building` before spawning anything.",
+        "Start the builders now.",
+    ))
+    home = tmp_path / "home"
+    home.mkdir()
+    result = run_host(home, "install", "codex", source=source)
+    assert result.returncode != 0
+    assert "Codex rewrite anchor missing in build skill access gate" in result.stderr
+    assert not manifest(home).exists()
+
+
+def test_codex_install_refuses_changed_runtime_dispatch(tmp_path):
+    source = copy_source(tmp_path)
+    script = source / "scripts" / "pave.sh"
+    script.write_text(script.read_text().replace("# find_config <hub>", "# locate config"))
+    home = tmp_path / "home"
+    home.mkdir()
+    result = run_host(home, "install", "codex", source=source)
+    assert result.returncode != 0
+    assert "Codex rewrite anchor missing in pave.sh agent dispatch" in result.stderr
+    assert not manifest(home).exists()
 
 
 def test_codex_runtime_does_not_write_claude_settings(tmp_path):
