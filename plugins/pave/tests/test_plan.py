@@ -290,3 +290,61 @@ def test_legacy_commit_field_does_not_change_the_task_hash(hub, vcs):
     assert check(hub, "feat-1").returncode == 0
     r = seal(hub, "feat-1")
     assert "reopened" not in r.stdout
+
+
+# plan.md and task frontmatter are read as YAML, in any layout (issue #14).
+
+def test_check_reads_sealed_hashes_in_flow_form(hub):
+    fdir = make_feature(hub.path, "feat-1", n_tasks=2)
+    seal(hub, "feat-1")
+    plan = fdir / "plan.md"
+    text = plan.read_text()
+    hashes = re.findall(r'^  "(\d+)": ([0-9a-f]{64})$', text, re.M)
+    assert len(hashes) == 2
+    flow = "tasks: {" + ", ".join(f"'{n}': {h}" for n, h in hashes) + "}\n"
+    plan.write_text(re.sub(r'^tasks:\n(?:  .*\n)+', flow, text, flags=re.M))
+    r = check(hub, "feat-1")
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_seal_keeps_the_planners_frontmatter(hub):
+    fdir = make_feature(hub.path, "feat-1")
+    plan = fdir / "plan.md"
+    plan.write_text(plan.read_text().replace("spec_version: 1\n", "spec_version: 1   # answers v1\n# a note\n"))
+    assert seal(hub, "feat-1").returncode == 0
+    text = plan.read_text()
+    assert "spec_version: 1   # answers v1\n# a note\n" in text
+    assert re.search(r"^next_task: 2\nspec_hash: [0-9a-f]{64}\ntasks:\n  \"01\": [0-9a-f]{64}\n---", text, re.M)
+    assert seal(hub, "feat-1").returncode == 0
+    assert plan.read_text().count("spec_hash:") == 1
+    assert check(hub, "feat-1").returncode == 0
+
+
+def test_seal_reads_status_in_any_form(hub):
+    fdir = make_feature(hub.path, "feat-1")
+    seal(hub, "feat-1")
+    task = fdir / "tasks" / "01-task.md"
+    task.write_text(task.read_text().replace("status: pending", 'status: "done"   # built')
+                    .replace("Do the thing.", "Do the thing, rewritten."))
+    r = seal(hub, "feat-1")
+    assert "reopened: 01-task.md" in r.stdout
+    assert "status: reopened\n" in task.read_text()
+
+
+def test_unparseable_task_frontmatter_is_an_error(hub):
+    fdir = make_feature(hub.path, "feat-1")
+    task = fdir / "tasks" / "01-task.md"
+    task.write_text(task.read_text().replace("depends_on: []", "depends_on: [01"))
+    r = seal(hub, "feat-1")
+    assert r.returncode != 0
+    assert "01-task.md" in r.stderr and "does not parse" in r.stderr
+
+
+def test_malformed_sealed_hashes_are_an_error(hub):
+    fdir = make_feature(hub.path, "feat-1")
+    seal(hub, "feat-1")
+    plan = fdir / "plan.md"
+    plan.write_text(re.sub(r'^  "01": [0-9a-f]{64}$', '  "01": not-a-hash', plan.read_text(), flags=re.M))
+    r = check(hub, "feat-1")
+    assert r.returncode != 0
+    assert "tasks: 01: not-a-hash" in r.stderr

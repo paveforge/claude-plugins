@@ -162,13 +162,12 @@ Write **one** file, at the path you were given, from
 `templates/knowledge-finding.md`. Nothing else - not the service folders, not
 the index.
 
-- **`services:`** — one line per service whose code the answer rests on, with
+- **`services:`** — one entry per service whose code the answer rests on, with
   **only the directories you actually read**, relative to the service's path.
   This decides staleness: list too little and a change that breaks the answer
   goes unnoticed; list the whole repo and every change marks it stale. Never
   list a directory of build output, dependencies or generated code, as for
-  `source_paths` above. Keep the exact one-line form in the template, without
-  a `hash` - a script adds it after you return.
+  `source_paths` above. Write no `hash` - a script adds it after you return.
 - **Answer in the platform's vocabulary**, from the Terms in the knowledge you
   were given - `StockHold`, not "reservation", if that is what the code says.
 - **Cite file and line for every step.** A finding is only as good as its

@@ -13,7 +13,7 @@ or none.
 
 --stamp records the hash of those directories in a knowledge file once an
 analyst has written it: `source_hash` in a service README, `hash` on each
-line of a source finding's `services:`.
+entry of a source finding's `services:`.
 
 Usage: pave-stale.py <hub> [service]
        pave-stale.py --stamp <hub> <knowledge file>
@@ -24,13 +24,10 @@ import re
 import sys
 from pathlib import Path
 
+from pave_yaml import YamlError, flow, load, read_frontmatter, set_key
+
 STATES = ["unreachable", "undiscovered", "missing", "stale", "orphan", "current",
           "finding-stale", "finding-current", "record-stale", "record-current"]
-# One line of a finding's services: `- { service: s, paths: [a, b], hash: h }`.
-# hash is absent until --stamp writes it.
-FINDING_SERVICE = re.compile(
-    r"^([ \t]*-[ \t]*)\{[ \t]*service:[ \t]*([^,\s}]+)[ \t]*,[ \t]*paths:[ \t]*\[([^\]\n]*)\]"
-    r"(?:[ \t]*,[ \t]*hash:[ \t]*([0-9a-f]*))?[ \t]*\}[ \t]*$", re.M)
 HASH = re.compile(r"^[0-9a-f]{64}$")
 
 # Never part of what an analysis read: version control metadata, and
@@ -42,54 +39,45 @@ SKIP_FILES = {".DS_Store"}
 
 
 def read_workspace(ws):
-    """name -> {path, discovered}. Generated format, parsed by line.
+    """name -> {path, discovered}, from workspace.yaml's services list.
 
-    Only a service's own keys count: those indented exactly as its `name`.
-    Deeper lines belong to nested lists - a contract has a `path:` of its
-    own, relative to the repo, and must never be taken for the service's."""
-    services, cur, indent = {}, None, None
-    for line in ws.read_text().splitlines():
-        m = re.match(r"(\s*-\s*)name:\s*(\S+)", line)
-        if m and (indent is None or len(m.group(1)) <= indent):
-            cur, indent = m.group(2), len(m.group(1))
-            services[cur] = {"path": None, "discovered": False}
-            continue
-        if not cur or not line.strip() or line.lstrip().startswith("#"):
-            continue
-        if len(line) - len(line.lstrip()) != indent:
-            continue
-        m = re.match(r"\s*path:\s*(\S.*?)\s*(?:#.*)?$", line)
-        if m:
-            services[cur]["path"] = m.group(1)
-        if re.match(r"\s*language:\s*[^\s#]", line):
-            services[cur]["discovered"] = True
+    Only a service's own keys count: a contract has a `path:` of its own,
+    relative to the repo, and is never taken for the service's."""
+    try:
+        data = load(ws.read_text()) or {}
+    except YamlError as e:
+        raise YamlError(f"{ws}: does not parse: {e}")
+    entries = data.get("services") if isinstance(data, dict) else None
+    if entries is None:
+        entries = []
+    if not isinstance(entries, list):
+        raise YamlError(f"{ws}: services: is not a list")
+    services = {}
+    for n, s in enumerate(entries, 1):
+        if not isinstance(s, dict) or s.get("name") in (None, ""):
+            raise YamlError(f"{ws}: services: entry {n} has no name")
+        path = s.get("path")
+        services[str(s["name"])] = {"path": None if path in (None, "") else str(path),
+                                    "discovered": s.get("language") not in (None, "")}
     return services
 
 
-def split_paths(raw):
-    return [p.strip().strip("'\"") for p in raw.split(",") if p.strip()]
+def as_list(v):
+    """A list of paths, whether written as a list or as one value."""
+    if v is None:
+        return []
+    return [str(x) for x in (v if isinstance(v, list) else [v]) if x is not None]
 
 
-def frontmatter(text):
-    """The frontmatter block of a knowledge file, or None."""
-    if not text.startswith("---"):
-        return None
-    parts = text.split("---", 2)
-    return parts[1] if len(parts) == 3 else None
+def text_or_none(v):
+    return None if v is None else str(v)
 
 
-def readme_fields(text):
+def readme_fields(data):
     """(source_paths, source_hash) from a service README's frontmatter."""
-    fm = frontmatter(text) or ""
-    inline = re.search(r"^source_paths:\s*\[(.*?)\]", fm, re.M | re.S)
-    if inline:
-        paths = split_paths(inline.group(1))
-    else:
-        block = re.search(r"^source_paths:\s*$((?:\n\s+-\s*.*)+)", fm, re.M)
-        paths = ([l.split("-", 1)[1].strip().strip("'\"")
-                  for l in block.group(1).strip().splitlines()] if block else [])
-    recorded = re.search(r"^source_hash:\s*([0-9a-f]{64})\s*$", fm, re.M)
-    return paths, recorded.group(1) if recorded else None
+    data = data or {}
+    recorded = text_or_none(data.get("source_hash"))
+    return as_list(data.get("source_paths")), recorded if HASH.match(recorded or "") else None
 
 
 def source_hash(root, paths):
@@ -127,17 +115,23 @@ def source_hash(root, paths):
 def classify_finding(f, services):
     """A source finding is current only while every service it read is unchanged
     under the paths it read."""
-    reads = FINDING_SERVICE.findall(frontmatter(f.read_text()) or "")
-    read = [svc for _, svc, _, _ in reads]
+    data, _, _ = read_frontmatter(f)
+    reads = (data or {}).get("services") or []
+    if not isinstance(reads, list):
+        return "finding-stale", "services: is not a list - cannot prove it is current", []
+    read = [str(e["service"]) for e in reads if isinstance(e, dict) and e.get("service")]
     if not reads:
         return "finding-stale", "no services recorded - cannot prove it is current", read
-    for _, svc, raw, recorded in reads:
+    for n, e in enumerate(reads, 1):
+        if not isinstance(e, dict) or not e.get("service") or "paths" not in e:
+            return "finding-stale", f"services: entry {n} has no service or paths - cannot prove it is current", read
+        svc, recorded = str(e["service"]), text_or_none(e.get("hash"))
         info = services.get(svc)
         if not info or not info["path"] or not Path(info["path"]).is_dir():
             return "finding-stale", f"{svc} is not reachable", read
         if not HASH.match(recorded or ""):
             return "finding-stale", f"{svc}: no content hash recorded - cannot prove it is current", read
-        paths = split_paths(raw)
+        paths = as_list(e["paths"])
         if source_hash(info["path"], paths) != recorded:
             return "finding-stale", f"{svc}: files changed under {', '.join(paths or ['.'])}", read
     return "finding-current", f"unchanged in {', '.join(read)}", read
@@ -146,18 +140,17 @@ def classify_finding(f, services):
 def classify_record(f, hub):
     """A feature record is current only while its feature's spec.md is the one
     it was recorded against - the same sha256 plan.md's spec_hash uses."""
-    text = f.read_text()
-    fm = text.split("---", 2)[1] if text.startswith("---") else ""
-    feature = re.search(r"^feature:\s*([^#\s]+)", fm, re.M)
-    recorded = re.search(r"^spec_hash:\s*([0-9a-f]{64})", fm, re.M)
-    if not feature or not recorded:
+    data, _, _ = read_frontmatter(f)
+    data = data or {}
+    feature, recorded = text_or_none(data.get("feature")), text_or_none(data.get("spec_hash"))
+    if not feature or not HASH.match(recorded or ""):
         return "record-stale", "no feature or spec_hash recorded - cannot prove it is current"
-    spec = hub / "features" / feature.group(1) / "spec.md"
+    spec = hub / "features" / feature / "spec.md"
     if not spec.is_file():
-        return "record-stale", f"features/{feature.group(1)}/spec.md no longer exists"
-    if hashlib.sha256(spec.read_text().encode()).hexdigest() != recorded.group(1):
-        return "record-stale", f"features/{feature.group(1)}/spec.md changed since it was recorded"
-    return "record-current", f"matches features/{feature.group(1)}/spec.md"
+        return "record-stale", f"features/{feature}/spec.md no longer exists"
+    if hashlib.sha256(spec.read_text().encode()).hexdigest() != recorded:
+        return "record-stale", f"features/{feature}/spec.md changed since it was recorded"
+    return "record-current", f"matches features/{feature}/spec.md"
 
 
 def classify(name, info, kdir):
@@ -170,7 +163,7 @@ def classify(name, info, kdir):
     readme = kdir / name / "README.md"
     if not readme.exists():
         return "missing", "no knowledge folder"
-    paths, recorded = readme_fields(readme.read_text())
+    paths, recorded = readme_fields(read_frontmatter(readme)[0])
     if not paths or not recorded:
         # Never stamped: the analysis did not finish, or predates content
         # hashes. Nothing proves it is still valid.
@@ -200,45 +193,49 @@ def stamp(hub, target):
             sys.exit(f"error: {svc} is not a reachable service in workspace.yaml - nothing stamped")
         return info["path"]
 
-    text = target.read_text()
-    fm = frontmatter(text)
-    if fm is None:
+    data, fm, body = read_frontmatter(target)
+    if data is None:
         sys.exit(f"error: {target} has no frontmatter")
     kdir = hub / "artifacts" / "knowledge" / "services"
 
     if target.name == "README.md" and target.parent.parent == kdir:
         svc = target.parent.name
-        paths, _ = readme_fields(text)
+        paths, _ = readme_fields(data)
         if not paths:
             sys.exit(f"error: {target} has no source_paths - nothing stamped")
         h = source_hash(root_of(svc), paths)
-        if re.search(r"^source_hash:.*$", fm, re.M):
-            new_fm = re.sub(r"^source_hash:.*$", f"source_hash: {h}", fm, count=1, flags=re.M)
-        else:
-            # Right after source_paths, inline or block form.
-            m = re.search(r"^source_paths:[ \t]*(?:\[[^\]]*\][^\n]*\n|\n(?:[ \t]+-[^\n]*\n)*)",
-                          fm, re.M)
-            new_fm = fm[:m.end()] + f"source_hash: {h}\n" + fm[m.end():]
+        new_fm = set_key(fm, "source_hash", f"source_hash: {h}", after="source_paths")
         print(f"stamped: {svc} {h[:7]} ({', '.join(paths)})")
     else:
-        reads = FINDING_SERVICE.findall(fm)
-        if not reads:
-            sys.exit(f"error: {target} records no `- {{ service: ..., paths: [...] }}` line - nothing stamped")
-        hashes = {}
-        for _, svc, raw, _ in reads:
-            hashes[(svc, raw)] = source_hash(root_of(svc), split_paths(raw))
+        reads = data.get("services")
+        if not isinstance(reads, list) or not reads:
+            sys.exit(f"error: {target}: services: records no service - nothing stamped")
+        lines, done = ["services:"], []
+        for n, e in enumerate(reads, 1):
+            if not isinstance(e, dict) or not e.get("service"):
+                sys.exit(f"error: {target}: services: entry {n} has no service - nothing stamped")
+            if "paths" not in e:
+                sys.exit(f"error: {target}: services: entry {n} has no paths - nothing stamped")
+            svc, paths = str(e["service"]), as_list(e["paths"])
+            h = source_hash(root_of(svc), paths)
+            rest = {k: v for k, v in e.items() if k not in ("service", "paths", "hash")}
+            lines.append("  - " + flow({"service": svc, "paths": paths, "hash": h, **rest}))
+            done.append(f"stamped: {svc} {h[:7]} ({', '.join(paths) or '.'})")
+        # Written back in one form, whatever form the analyst used.
+        new_fm = set_key(fm, "services", "\n".join(lines))
+        print("\n".join(done))
 
-        def line(m):
-            svc, raw = m.group(2), m.group(3)
-            return f"{m.group(1)}{{ service: {svc}, paths: [{raw.strip()}], hash: {hashes[(svc, raw)]} }}"
-        new_fm = FINDING_SERVICE.sub(line, fm)
-        for (svc, raw), h in hashes.items():
-            print(f"stamped: {svc} {h[:7]} ({', '.join(split_paths(raw)) or '.'})")
-
-    target.write_text("---" + new_fm + "---" + text.split("---", 2)[2])
+    target.write_text("---\n" + new_fm + "---\n" + body)
 
 
 def main():
+    try:
+        run()
+    except YamlError as e:
+        sys.exit(f"error: {e}")
+
+
+def run():
     if len(sys.argv) > 1 and sys.argv[1] == "--stamp":
         if len(sys.argv) != 4:
             sys.exit("usage: pave-stale.py --stamp <hub> <knowledge file>")

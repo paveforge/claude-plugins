@@ -27,6 +27,8 @@ import pathlib
 import re
 import sys
 
+from pave_yaml import YamlError, read_frontmatter, set_key, split_frontmatter
+
 TASK_FILE = re.compile(r"^(\d+)-.*\.md$")
 CHECKBOX = re.compile(r"^(\s*[-*]\s+)\[[xX]\]", re.M)
 # commit is no longer written; it stays volatile so task documents from
@@ -44,17 +46,6 @@ def sha(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def split_frontmatter(text):
-    if not text.startswith("---\n"):
-        return None, text
-    end = text.find("\n---", 4)
-    if end < 0:
-        return None, text
-    close = text.find("\n", end + 1)
-    close = len(text) if close < 0 else close + 1
-    return text[4:end + 1], text[close:]
-
-
 def task_hash(text):
     notes = NOTES.search(text)
     if notes:
@@ -65,9 +56,11 @@ def task_hash(text):
     return sha(CHECKBOX.sub(r"\1[ ]", text).rstrip() + "\n")
 
 
-def scalar(fm, key):
-    m = re.search(rf"^{key}:\s*([^#\n]*)", fm or "", re.M)
-    return m.group(1).strip().strip("'\"") if m else ""
+def field(path, key, text=None):
+    """One frontmatter value of a file as text, "" when absent."""
+    data, _, _ = read_frontmatter(path, text)
+    v = (data or {}).get(key)
+    return "" if v is None else str(v)
 
 
 def cells(line):
@@ -111,31 +104,35 @@ def read_plan(fdir):
     plan = fdir / "plan.md"
     if not plan.is_file():
         return None, None, None, {}
-    text = plan.read_text()
-    fm, body = split_frontmatter(text)
-    if fm is None:
+    data, fm, body = read_frontmatter(plan)
+    if data is None:
         die(f"{plan} has no frontmatter")
+    # Written by seal alone, but read as YAML: any layout of it reads the same.
+    sealed = data.get("tasks") or {}
+    if not isinstance(sealed, dict):
+        die(f"{plan}: tasks: is not a mapping of task number to hash → run /pave:plan")
     hashes = {}
-    block = re.search(r"^tasks:\s*\n((?:[ \t]+.*\n?)*)", fm, re.M)
-    if block:
-        for key, val in re.findall(r"^\s+[\"']?(\d+)[\"']?:\s*([0-9a-f]{64})", block.group(1), re.M):
-            hashes[int(key)] = val
-    return plan, fm, body, hashes
+    for key, val in sealed.items():
+        if not re.fullmatch(r"\d+", str(key)) or not re.fullmatch(r"[0-9a-f]{64}", str(val)):
+            die(f"{plan}: tasks: {key}: {val} is not a task number and its hash → run /pave:plan")
+        hashes[int(str(key))] = str(val)
+    return plan, data, (fm, body), hashes
 
 
-def write_plan(plan, fm, body, spec_hash, hashes, next_task):
-    fm = re.sub(r"^tasks:\s*\n(?:[ \t]+.*\n?)*", "", fm, flags=re.M)
-    fm = re.sub(r"^(spec_hash|tasks):.*\n?", "", fm, flags=re.M)
-    fm = re.sub(r"^next_task:.*\n?", "", fm, flags=re.M)
-    fm = fm.rstrip("\n") + "\n" if fm.strip() else ""
-    fm += f"next_task: {next_task}\n"
-    fm += f"spec_hash: {spec_hash}\n"
-    fm += "tasks:\n" + "".join(f'  "{n:02d}": {h}\n' for n, h in sorted(hashes.items())) if hashes else "tasks: {}\n"
+def write_plan(plan, doc, spec_hash, hashes, next_task):
+    """Rewrite the keys seal owns - next_task, spec_hash, tasks - in place,
+    leaving every other line of the frontmatter as the planner wrote it."""
+    fm, body = doc
+    fm = set_key(fm, "next_task", f"next_task: {next_task}")
+    fm = set_key(fm, "spec_hash", f"spec_hash: {spec_hash}", after="next_task")
+    tasks_block = ("tasks:\n" + "".join(f'  "{n:02d}": {h}\n' for n, h in sorted(hashes.items()))
+                   if hashes else "tasks: {}")
+    fm = set_key(fm, "tasks", tasks_block, after="spec_hash")
     plan.write_text("---\n" + fm + "---\n" + body)
 
 
 def cmd_seal(fdir):
-    plan, fm, body, sealed = read_plan(fdir)
+    plan, data, doc, sealed = read_plan(fdir)
     if plan is None:
         die("no plan.md - nothing to seal")
     spec = fdir / "spec.md"
@@ -147,31 +144,29 @@ def cmd_seal(fdir):
     # text changed and the task was not reopened, what was built is not what
     # the task now says.
     for n, p in sorted(all_tasks.items()):
-        text = p.read_text()
-        tfm, body_ = split_frontmatter(text)
-        if scalar(tfm, "status") == "done" and n in sealed and sealed[n] != hashes[n]:
-            tfm = re.sub(r"^status:[^\n]*", "status: reopened", tfm, count=1, flags=re.M)
-            p.write_text("---\n" + tfm + "---\n" + body_)
+        tdata, tfm, body_ = read_frontmatter(p)
+        if tdata and tdata.get("status") == "done" and n in sealed and sealed[n] != hashes[n]:
+            p.write_text("---\n" + set_key(tfm, "status", "status: reopened") + "---\n" + body_)
             print(f"reopened: {p.name} - done, but changed since it was sealed and built")
     try:
-        declared = int(scalar(fm, "next_task") or 1)
+        declared = int(str(data.get("next_task") or 1))
     except ValueError:
         declared = 1
     next_task = max([declared] + [n + 1 for n in all_tasks])
     spec_text = spec.read_text()
-    write_plan(plan, fm, body, sha(spec_text), hashes, next_task)
+    write_plan(plan, doc, sha(spec_text), hashes, next_task)
     (fdir / "artifacts").mkdir(exist_ok=True)
     (fdir / "artifacts" / "spec.approved.md").write_text(spec_text)
-    print(f"sealed: spec v{scalar(split_frontmatter(spec_text)[0], 'version') or '?'}, "
+    print(f"sealed: spec v{field(spec, 'version', spec_text) or '?'}, "
           f"{len(hashes)} task(s), next_task {next_task}")
 
 
 def cmd_check(fdir):
-    plan, fm, _, hashes = read_plan(fdir)
+    plan, data, _, hashes = read_plan(fdir)
     if plan is None:
         print("no-plan: plan.md does not exist → run /pave:plan")
         sys.exit(2)
-    recorded = scalar(fm, "spec_hash")
+    recorded = "" if data.get("spec_hash") is None else str(data["spec_hash"])
     if not recorded:
         print("unsealed: plan.md was never approved at the plan gate → run /pave:plan")
         sys.exit(2)
@@ -196,13 +191,13 @@ def cmd_check(fdir):
 
 
 def cmd_prune(fdir):
-    plan, fm, body, hashes = read_plan(fdir)
+    plan, data, doc, hashes = read_plan(fdir)
     if plan is None:
         die("no plan.md")
+    body = doc[1]
     meta = {}
     for n, p in tasks(fdir).items():
-        tfm, _ = split_frontmatter(p.read_text())
-        meta[n] = {"path": p, "status": scalar(tfm, "status")}
+        meta[n] = {"path": p, "status": field(p, "status")}
     obsolete = sorted(n for n, t in meta.items() if t["status"] == "obsolete")
     if not obsolete:
         print("nothing to prune: no obsolete tasks")
@@ -232,7 +227,7 @@ def cmd_prune(fdir):
         hashes.pop(n, None)
         label = "revert" if n not in obsolete else "obsolete"
         print(f"pruned: {meta[n]['path'].name} ({label})")
-    write_plan(plan, fm, body, scalar(fm, "spec_hash"), hashes, scalar(fm, "next_task") or 1)
+    write_plan(plan, doc, data.get("spec_hash") or "", hashes, data.get("next_task") or 1)
 
 
 def main():
@@ -241,7 +236,10 @@ def main():
     fdir = pathlib.Path(sys.argv[2])
     if not fdir.is_dir():
         die(f"no such feature folder: {fdir}")
-    {"seal": cmd_seal, "check": cmd_check, "prune": cmd_prune}[sys.argv[1]](fdir)
+    try:
+        {"seal": cmd_seal, "check": cmd_check, "prune": cmd_prune}[sys.argv[1]](fdir)
+    except YamlError as e:
+        die(str(e))
 
 
 if __name__ == "__main__":

@@ -13,21 +13,12 @@ and ends with a result line. It changes nothing: /pave:init makes the edits.
 Exit 1 when either file cannot be read.
 """
 import sys
-from importlib.machinery import SourceFileLoader
-from importlib.util import module_from_spec, spec_from_loader
-from pathlib import Path
+
+import pave_yaml
 
 
 class ConfigError(Exception):
     pass
-
-
-def yaml_reader():
-    path = Path(__file__).resolve().parent / "yaml-reader"
-    loader = SourceFileLoader("pave_yaml_reader", str(path))
-    mod = module_from_spec(spec_from_loader(loader.name, loader))
-    loader.exec_module(mod)
-    return mod
 
 
 def is_toml(path):
@@ -45,7 +36,7 @@ def parse(path, text):
                 except ModuleNotFoundError:
                     raise ConfigError("reading TOML needs Python 3.11+, or the tomli package")
             return tomllib.loads(text)
-        return yaml_reader().load(text)
+        return pave_yaml.load(text) or {}
     except ConfigError:
         raise
     except Exception as e:  # a parse error from either reader
