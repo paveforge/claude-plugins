@@ -41,6 +41,21 @@ def copy_source(tmp_path):
     return source
 
 
+def test_codex_template_has_same_config_keys_as_pave():
+    comparison = subprocess.run(
+        [
+            sys.executable,
+            str(PAVE / "scripts" / "pave-config.py"),
+            str(INSTALLER / "templates" / "config.codex.yaml"),
+            str(PAVE / "templates" / "config.yaml"),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert comparison.returncode == 0, comparison.stderr
+    assert "result: nothing to fix" in comparison.stdout
+
+
 def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
@@ -64,6 +79,16 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     assert (runtime / "templates" / "config.codex.yaml").exists()
     assert (runtime / "adapters" / "codex" / "config.py").exists()
     assert (runtime / "agents" / "builder.md").exists()
+    outside_hub = subprocess.run(
+        [str(runtime / "scripts" / "pave.sh"), "stale"],
+        capture_output=True,
+        text=True,
+        cwd=home,
+        env={**os.environ, "PAVE_HUB": ""},
+    )
+    assert outside_hub.returncode == 1
+    assert "Run $pave-init first" in outside_hub.stderr
+    assert "unbound variable" not in outside_hub.stderr
     help_text = installed_skill(home, "help").read_text()
     assert str(home / ".agents" / "skills" / "pave-*" / "SKILL.md") in help_text
     assert "runtime/skills" not in help_text
