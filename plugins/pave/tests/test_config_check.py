@@ -81,7 +81,8 @@ def test_pre_04_config(hub):
         "missing   agents.planner = { model: opus, effort: high }",
         "missing   branch.autocommit = false",
         "leftover  contracts = { land_before_fanout: true }",
-        "result: 7 to fix - run /pave:init",
+        "missing   hosts = { codex: { models: { analyst: gpt-6-sol, builder: gpt-6-sol, explorer: gpt-6-luna, reviewer: gpt-6-sol, retriever: gpt-6-sol, planner: gpt-6-astra } } }",
+        "result: 8 to fix - run /pave:init",
     ]
 
 
@@ -96,7 +97,8 @@ def test_toml_config(hub):
     assert out == [
         "leftover  model_ranking = [haiku, sonnet]",
         "missing   agents.planner = { model: opus, effort: high }",
-        "result: 2 to fix - run /pave:init",
+        "missing   hosts = { codex: { models: { analyst: gpt-6-sol, builder: gpt-6-sol, explorer: gpt-6-luna, reviewer: gpt-6-sol, retriever: gpt-6-sol, planner: gpt-6-astra } } }",
+        "result: 3 to fix - run /pave:init",
     ]
 
 

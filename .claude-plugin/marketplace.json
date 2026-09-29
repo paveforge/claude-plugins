@@ -3,14 +3,14 @@
   "owner": {
     "name": "paveforge"
   },
-  "description": "Internal Claude Code plugins.",
+  "description": "Agentic coding plugins from paveforge.",
   "plugins": [
     {
       "name": "pave",
       "source": "./plugins/pave",
       "displayName": "Pave",
       "description": "Plan a feature once across every service it touches, freeze the contracts, then build each service in parallel from its own self-contained task document.",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "author": {
         "name": "paveforge"
       },

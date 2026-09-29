@@ -49,7 +49,9 @@ any service whose knowledge is missing or stale.
 ## Models
 
 Every agent's model comes from `config.yaml` and is enforced when it is
-spawned. `/pave:plan` always runs the `planner` agent on its configured model.
+spawned. The Codex adapter reads `hosts.codex.models.planner` and the matching
+full key for each other agent.
+`/pave:plan` always runs the `planner` agent on its configured model.
 
 ## Status
 

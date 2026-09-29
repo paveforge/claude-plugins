@@ -1,11 +1,26 @@
-# claude-plugins
+# Pave plugins
 
-Claude Code plugins for paveforge.
+Pave is distributed through Claude Code and can install adapters for other
+agentic coding hosts. Every host uses the same hub, workflow, deterministic
+checks and task documents.
+
+Install the source plugin in Claude Code:
 
 ```
 /plugin marketplace add paveforge/claude-plugins
 /plugin install pave@paveforge
 ```
+
+Then install or update the Codex adapter:
+
+```
+/pave:install codex
+```
+
+This installs the `$pave-*` skills and Pave's custom Codex agents for the
+current user. Add `project` to keep the adapter in the current project. Run
+the same install command after a Pave upgrade. Remove only the managed adapter
+files with `/pave:uninstall codex` or `/pave:uninstall codex project`.
 
 ---
 
@@ -167,6 +182,12 @@ config afterwards to keep it). The config
 records no Pave version; the template is what Pave reads now, which is right
 however old the hub is.
 
+**Upgrading from 0.7.** 0.8 adds the Codex model mapping, including
+`hosts.codex.models.planner` and one key for every other agent.
+`/pave:init` adds it to an existing config. The shared agent effort remains
+under each `agents` entry; each Codex model can be changed independently from
+the Claude model for the same role.
+
 **Upgrading from 0.6.** 0.7 adds `branch.autocommit`, and builders no longer
 commit by default. `/pave:build` stops until the key is in the config: run
 `/pave:init` to add it as `false`, or set it to `true` to have each builder
@@ -199,9 +220,10 @@ still passes `pave.sh check`, and its `done` tasks stay done.
 /pave:add ../storefront/packages/events     # a monorepo package
 ```
 
-**What it does.** Records the folder's absolute path in `workspace.yaml` and
-adds it to `additionalDirectories` in `.claude/settings.json` — that second
-part is what actually grants Claude access to the repo.
+**What it does.** Records the folder's absolute path in `workspace.yaml`.
+The Claude adapter then adds it to `additionalDirectories` in
+`.claude/settings.json`, which grants Claude access to the repo. Other host
+adapters use their host's permission and sandbox mechanism.
 
 It runs `scripts/pave.sh`, because none of that needs a model: validate,
 absolutise, append, merge. The script is idempotent, so adding the same folder
@@ -673,6 +695,16 @@ agents:
   planner:   { model: opus,   effort: high   }   # planning decides the feature
   retriever: { model: sonnet, effort: low    }   # answers hub questions
 
+hosts:
+  codex:
+    models:
+      analyst: gpt-6-sol
+      builder: gpt-6-sol
+      explorer: gpt-6-luna
+      reviewer: gpt-6-sol
+      retriever: gpt-6-sol
+      planner: gpt-6-astra
+
 execution:
   mode: parallel                 # parallel | sequential
   monorepo_strategy: sequential  # sequential | worktree | shared-tree
@@ -683,8 +715,10 @@ branch:
   autocommit: false              # true: builders commit once, after every task passes
 ```
 
-Every model is enforced when its agent is spawned, planning included. Skills
-look each one up with `pave.sh agent <name>` rather than parsing YAML.
+Every model is enforced when its agent is spawned, planning included. Claude
+skills use `pave.sh agent <name>`. A host adapter adds its host as the second
+argument, such as `pave.sh agent planner codex`, to select that host's model
+while retaining the shared effort.
 `/pave:plan` always spawns the `planner` on its configured model, and resumes
 the same agent for later stages and re-plans within a session.
 
@@ -697,10 +731,10 @@ Commands never change the config themselves.
 
 **What the platform can enforce.** Pave passes both values, but the agent
 platform decides what it honours. In Claude Code the model is enforced when an
-agent is spawned; whether `effort` is depends on your Claude Code version, and
-where it is not supported the agent runs at the platform's default effort. Use
-the model names your platform accepts for spawned agents - in Claude Code,
-`haiku`, `sonnet`, `opus` or `fable` - rather than full model IDs.
+agent is spawned; whether `effort` is depends on your Claude Code version. The
+Codex adapter passes `hosts.codex.models.planner` (or the corresponding full
+key for another agent) with `agents.planner.effort`. Use model names accepted
+by the corresponding host.
 
 The hub's config may be `config.yaml`, `config.yml` or `config.toml`, but only
 one of them. `pave.sh` reads it with `scripts/yaml-reader` or

@@ -14,6 +14,19 @@ agents:
   # /pave:plan always runs the planner agent on exactly this model.
   planner:  { model: opus, effort: high }       # planning decides the feature
 
+# A host adapter may override the model while keeping each agent's shared
+# effort and responsibility above. Add a host only when Pave supports its
+# skill, tool and subagent interfaces.
+hosts:
+  codex:
+    models:
+      analyst: gpt-6-sol
+      builder: gpt-6-sol
+      explorer: gpt-6-luna
+      reviewer: gpt-6-sol
+      retriever: gpt-6-sol
+      planner: gpt-6-astra
+
 execution:
   mode: parallel                 # parallel | sequential
   monorepo_strategy: sequential  # sequential | worktree | shared-tree

@@ -22,6 +22,29 @@ def test_agent_config_yaml(hub):
     assert r.stdout == "model=opus\neffort=high\n"
 
 
+def test_agent_host_model_override(hub):
+    (hub.path / "config.yaml").write_text(
+        "agents:\n"
+        "  builder: { model: sonnet, effort: medium }\n"
+        "hosts:\n"
+        "  codex:\n"
+        "    models:\n"
+        "      builder: gpt-6-sol\n"
+    )
+    r = hub.run("agent", "builder", "codex")
+    assert r.returncode == 0, r.stderr
+    assert r.stdout == "model=gpt-6-sol\neffort=medium\n"
+
+
+def test_agent_missing_host_override_is_error(hub):
+    (hub.path / "config.yaml").write_text(
+        "agents:\n  builder: { model: sonnet, effort: medium }\n"
+    )
+    r = hub.run("agent", "builder", "codex")
+    assert r.returncode != 0
+    assert "hosts.codex.models.builder" in r.stderr
+
+
 def test_agent_config_yml_extension(hub):
     (hub.path / "config.yml").write_text(
         "agents:\n  builder: { model: opus, effort: high }\n"
