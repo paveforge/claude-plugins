@@ -368,3 +368,108 @@ def test_contract_path_is_not_the_service_path(hub, tmp_path, vcs):
     assert r.returncode == 0, r.stderr
     assert state_of(r, "svc") == "current", r.stdout
     assert state_of(r, "events") is None, r.stdout
+
+
+# Any valid YAML layout a model writes reads the same (issue #14).
+
+def finding(hub, name, frontmatter):
+    fdir = hub.path / "artifacts" / "knowledge" / "on-demand" / "source"
+    fdir.mkdir(parents=True, exist_ok=True)
+    f = fdir / name
+    f.write_text(f"---\nkind: source-finding\nquestion: how?\n{frontmatter}---\n\n# finding\n")
+    return f
+
+
+def test_block_form_finding_is_stamped_and_rewritten_in_one_form(hub, tmp_path, vcs):
+    svc = service(tmp_path, vcs)
+    write_workspace(hub, [{"name": "svc", "path": str(svc), "discovered": True}])
+    f = finding(hub, "q.md", "# the dirs read\nservices:\n- paths:\n    - src\n  service: svc\nterms: [x]\n")
+    r = hub.run("stamp", str(f))
+    assert r.returncode == 0, r.stderr
+    text = f.read_text()
+    assert re.search(r"^  - \{ service: svc, paths: \[src\], hash: [0-9a-f]{64} \}\nterms: \[x\]$", text, re.M)
+    assert "# the dirs read\nservices:" in text
+    assert state_of(hub.run("stale"), "on-demand/source/q.md") == "finding-current"
+
+
+def test_every_entry_of_a_mixed_layout_finding_is_stamped(hub, tmp_path, vcs):
+    # Before: only the entry in the one-line form was hashed, and the finding
+    # read current while resting on code never hashed.
+    a = service(tmp_path, vcs, "a")
+    b = service(tmp_path, vcs, "b")
+    write_workspace(hub, [{"name": "a", "path": str(a)}, {"name": "b", "path": str(b)}])
+    f = finding(hub, "q.md", "services:\n  - { service: a, paths: [src] }\n  - service: b\n    paths: [src]\n")
+    assert hub.run("stamp", str(f)).returncode == 0
+    assert f.read_text().count("hash: ") == 2
+    (b / "src" / "a.py").write_text("changed\n")
+    r = hub.run("stale")
+    assert state_of(r, "on-demand/source/q.md") == "finding-stale"
+    assert "b: files changed under src" in r.stdout
+
+
+def test_finding_entry_without_paths_is_refused(hub, tmp_path, vcs):
+    svc = service(tmp_path, vcs)
+    write_workspace(hub, [{"name": "svc", "path": str(svc)}])
+    f = finding(hub, "q.md", "services:\n  - { service: svc }\n")
+    before = f.read_text()
+    r = hub.run("stamp", str(f))
+    assert r.returncode != 0
+    assert "entry 1 has no paths" in r.stderr
+    assert f.read_text() == before
+
+
+def test_unparseable_finding_is_an_error_not_stale(hub, tmp_path, vcs):
+    write_workspace(hub, [])
+    finding(hub, "bad.md", "services:\n  - { service: svc, paths: [src }\n")
+    r = hub.run("stale")
+    assert r.returncode != 0
+    assert "bad.md" in r.stderr and "does not parse" in r.stderr
+
+
+def test_multi_line_flow_source_paths(hub, tmp_path, vcs):
+    svc = service(tmp_path, vcs, files={"src/a.py": "1\n", "lib/b.py": "2\n"})
+    write_workspace(hub, [{"name": "svc", "path": str(svc), "discovered": True}])
+    kdir = hub.path / "artifacts" / "knowledge" / "services" / "svc"
+    kdir.mkdir(parents=True)
+    readme = kdir / "README.md"
+    readme.write_text("---\nservice: svc\nsource_paths: [\n  src,\n  lib,\n]\ncapabilities: [x]\n---\n# svc\n")
+    r = hub.run("stamp", str(readme))
+    assert r.returncode == 0, r.stderr
+    assert re.search(r"^  lib,\n\]\nsource_hash: [0-9a-f]{64}\ncapabilities", readme.read_text(), re.M)
+    assert state_of(hub.run("stale"), "svc") == "current"
+    (svc / "lib" / "b.py").write_text("3\n")
+    assert state_of(hub.run("stale"), "svc") == "stale"
+
+
+def test_workspace_in_any_layout(hub, tmp_path, vcs):
+    svc, _ = analysed(hub, tmp_path, vcs)
+    (hub.path / "workspace.yaml").write_text(
+        f"services: [{{ language: go, path: '{svc}', name: svc }}]\n")
+    assert state_of(hub.run("stale"), "svc") == "current"
+    (hub.path / "workspace.yaml").write_text(f"services:\n- language: go\n  path: {svc}\n  name: svc\n")
+    assert state_of(hub.run("stale"), "svc") == "current"
+
+
+def test_unparseable_workspace_is_an_error(hub, tmp_path, vcs):
+    (hub.path / "workspace.yaml").write_text("services:\n  - name: svc\n    path: [x\n")
+    r = hub.run("stale")
+    assert r.returncode != 0
+    assert "workspace.yaml" in r.stderr
+
+
+def test_workspace_service_without_a_name_is_an_error(hub, tmp_path, vcs):
+    (hub.path / "workspace.yaml").write_text("services:\n  - path: /x\n")
+    r = hub.run("stale")
+    assert r.returncode != 0
+    assert "entry 1 has no name" in r.stderr
+
+
+def test_feature_record_in_flow_form(hub, vcs):
+    fdir = make_feature(hub.path, "feat-1")
+    spec_hash = hashlib.sha256((fdir / "spec.md").read_text().encode()).hexdigest()
+    rdir = hub.path / "artifacts" / "knowledge" / "on-demand" / "features"
+    rdir.mkdir(parents=True)
+    (rdir / "feat-1.md").write_text(
+        f"---\n{{ kind: feature-record, spec_hash: '{spec_hash}', feature: \"feat-1\" }}\n---\n# feat-1\n")
+    write_workspace(hub, [])
+    assert "record-current" in hub.run("stale").stdout

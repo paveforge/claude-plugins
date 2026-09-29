@@ -113,7 +113,7 @@ cmd_stale() {
 
 # stamp <knowledge file>
 # Records the content hash of the source directories a knowledge file names:
-# source_hash in a service README, hash on each services: line of a finding.
+# source_hash in a service README, hash on each services: entry of a finding.
 # Run after an analyst writes the file - the analyst has no Bash. A relative
 # path is taken from the hub when it is not found from the current folder.
 cmd_stamp() {

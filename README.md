@@ -704,9 +704,10 @@ the model names your platform accepts for spawned agents - in Claude Code,
 
 The hub's config may be `config.yaml`, `config.yml` or `config.toml`, but only
 one of them. `pave.sh` reads it with `scripts/yaml-reader` or
-`scripts/toml-reader`, both Python 3. The YAML reader uses PyYAML when it is
-installed, and otherwise a built-in parser that rejects any syntax it doesn't
-support rather than guessing. The TOML reader uses Python 3.11's `tomllib`.
+`scripts/toml-reader`, both Python 3. The YAML reader uses
+`scripts/pave_yaml.py`, the parser every Pave script reads YAML with: PyYAML
+when it is installed, and otherwise a built-in parser that rejects any syntax
+it doesn't support rather than guessing. The TOML reader uses Python 3.11's `tomllib`.
 Either reader can be called directly:
 
 ```

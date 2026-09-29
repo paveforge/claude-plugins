@@ -98,7 +98,7 @@ Once it has written the finding, stamp it:
 "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh stamp artifacts/knowledge/on-demand/source/<slug>.md
 ```
 
-It adds to each `services:` line the hash of the content of the paths the
+It adds to each `services:` entry the hash of the content of the paths the
 analyst read - what `pave.sh stale` compares against. The analyst has no Bash
 and cannot compute it. An unstamped finding is always reported stale.
 

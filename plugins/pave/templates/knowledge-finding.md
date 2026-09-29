@@ -2,10 +2,9 @@
 kind: source-finding
 question: <the question, as the user asked it>
 answered_at: <date>
-# One line per service whose code the answer rests on: the directories read.
-# `pave.sh stamp` adds `hash:` to each line - the hash of their content - and
-# `pave.sh stale` marks the finding stale the moment it changes. Keep this
-# exact one-line form - the script parses it.
+# One entry per service whose code the answer rests on: the directories read.
+# `pave.sh stamp` adds `hash:` to each entry - the hash of their content - and
+# `pave.sh stale` marks the finding stale the moment it changes.
 services:
   - { service: <service>, paths: [<dir>, <dir>] }
 terms: [<platform terms the answer uses>]

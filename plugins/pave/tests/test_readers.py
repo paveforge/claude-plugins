@@ -27,7 +27,8 @@ def run_reader(reader, path, key, no_pyyaml=False):
 import sys
 sys.modules['yaml'] = None
 sys.argv = [{str(reader)!r}, {str(path)!r}, {key!r}]
-exec(open({str(reader)!r}).read())
+import runpy
+runpy.run_path({str(reader)!r}, run_name="__main__")
 """
         return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     return subprocess.run([sys.executable, str(reader), str(path), key], capture_output=True, text=True)
