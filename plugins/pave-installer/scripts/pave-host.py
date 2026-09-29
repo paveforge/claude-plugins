@@ -216,6 +216,36 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
             "Do not edit `workspace.yaml` or `settings.json` yourself.",
             "Do not edit `workspace.yaml` yourself.",
         )
+        body += (
+            "\n## Codex access after registration\n\n"
+            "Run the following after the registration script, from the hub:\n\n"
+            "```bash\n"
+            f'python3 "{runtime}/adapters/codex/config.py" access\n'
+            "```\n\n"
+            "Pass its complete output to the user. The `--add-dir` flags are for a "
+            "new Codex CLI session; in the app or IDE, the same service roots "
+            "must be writable in the parent session. Registration does not "
+            "change Codex permissions. Never claim a service is writable "
+            "because `$pave-add` registered it.\n"
+        )
+    elif name == "build":
+        body = body.replace(
+            "Set the feature to `building` before spawning anything.",
+            "Before changing the feature status or spawning a builder, confirm "
+            "the parent Codex session can write every target service repo. "
+            "Run this from the hub to list the required writable roots:\n\n"
+            "```bash\n"
+            f'python3 "{runtime}/adapters/codex/config.py" access\n'
+            "```\n\n"
+            "If a target repo is outside the active writable roots, stop and "
+            "pass on the command and paths printed by the script. Start a "
+            "new CLI session with its `--add-dir` flags, or add the paths to "
+            "the app/IDE session's writable roots. Subagents inherit the "
+            "parent's permissions; do not spawn a builder that cannot write "
+            "its repo. File existence or OS permissions alone do not prove "
+            "Codex sandbox access.\n\n"
+            "Set the feature to `building` before spawning anything.",
+        )
     elif name == "init":
         body = re.sub(r"\| `\.claude/settings\.json` \|.*?\n", "", body)
         body = body.replace(
@@ -233,8 +263,16 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
         "- `{arguments}` in a command is a placeholder. Replace it with the "
         "arguments from the user's invocation, shell-quoted safely; never run "
         "the placeholder literally.\n"
-        "- Spawn Pave custom agents by the `pave_<role>` names used below.\n"
-        f'- Use the model and reasoning effort printed by `python3 "{runtime}/adapters/codex/config.py" agent <role>`.\n'
+        "- For every Pave subagent spawn, select the `pave_<role>` custom "
+        "agent and run the command below for that role immediately before "
+        "spawning. Pass its `model` as an explicit spawn model and its "
+        "`effort` as the explicit reasoning effort (the spawn tool may name "
+        "that field `reasoning_effort` or `model_reasoning_effort`). "
+        "Do not rely on the parent model or a default in the agent file. "
+        "If either value cannot be passed, stop and report that this Codex "
+        "session cannot enforce the hub's `agents.<role>` policy; do not "
+        "spawn or continue the Pave phase with inherited values.\n"
+        f'- Role lookup: `python3 "{runtime}/adapters/codex/config.py" agent <role>`.\n'
     )
     rendered = (
         "---\n"
