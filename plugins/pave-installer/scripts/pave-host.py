@@ -131,6 +131,19 @@ def codex_host_text(text: str, runtime: Path) -> str:
     return text
 
 
+def replace_required(text: str, old: str, new: str, context: str) -> str:
+    if old not in text:
+        raise HostError(f"Codex rewrite anchor missing in {context}: {old!r}")
+    return text.replace(old, new)
+
+
+def sub_required(text: str, pattern: str, replacement: str, context: str, flags: int = 0) -> str:
+    rewritten, count = re.subn(pattern, replacement, text, flags=flags)
+    if not count:
+        raise HostError(f"Codex rewrite anchor missing in {context}: {pattern!r}")
+    return rewritten
+
+
 def codex_runtime_script(text: str, runtime: Path) -> str:
     """Remove Claude-only settings writes from the installed Pave runtime."""
     text = codex_text(text, runtime)
@@ -141,16 +154,17 @@ def codex_runtime_script(text: str, runtime: Path) -> str:
         lambda match: match.group().replace("$pave-", r"\$pave-"),
         text,
     )
-    text = text.replace('  local settings="$hub/.claude/settings.json"\n', "")
-    text = re.sub(
+    text = replace_required(text, '  local settings="$hub/.claude/settings.json"\n', "", "pave.sh settings")
+    text = sub_required(
+        text,
         r"\n    if have_python; then\n"
         r"      PAVE_DIR=.*?"
         r"\n    fi\n",
         "\n",
-        text,
-        flags=re.DOTALL,
+        "pave.sh settings write", flags=re.DOTALL,
     )
-    text = re.sub(
+    text = sub_required(
+        text,
         r"# agent <name>\n.*?(?=# find_config <hub>)",
         """# agent <name>
 # Delegates host policy to the Codex adapter installed beside this runtime.
@@ -166,8 +180,7 @@ cmd_config_check() {
 }
 
 """,
-        text,
-        flags=re.DOTALL,
+        "pave.sh agent dispatch", flags=re.DOTALL,
     )
     return text
 
@@ -177,44 +190,32 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
     name = meta.get("name", source_skill.parent.name)
     description = codex_host_text(meta.get("description", "Pave workflow"), runtime)
     if name == "add":
-        description = description.replace(
+        description = replace_required(description,
             "and grants Claude access to it",
             "for use by Pave on Codex",
+            "add skill description",
         )
-        body = body.replace(
+        body = replace_required(body,
             "Run the script. It does the whole job:",
             "Run the deterministic registration script. Codex access to sibling service\n"
             "folders follows the sandbox and permission mode selected for this session:",
+            "add skill registration",
         )
-        body = body.replace(
-            "Run the deterministic registration script, then the Claude adapter that grants\n"
-            "this session access to every folder the script successfully registered:",
-            "Run the deterministic registration script. Codex access to sibling service\n"
-            "folders follows the sandbox and permission mode selected for this session:",
-        )
-        body = re.sub(
-            r'\npython3 "\$\{CLAUDE_PLUGIN_ROOT\}"/adapters/claude/grant\.py \$ARGUMENTS',
-            "",
-            body,
-        )
-        body = body.replace(
-            "The adapter separately merges\nregistered paths into `additionalDirectories`.\n",
-            "\n",
-        )
-        body = body.replace(
+        body = replace_required(body,
             "absolute path, append to `workspace.yaml`, merge into `additionalDirectories`.",
             "absolute path and append to `workspace.yaml`. Filesystem access is controlled\n"
             "by the current Codex permission profile.",
+            "add skill access",
         )
-        body = re.sub(
+        body = sub_required(body,
             r"\| `WARN` \| `settings\.json`.*?\n",
             "",
-            body,
+            "add skill settings warning",
         )
-        body = re.sub(r"\| adapter error \|.*?\n", "", body)
-        body = body.replace(
+        body = replace_required(body,
             "Do not edit `workspace.yaml` or `settings.json` yourself.",
             "Do not edit `workspace.yaml` yourself.",
+            "add skill settings",
         )
         body += (
             "\n## Codex access after registration\n\n"
@@ -229,7 +230,7 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
             "because `$pave-add` registered it.\n"
         )
     elif name == "build":
-        body = body.replace(
+        body = replace_required(body,
             "Set the feature to `building` before spawning anything.",
             "Before changing the feature status or spawning a builder, confirm "
             "the parent Codex session can write every target service repo. "
@@ -245,18 +246,28 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
             "its repo. File existence or OS permissions alone do not prove "
             "Codex sandbox access.\n\n"
             "Set the feature to `building` before spawning anything.",
+            "build skill access gate",
         )
     elif name == "init":
-        body = re.sub(r"\| `\.claude/settings\.json` \|.*?\n", "", body)
-        body = body.replace(
+        body = sub_required(body, r"\| `\.claude/settings\.json` \|.*?\n", "", "init skill settings row")
+        body = replace_required(body,
             "`.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;\n"
             "never replace it.\n\n",
             "",
+            "init skill settings prose",
         )
     elif name == "help":
-        body = body.replace(
+        body = replace_required(body,
             "`${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md`",
             f"`{skill_root}/pave-*/SKILL.md`",
+            "help skill listing",
+        )
+    elif name == "learn":
+        body = replace_required(
+            body,
+            "${CLAUDE_PLUGIN_ROOT}/skills/query/SKILL.md",
+            str(skill_root / "pave-query" / "SKILL.md"),
+            "learn skill query procedure",
         )
     prefix = (
         "\nCodex adapter rules:\n"
@@ -350,7 +361,7 @@ def codex_targets(source: Path, scope: str, project_root: Optional[Path]) -> tup
     for agent in sorted((source / "agents").glob("*.md")):
         targets.append(Target(agents / f"pave_{agent.stem}.toml", codex_agent(agent)))
 
-    for folder in ("agents", "scripts", "templates"):
+    for folder in ("agents", "scripts", "templates", "reference"):
         for item in sorted((source / folder).rglob("*")):
             if not item.is_file() or "__pycache__" in item.parts:
                 continue
@@ -366,6 +377,8 @@ def codex_targets(source: Path, scope: str, project_root: Optional[Path]) -> tup
             elif folder == "templates" and (
                 item.name == "hub-AGENTS.md" or item.name.startswith("config.codex.")
             ):
+                content = codex_host_text(content.decode(), runtime).encode()
+            elif folder == "reference" and item.suffix == ".md":
                 content = codex_host_text(content.decode(), runtime).encode()
             targets.append(Target(runtime / rel, content, os.access(item, os.X_OK)))
 

@@ -16,20 +16,8 @@ executed - and only then.
 
 ## 0. The session's feature
 
-This command takes no argument. It acts on the feature `/pave:spec` set in
-this conversation - the latest `Working on <id> — <title>` or
-`Switched: … → <id>` line. If there is none, stop:
-
-```
-No feature in this session. Run /pave:spec <feature-id> first.
-```
-
-Say `Working on <id> — <title>` before continuing.
-
-**Every feature-scoped `pave.sh` call names the session's feature in its
-environment**, never as an argument: `SESSION_FEATURE_ID=<id> pave.sh …`.
-The script prints `feature: <id>` first - check that line matches the feature
-you announced before trusting anything after it.
+Read `${CLAUDE_PLUGIN_ROOT}/reference/session.md` and apply its session
+feature rule before any feature-scoped operation.
 
 ## 1. Was it executed successfully?
 
@@ -90,12 +78,8 @@ a copy of it.
 
 ## 3. Rebuild the index's On-demand section
 
-Rebuild **only** the On-demand section of `artifacts/knowledge/README.md`,
-from the frontmatter of every file under `on-demand/source/` and
-`on-demand/features/`, with each file's state from
-`"${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh stale`. Leave every other section as
-it is - those are `/pave:analyse`'s. If there is no index yet, write one from
-`templates/knowledge-README.md` with only the On-demand section filled.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/query/SKILL.md` §3 and follow its
+On-demand index rebuild procedure after writing the feature record.
 
 ## 4. Report
 
