@@ -14,7 +14,7 @@ this phase turns sealed task documents into code.
 ## 0. The session's feature
 
 Read `${CLAUDE_PLUGIN_ROOT}/reference/session.md` and apply its session
-feature rule before any feature-scoped operation.
+feature rule before continuing.
 
 ## 1. The plan must be the one approved for this spec
 
