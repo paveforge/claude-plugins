@@ -134,6 +134,13 @@ def codex_host_text(text: str, runtime: Path) -> str:
 def codex_runtime_script(text: str, runtime: Path) -> str:
     """Remove Claude-only settings writes from the installed Pave runtime."""
     text = codex_text(text, runtime)
+    # A translated skill name is literal text in Bash diagnostics, not a
+    # variable expansion (the runtime uses set -u).
+    text = re.sub(
+        r'\bdie "[^"\n]*"',
+        lambda match: match.group().replace("$pave-", r"\$pave-"),
+        text,
+    )
     text = text.replace('  local settings="$hub/.claude/settings.json"\n', "")
     text = re.sub(
         r"\n    if have_python; then\n"
