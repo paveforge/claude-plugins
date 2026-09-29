@@ -34,7 +34,7 @@ the plan was wrong.
 ## 0. The session's feature
 
 Read `${CLAUDE_PLUGIN_ROOT}/reference/session.md` and apply its session
-feature rule before any feature-scoped operation.
+feature rule before continuing.
 
 ## Before starting
 
