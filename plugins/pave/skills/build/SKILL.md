@@ -13,22 +13,8 @@ this phase turns sealed task documents into code.
 
 ## 0. The session's feature
 
-This command takes no feature argument. It acts on the feature `/pave:spec`
-set in this conversation - the latest `Working on <id> — <title>` or
-`Switched: … → <id>` line. If there is none, stop:
-
-```
-No feature in this session. Run /pave:spec <feature-id> first.
-```
-
-Say `Working on <id> — <title>` before continuing.
-
-**Every feature-scoped `pave.sh` call names the session's feature in its
-environment**, never as an argument: `SESSION_FEATURE_ID=<id> pave.sh …`.
-The script refuses without it, and prints `feature: <id>` first - check that
-line matches the feature you announced before trusting anything after it.
-Another session may be working on a different feature in the same hub at
-the same moment; the variable is what keeps each call on this session's.
+Read `${CLAUDE_PLUGIN_ROOT}/reference/session.md` and apply its session
+feature rule before any feature-scoped operation.
 
 ## 1. The plan must be the one approved for this spec
 
