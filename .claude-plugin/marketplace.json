@@ -10,7 +10,7 @@
       "source": "./plugins/pave",
       "displayName": "Pave",
       "description": "Plan a feature once across every service it touches, freeze the contracts, then build each service in parallel from its own self-contained task document.",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "author": {
         "name": "paveforge"
       },
@@ -23,7 +23,7 @@
       "source": "./",
       "displayName": "Pave Installer",
       "description": "Install, update, and safely uninstall Pave adapters for supported agentic coding platforms without changing the Pave plugin.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "paveforge"
       },
