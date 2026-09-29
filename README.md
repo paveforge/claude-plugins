@@ -2,10 +2,25 @@
 
 Claude Code plugins for paveforge.
 
+Install Pave for Claude Code:
+
 ```
 /plugin marketplace add paveforge/claude-plugins
 /plugin install pave@paveforge
 ```
+
+Install the separate Pave Installer when you want to use Pave on another
+agentic coding platform:
+
+```
+/plugin install pave-installer@paveforge
+/pave-installer:install codex
+```
+
+Pave Installer owns all host conversion, installation, updates and removal;
+the Pave plugin remains Claude-specific. Add `project` to install into the
+current project. Remove managed adapter files with
+`/pave-installer:uninstall codex` (or append `project`).
 
 ---
 
