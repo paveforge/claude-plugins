@@ -7,6 +7,10 @@ from pathlib import Path
 PAVE = Path(__file__).resolve().parents[1]
 
 
+def feature_status_assignments(text):
+    return set(re.findall(r"\bfeature(?:'s)?(?: status)? (?:to|as|is) `([a-z-]+)`", text))
+
+
 def test_feature_statuses_match_hub_rules():
     template = (PAVE / "templates" / "feature-README.md").read_text()
     hub = (PAVE / "templates" / "hub-AGENTS.md").read_text()
@@ -25,6 +29,11 @@ def test_prompt_status_assignments_appear_in_templates():
     for path in prompts:
         text = path.read_text()
         assignments = re.findall(r"\bstatus: ([a-z-]+)", text)
-        feature_assignments = re.findall(r"feature(?:'s)? status (?:to|as|is) `([a-z-]+)`", text)
+        feature_assignments = feature_status_assignments(text)
         assert set(assignments) <= task_values, f"{path}: {set(assignments) - task_values}"
         assert set(feature_assignments) <= feature_values, f"{path}: {set(feature_assignments) - feature_values}"
+
+
+def test_feature_status_assignment_patterns():
+    assert feature_status_assignments("Set the feature to `bogus`.") == {"bogus"}
+    assert feature_status_assignments("Set the feature's status to `bogus`.") == {"bogus"}
