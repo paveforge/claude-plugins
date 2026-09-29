@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -73,6 +74,8 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     agent_text = agent.read_text()
     assert 'name = "pave_builder"' in agent_text
     assert "task document" in agent_text
+    assert 'model = ' not in agent_text
+    assert 'model_reasoning_effort = ' not in agent_text
     runtime = home / ".codex" / "pave" / "runtime"
     assert (runtime / "scripts" / "pave.sh").stat().st_mode & 0o111
     assert (runtime / "templates" / "config.yaml").exists()
@@ -98,6 +101,15 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     assert "templates/config.codex.yaml" in init_text
     assert "adapters/codex/config.py\" config-check" in init_text
     assert "config.yaml" not in init_text.replace("config.codex.yaml", "")
+    plan_text = installed_skill(home, "plan").read_text()
+    assert "Pass its `model` as an explicit spawn model" in plan_text
+    assert "do not spawn or continue the Pave phase with inherited values" in plan_text
+    build_text = installed_skill(home, "build").read_text()
+    assert "Before changing the feature status or spawning a builder" in build_text
+    assert "config.py\" access" in build_text
+    add_text = installed_skill(home, "add").read_text()
+    assert "Registration does not change Codex permissions" in add_text
+    assert "config.py\" access" in add_text
 
     hub = tmp_path / "hub"
     hub.mkdir()
@@ -111,6 +123,21 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     )
     assert lookup.returncode == 0, lookup.stderr
     assert lookup.stdout == "model=gpt-6-sol\neffort=medium\n"
+    codex_config = hub / "config.codex.yaml"
+    codex_config.write_text(
+        codex_config.read_text().replace(
+            "builder:   { model: gpt-6-sol,   effort: medium }",
+            "builder:   { model: gpt-6-luna,  effort: high   }",
+        )
+    )
+    changed = subprocess.run(
+        [sys.executable, str(runtime / "adapters" / "codex" / "config.py"), "agent", "builder"],
+        capture_output=True,
+        text=True,
+        cwd=hub,
+    )
+    assert changed.returncode == 0, changed.stderr
+    assert changed.stdout == "model=gpt-6-luna\neffort=high\n"
     check = subprocess.run(
         [str(runtime / "scripts" / "pave.sh"), "config-check"],
         capture_output=True,
@@ -146,6 +173,38 @@ def test_codex_runtime_does_not_write_claude_settings(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert not (hub / ".claude" / "settings.json").exists()
+
+
+def test_codex_access_lists_unique_writable_roots_without_changing_permissions(tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    assert run_host(home, "install", "codex").returncode == 0
+    adapter = home / ".codex" / "pave" / "runtime" / "adapters" / "codex" / "config.py"
+    hub = tmp_path / "hub"
+    repo = tmp_path / "shared repo"
+    another = tmp_path / "other repo"
+    for directory in (hub, repo, another):
+        directory.mkdir()
+    (hub / ".pave-hub").write_text("")
+    (hub / "workspace.yaml").write_text(
+        f"services:\n  - name: one\n    path: {repo}/one\n    repo_root: {repo}\n"
+        f"  - name: two\n    path: {repo}/two\n    repo_root: {repo}\n"
+        f"  - name: other\n    path: {another}\n"
+    )
+    result = subprocess.run(
+        [sys.executable, str(adapter), "access"],
+        capture_output=True,
+        text=True,
+        cwd=hub,
+    )
+    assert result.returncode == 0, result.stderr
+    command = next(line for line in result.stdout.splitlines() if line.startswith("codex "))
+    assert shlex.split(command) == [
+        "codex", "--cd", str(hub),
+        "--add-dir", str(another), "--add-dir", str(repo),
+    ]
+    assert not (hub / ".codex").exists()
+    assert not (hub / ".claude").exists()
 
 
 def test_codex_install_is_idempotent(tmp_path):
