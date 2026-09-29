@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
+import shlex
 import subprocess
 import sys
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
 
@@ -85,12 +88,57 @@ def config_check() -> int:
     )
 
 
+def access() -> int:
+    """Print the extra writable roots needed by the current hub's services."""
+    hub = find_hub()
+    workspace = hub / "workspace.yaml"
+    loader = SourceFileLoader("pave_yaml_reader", str(runtime_root() / "scripts" / "yaml-reader"))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        data = module.load(workspace.read_text(encoding="utf-8"))
+    except (OSError, module.YamlError) as exc:
+        die(f"cannot read {workspace}: {exc}")
+    services = data.get("services") if isinstance(data, dict) else None
+    if services is None:
+        services = []
+    if not isinstance(services, list):
+        die(f"{workspace} must contain a services list")
+    roots = set()
+    for entry in services:
+        if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+            die(f"{workspace} has a service without an absolute path")
+        raw = entry.get("repo_root") or entry["path"]
+        if not isinstance(raw, str) or not Path(raw).is_absolute():
+            die(f"{workspace} has a service without an absolute repo root")
+        root = Path(raw).resolve()
+        if root != hub and hub not in root.parents:
+            roots.add(str(root))
+    if not roots:
+        print("No registered service repositories outside the hub.")
+        return 0
+    command = ["codex", "--cd", str(hub)]
+    for root in sorted(roots):
+        command.extend(("--add-dir", root))
+    print("Codex CLI: start a new session with writable service roots:")
+    print(shlex.join(command))
+    print("In the Codex app or IDE, add these same paths to the session's writable roots:")
+    for root in sorted(roots):
+        print(f"  {root}")
+    print("Subagents inherit the parent session's permissions. Registration alone does not grant writes.")
+    print("If a repo is absent in a hosted environment, make it available there before building.")
+    return 0
+
+
 def main() -> int:
     if len(sys.argv) == 3 and sys.argv[1] == "agent":
         return agent(sys.argv[2])
     if len(sys.argv) == 2 and sys.argv[1] == "config-check":
         return config_check()
-    die("usage: config.py agent <role> | config-check")
+    if len(sys.argv) == 2 and sys.argv[1] == "access":
+        return access()
+    die("usage: config.py agent <role> | config-check | access")
 
 
 if __name__ == "__main__":
