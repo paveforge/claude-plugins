@@ -72,6 +72,10 @@ def plugin_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def default_pave_source() -> Path:
+    return plugin_root().parent / "pave"
+
+
 def plugin_version(source: Path) -> str:
     path = source / ".claude-plugin" / "plugin.json"
     try:
@@ -95,6 +99,12 @@ def frontmatter(text: str) -> tuple[dict[str, str], str]:
 
 
 def codex_text(text: str, runtime: Path) -> str:
+    roles = "|".join(ROLES)
+    text = re.sub(
+        rf'(?:"\$\{{CLAUDE_PLUGIN_ROOT\}}"/scripts/)?pave\.sh agent ({roles})',
+        lambda m: f'python3 "{runtime}/adapters/codex/config.py" agent {m.group(1)}',
+        text,
+    )
     text = text.replace("${CLAUDE_PLUGIN_ROOT}", str(runtime))
     text = text.replace("$ARGUMENTS", "{arguments}")
     text = re.sub(r"/pave:([a-z]+)", r"$pave-\1", text)
@@ -102,13 +112,6 @@ def codex_text(text: str, runtime: Path) -> str:
     text = text.replace("`SendMessage`", "the host's agent messaging tool")
     for role in ROLES:
         text = text.replace(f"`{role}`", f"`pave_{role}`")
-    # The shared command reads the host-specific model override while keeping
-    # the role name stable in config and reports.
-    text = re.sub(
-        r"pave\.sh\"? agent (analyst|builder|explorer|planner|retriever|reviewer)(?! codex)",
-        lambda m: m.group(0) + " codex",
-        text,
-    )
     return text
 
 
@@ -120,7 +123,45 @@ def codex_host_text(text: str, runtime: Path) -> str:
         r"config.codex.\1",
         text,
     )
-    text = re.sub(r"pave\.sh config-check(?! codex)", "pave.sh config-check codex", text)
+    text = re.sub(
+        r'(?:"[^"\n]+"/scripts/)?pave\.sh config-check',
+        f'python3 "{runtime}/adapters/codex/config.py" config-check',
+        text,
+    )
+    return text
+
+
+def codex_runtime_script(text: str, runtime: Path) -> str:
+    """Remove Claude-only settings writes from the installed Pave runtime."""
+    text = codex_text(text, runtime)
+    text = text.replace('  local settings="$hub/.claude/settings.json"\n', "")
+    text = re.sub(
+        r"\n    if have_python; then\n"
+        r"      PAVE_DIR=.*?"
+        r"\n    fi\n",
+        "\n",
+        text,
+        flags=re.DOTALL,
+    )
+    text = re.sub(
+        r"# agent <name>\n.*?(?=# find_config <hub>)",
+        """# agent <name>
+# Delegates host policy to the Codex adapter installed beside this runtime.
+cmd_agent() {
+  [ $# -eq 1 ] || die "usage: pave.sh agent <name>"
+  python3 "$SCRIPTS/../adapters/codex/config.py" agent "$1"
+}
+
+# config-check
+cmd_config_check() {
+  [ $# -eq 0 ] || die "usage: pave.sh config-check"
+  python3 "$SCRIPTS/../adapters/codex/config.py" config-check
+}
+
+""",
+        text,
+        flags=re.DOTALL,
+    )
     return text
 
 
@@ -129,6 +170,15 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
     name = meta.get("name", source_skill.parent.name)
     description = codex_host_text(meta.get("description", "Pave workflow"), runtime)
     if name == "add":
+        description = description.replace(
+            "and grants Claude access to it",
+            "for use by Pave on Codex",
+        )
+        body = body.replace(
+            "Run the script. It does the whole job:",
+            "Run the deterministic registration script. Codex access to sibling service\n"
+            "folders follows the sandbox and permission mode selected for this session:",
+        )
         body = body.replace(
             "Run the deterministic registration script, then the Claude adapter that grants\n"
             "this session access to every folder the script successfully registered:",
@@ -143,6 +193,11 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
         body = body.replace(
             "The adapter separately merges\nregistered paths into `additionalDirectories`.\n",
             "\n",
+        )
+        body = body.replace(
+            "absolute path, append to `workspace.yaml`, merge into `additionalDirectories`.",
+            "absolute path and append to `workspace.yaml`. Filesystem access is controlled\n"
+            "by the current Codex permission profile.",
         )
         body = re.sub(
             r"\| `WARN` \| `settings\.json`.*?\n",
@@ -172,7 +227,7 @@ def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
         "arguments from the user's invocation, shell-quoted safely; never run "
         "the placeholder literally.\n"
         "- Spawn Pave custom agents by the `pave_<role>` names used below.\n"
-        "- Use the model and reasoning effort printed by `pave.sh agent <role> codex`.\n"
+        f'- Use the model and reasoning effort printed by `python3 "{runtime}/adapters/codex/config.py" agent <role>`.\n'
     )
     rendered = (
         "---\n"
@@ -255,10 +310,10 @@ def codex_targets(source: Path, scope: str, project_root: Optional[Path]) -> tup
             if not item.is_file() or "__pycache__" in item.parts:
                 continue
             rel = item.relative_to(source)
-            if folder == "scripts" and item.name == "pave-host.py":
-                continue
             content = item.read_bytes()
-            if folder == "scripts" and (item.suffix in {".py", ".sh"} or item.name in {
+            if folder == "scripts" and item.name == "pave.sh":
+                content = codex_runtime_script(content.decode(), runtime).encode()
+            elif folder == "scripts" and (item.suffix == ".py" or item.name in {
                 "toml-reader",
                 "yaml-reader",
             }):
@@ -268,6 +323,23 @@ def codex_targets(source: Path, scope: str, project_root: Optional[Path]) -> tup
             ):
                 content = codex_host_text(content.decode(), runtime).encode()
             targets.append(Target(runtime / rel, content, os.access(item, os.X_OK)))
+
+    installer = plugin_root()
+    codex_config = installer / "templates" / "config.codex.yaml"
+    config_adapter = installer / "adapters" / "codex" / "config.py"
+    targets.append(
+        Target(
+            runtime / "templates" / "config.codex.yaml",
+            codex_host_text(codex_config.read_text(encoding="utf-8"), runtime).encode(),
+        )
+    )
+    targets.append(
+        Target(
+            runtime / "adapters" / "codex" / "config.py",
+            config_adapter.read_bytes(),
+            executable=True,
+        )
+    )
 
     portable_manifest = {
         "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
@@ -460,7 +532,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("host", choices=("codex",))
     p.add_argument("--scope", choices=("user", "project"), default="user")
     p.add_argument("--project-root", type=Path)
-    p.add_argument("--source-root", type=Path, default=plugin_root(), help=argparse.SUPPRESS)
+    p.add_argument("--source-root", type=Path, default=default_pave_source(), help=argparse.SUPPRESS)
     return p
 
 

@@ -6,7 +6,6 @@ import pytest
 
 PAVE = Path(__file__).resolve().parents[1]
 TEMPLATE = (PAVE / "templates" / "config.yaml").read_text()
-CODEX_TEMPLATE = (PAVE / "templates" / "config.codex.yaml").read_text()
 
 HAVE_TOML = (importlib.util.find_spec("tomllib") or importlib.util.find_spec("tomli")) is not None
 
@@ -99,20 +98,6 @@ def test_toml_config(hub):
         "missing   agents.planner = { model: opus, effort: high }",
         "result: 2 to fix - run /pave:init",
     ]
-
-
-def test_current_codex_config_is_clean(hub):
-    (hub.path / "config.codex.yaml").write_text(CODEX_TEMPLATE)
-    r = hub.run("config-check", "codex")
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.splitlines()[1:] == ["result: nothing to fix"]
-
-
-def test_codex_check_does_not_fall_back_to_claude_config(hub):
-    (hub.path / "config.yaml").write_text(TEMPLATE)
-    r = hub.run("config-check", "codex")
-    assert r.returncode != 0
-    assert "no codex config file" in r.stderr
 
 
 def test_no_config_is_error(hub):

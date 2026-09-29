@@ -2,8 +2,8 @@
 # Contains nothing machine-specific. Your repo paths live in workspace.yaml.
 
 # Who does each piece of work, and how strong they should be.
-# Every entry is enforced: skills look it up with `pave.sh agent <name> codex`
-# and pass model and effort when the agent is spawned.
+# Every entry is read by the installed Codex adapter, which passes model and
+# effort when the agent is spawned.
 agents:
   analyst:   { model: gpt-6-sol,   effort: medium } # reads business logic
   builder:   { model: gpt-6-sol,   effort: medium } # executes one task document

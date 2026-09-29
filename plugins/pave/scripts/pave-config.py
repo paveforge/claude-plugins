@@ -3,8 +3,8 @@
 
     pave-config.py <config> <template>
 
-The selected host template is the source of truth for what Pave reads, so the
-comparison is right however old the config is. It reports, one line each:
+templates/config.yaml is the single source of truth for what Pave reads, so
+the comparison is right however old the config is. It reports, one line each:
 
   leftover  a key the template does not have
   missing   a key the template has and the config does not

@@ -1,11 +1,11 @@
 ---
 name: install
-description: Install or update Pave for another supported coding-agent host. Use `/pave:install codex` for a user installation or `/pave:install codex project` for the current project.
+description: Install or update Pave for a supported coding-agent host. Use `/pave-installer:install codex` for a user installation or `/pave-installer:install codex project` for the current project.
 argument-hint: "codex [user|project]"
 allowed-tools: Bash
 ---
 
-# Pave — install a host adapter
+# Pave Installer — install a host adapter
 
 Install the Pave adapter for the named coding-agent host. This manages agent
 integration only; it never creates or changes a Pave hub.
@@ -18,10 +18,13 @@ Accept exactly:
 For anything else, stop and show those choices. Do not guess a host or scope.
 
 Set `scope` from the argument, defaulting to `user`. First show the complete
-plan:
+plan. The marketplace package uses the repository root as its plugin root;
+`--plugin-dir` development uses this plugin's directory, so resolve both:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}"/scripts/pave-host.py plan-install codex --scope <scope>
+installer="${CLAUDE_PLUGIN_ROOT}/plugins/pave-installer/scripts/pave-host.py"
+[ -f "$installer" ] || installer="${CLAUDE_PLUGIN_ROOT}/scripts/pave-host.py"
+python3 "$installer" plan-install codex --scope <scope>
 ```
 
 Pass its output on. A `conflict` means an existing file was not written by the
@@ -30,7 +33,7 @@ it. Then run the installation without asking another question — invoking this
 skill is the user's instruction to install:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}"/scripts/pave-host.py install codex --scope <scope>
+python3 "$installer" install codex --scope <scope>
 ```
 
 Exit 2 means the compatible files were installed but one or more conflicts

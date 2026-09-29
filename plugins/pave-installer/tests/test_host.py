@@ -7,8 +7,9 @@ import sys
 from pathlib import Path
 
 
-PAVE = Path(__file__).resolve().parents[1]
-HOST = PAVE / "scripts" / "pave-host.py"
+INSTALLER = Path(__file__).resolve().parents[1]
+PAVE = INSTALLER.parent / "pave"
+HOST = INSTALLER / "scripts" / "pave-host.py"
 
 
 def run_host(home, *args, source=PAVE, cwd=None):
@@ -61,6 +62,7 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     assert (runtime / "scripts" / "pave.sh").stat().st_mode & 0o111
     assert (runtime / "templates" / "config.yaml").exists()
     assert (runtime / "templates" / "config.codex.yaml").exists()
+    assert (runtime / "adapters" / "codex" / "config.py").exists()
     assert (runtime / "agents" / "builder.md").exists()
     help_text = installed_skill(home, "help").read_text()
     assert str(home / ".agents" / "skills" / "pave-*" / "SKILL.md") in help_text
@@ -69,7 +71,7 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     assert "`.claude/settings.json`" not in init_text
     assert "config.codex.yaml" in init_text
     assert "templates/config.codex.yaml" in init_text
-    assert "config-check codex" in init_text
+    assert "adapters/codex/config.py\" config-check" in init_text
     assert "config.yaml" not in init_text.replace("config.codex.yaml", "")
 
     hub = tmp_path / "hub"
@@ -77,18 +79,48 @@ def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
     (hub / ".pave-hub").write_text("")
     shutil.copy(runtime / "templates" / "config.codex.yaml", hub / "config.codex.yaml")
     lookup = subprocess.run(
-        [str(runtime / "scripts" / "pave.sh"), "agent", "builder", "codex"],
+        [str(runtime / "scripts" / "pave.sh"), "agent", "builder"],
         capture_output=True,
         text=True,
         cwd=hub,
     )
     assert lookup.returncode == 0, lookup.stderr
     assert lookup.stdout == "model=gpt-6-sol\neffort=medium\n"
+    check = subprocess.run(
+        [str(runtime / "scripts" / "pave.sh"), "config-check"],
+        capture_output=True,
+        text=True,
+        cwd=hub,
+    )
+    assert check.returncode == 0, check.stderr
+    assert "result: nothing to fix" in check.stdout
 
     data = json.loads(manifest(home).read_text())
     assert data["host"] == "codex"
-    assert data["pave_version"] == "0.8.0"
+    assert data["pave_version"] == "0.7.0"
     assert str(skill) in data["files"]
+
+
+def test_codex_runtime_does_not_write_claude_settings(tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    assert run_host(home, "install", "codex").returncode == 0
+    runtime = home / ".codex" / "pave" / "runtime"
+    hub = tmp_path / "hub"
+    service = tmp_path / "service"
+    hub.mkdir()
+    service.mkdir()
+    (hub / ".pave-hub").write_text("")
+    (hub / "workspace.yaml").write_text("services:\n")
+
+    result = subprocess.run(
+        [str(runtime / "scripts" / "pave.sh"), "add", str(service)],
+        capture_output=True,
+        text=True,
+        cwd=hub,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not (hub / ".claude" / "settings.json").exists()
 
 
 def test_codex_install_is_idempotent(tmp_path):
