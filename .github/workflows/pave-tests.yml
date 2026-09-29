@@ -6,12 +6,16 @@ on:
     paths:
       - "plugins/pave/scripts/**"
       - "plugins/pave/tests/**"
+      - "plugins/pave-installer/**"
+      - ".claude-plugin/marketplace.json"
       - ".github/workflows/pave-tests.yml"
   pull_request:
     branches: [main]
     paths:
       - "plugins/pave/scripts/**"
       - "plugins/pave/tests/**"
+      - "plugins/pave-installer/**"
+      - ".claude-plugin/marketplace.json"
       - ".github/workflows/pave-tests.yml"
 
 jobs:
@@ -32,8 +36,8 @@ jobs:
       - name: Install PyYAML
         if: matrix.pyyaml == 'with-pyyaml'
         run: pip install pyyaml
-      - name: Run pave tests
-        run: python3 -m pytest plugins/pave/tests
+      - name: Run Pave and Pave Installer tests
+        run: python3 -m pytest plugins/pave/tests plugins/pave-installer/tests
 
   shellcheck:
     runs-on: ubuntu-latest
