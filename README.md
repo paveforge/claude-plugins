@@ -10,17 +10,18 @@ Install Pave for Claude Code:
 ```
 
 Install the separate Pave Installer when you want to use Pave on another
-agentic coding platform:
+agentic coding platform (Codex or Kiro):
 
 ```
 /plugin install pave-installer@paveforge
-/pave-installer:install codex
+/pave-installer:install codex    # or: kiro
 ```
 
-Pave Installer owns all host conversion, installation, updates and removal;
-the Pave plugin remains Claude-specific. Add `project` to install into the
-current project. Remove managed adapter files with
-`/pave-installer:uninstall codex` (or append `project`).
+This installs one skill, `pave-setup`, for the current user. Run it in the
+platform (`$pave-setup` in Codex, `/pave-setup` in Kiro): it explains Pave and
+where its source is, and the platform builds its own Pave from it. The Pave
+plugin itself stays Claude-specific. Remove the skill with
+`/pave-installer:uninstall codex` (or `kiro`).
 
 ---
 

@@ -1,11 +1,11 @@
 {
   "name": "pave-installer",
   "displayName": "Pave Installer",
-  "version": "0.1.1",
-  "description": "Install, update, and safely uninstall Pave adapters for supported agentic coding platforms.",
+  "version": "1.0.0",
+  "description": "Install pave-setup, which builds Pave natively on other agentic coding platforms.",
   "author": {
     "name": "paveforge"
   },
   "repository": "https://github.com/paveforge/claude-plugins",
-  "keywords": ["pave", "installer", "codex", "agentic-coding"]
+  "keywords": ["pave", "installer", "codex", "kiro", "agentic-coding"]
 }
