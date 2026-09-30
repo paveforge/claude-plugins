@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Install and remove Pave adapters for supported coding-agent hosts.
+"""Install and remove the pave-setup skill for supported coding-agent hosts.
 
-The source Pave plugin remains authoritative. Host installations are generated
-from it and tracked by content hash so updates and removal never silently
-overwrite user edits.
+Pave Installer does not convert Pave. It installs one skill, pave-setup, that
+tells the host where the Pave source is and what must hold after the host
+converts it. Every installed file is tracked by content hash, so updates and
+removal never silently overwrite user edits.
 """
 
 from __future__ import annotations
@@ -13,20 +14,48 @@ import hashlib
 import json
 import os
 import re
-import shutil
+import shlex
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
+from urllib.parse import urlsplit, urlunsplit
 
 
-ROLES = ("analyst", "builder", "explorer", "planner", "retriever", "reviewer")
-READ_ONLY_ROLES = {"explorer", "retriever", "reviewer"}
-MANIFEST_VERSION = 1
+MANIFEST_VERSION = 2
+LEGACY_MANIFEST_VERSION = 1
+PLACEHOLDER = re.compile(r"@@[A-Z_]+@@")
 
 
 class HostError(Exception):
     pass
+
+
+def home() -> Path:
+    raw = os.environ.get("HOME", "")
+    if not raw:
+        raise HostError("HOME is not set")
+    return Path(raw).expanduser()
+
+
+def codex_home() -> Path:
+    return Path(os.environ.get("CODEX_HOME", str(home() / ".codex"))).expanduser()
+
+
+@dataclass(frozen=True)
+class Host:
+    name: str
+    title: str
+    invoke: str
+    home: Callable[[], Path]
+    skills: Callable[[], Path]
+
+
+HOSTS = {
+    "codex": Host("codex", "Codex", "$pave-setup", codex_home, lambda: home() / ".agents" / "skills"),
+    "kiro": Host("kiro", "Kiro", "/pave-setup", lambda: home() / ".kiro", lambda: home() / ".kiro" / "skills"),
+}
 
 
 @dataclass(frozen=True)
@@ -40,32 +69,20 @@ class Target:
         return hashlib.sha256(self.content).hexdigest()
 
 
+@dataclass(frozen=True)
+class Source:
+    local: Path
+    version: str
+    repository: str
+    commit: str
+
+
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
     return h.hexdigest()
-
-
-def beneath(path: Path, root: Path) -> bool:
-    try:
-        path.resolve().relative_to(root.resolve())
-        return True
-    except ValueError:
-        return False
-
-
-def managed_path(path: Path, skills: Path, agents: Path, runtime: Path) -> bool:
-    if beneath(path, runtime):
-        return True
-    if path.parent == agents and path.name.startswith("pave_") and path.suffix == ".toml":
-        return True
-    try:
-        rel = path.relative_to(skills)
-    except ValueError:
-        return False
-    return len(rel.parts) >= 2 and rel.parts[0].startswith("pave-")
 
 
 def plugin_root() -> Path:
@@ -76,368 +93,121 @@ def default_pave_source() -> Path:
     return plugin_root().parent / "pave"
 
 
-def plugin_version(source: Path) -> str:
-    path = source / ".claude-plugin" / "plugin.json"
+def setup_dir(host: Host) -> Path:
+    return host.skills() / "pave-setup"
+
+
+def manifest_path(host: Host) -> Path:
+    return host.home() / "pave-installer" / "install.json"
+
+
+def git(source: Path, *args: str) -> str:
     try:
-        return str(json.loads(path.read_text(encoding="utf-8"))["version"])
+        result = subprocess.run(
+            ["git", "-C", str(source), *args], capture_output=True, text=True
+        )
+    except OSError:
+        return ""
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def https_url(raw: str) -> str:
+    """Return raw as an HTTPS URL without credentials, or '' if it is not HTTPS."""
+    parts = urlsplit(raw.strip())
+    if parts.scheme != "https" or not parts.hostname:
+        return ""
+    netloc = parts.hostname + (f":{parts.port}" if parts.port else "")
+    return urlunsplit(("https", netloc, parts.path, "", ""))
+
+
+def read_source(local: Path) -> Source:
+    path = local / ".claude-plugin" / "plugin.json"
+    try:
+        meta = json.loads(path.read_text(encoding="utf-8"))
+        version = str(meta["version"])
     except (OSError, KeyError, ValueError) as e:
         raise HostError(f"cannot read Pave version from {path}: {e}") from e
+    repository = https_url(git(local, "remote", "get-url", "origin"))
+    commit = git(local, "rev-parse", "HEAD") if repository else ""
+    if not repository:
+        repository = https_url(str(meta.get("repository", "")))
+    if not repository:
+        raise HostError(
+            f"no HTTPS repository for Pave: neither the git remote of {local} "
+            f"nor the repository in {path} is an https:// URL"
+        )
+    return Source(local, version, repository, commit)
 
 
-def frontmatter(text: str) -> tuple[dict[str, str], str]:
-    if not text.startswith("---\n"):
-        raise HostError("Markdown file has no frontmatter")
-    end = text.find("\n---\n", 4)
-    if end < 0:
-        raise HostError("Markdown frontmatter is not closed")
-    values: dict[str, str] = {}
-    for line in text[4:end].splitlines():
-        key, sep, value = line.partition(":")
-        if sep:
-            values[key.strip()] = value.strip()
-    return values, text[end + 5 :]
+def render(template: Path, values: dict[str, str]) -> bytes:
+    text = template.read_text(encoding="utf-8")
+    for key, value in values.items():
+        text = text.replace(f"@@{key}@@", value)
+    left = PLACEHOLDER.findall(text)
+    if left:
+        raise HostError(f"unfilled placeholders in {template.name}: {', '.join(sorted(set(left)))}")
+    return text.encode()
 
 
-def codex_text(text: str, runtime: Path) -> str:
-    roles = "|".join(ROLES)
-    text = re.sub(
-        rf'(?:"\$\{{CLAUDE_PLUGIN_ROOT\}}"/scripts/)?pave\.sh agent ({roles})',
-        lambda m: f'python3 "{runtime}/adapters/codex/config.py" agent {m.group(1)}',
-        text,
+def setup_targets(host: Host, source: Source) -> list[Target]:
+    templates = plugin_root() / "templates" / "pave-setup"
+    folder = setup_dir(host)
+    script = folder / "pave-installer.sh"
+    skill = render(
+        templates / "SKILL.md",
+        {
+            "HOST": host.name,
+            "HOST_TITLE": host.title,
+            "HOST_HOME": str(host.home()),
+            "SKILLS_DIR": str(host.skills()),
+            "SCRIPT": str(script),
+        },
     )
-    text = text.replace("${CLAUDE_PLUGIN_ROOT}", str(runtime))
-    text = text.replace("$ARGUMENTS", "{arguments}")
-    text = re.sub(r"/pave:([a-z]+)", r"$pave-\1", text)
-    text = text.replace("Claude's Artifact tool", "the host's artifact tool")
-    text = text.replace("`SendMessage`", "the host's agent messaging tool")
-    for role in ROLES:
-        text = text.replace(f"`{role}`", f"`pave_{role}`")
-    return text
-
-
-def codex_host_text(text: str, runtime: Path) -> str:
-    """Translate user-facing hub references for the Codex host."""
-    text = codex_text(text, runtime)
-    text = re.sub(
-        r"\bconfig\.(?!codex\.)(toml|yaml|yml)\b",
-        r"config.codex.\1",
-        text,
+    runner = render(
+        templates / "pave-installer.sh",
+        {
+            "LOCAL": shlex.quote(str(source.local)),
+            "VERSION": shlex.quote(source.version),
+            "REPOSITORY": shlex.quote(source.repository),
+            "COMMIT": shlex.quote(source.commit),
+            "REINSTALL": shlex.quote(f"/pave-installer:install {host.name}"),
+        },
     )
-    text = re.sub(
-        r'(?:"[^"\n]+"/scripts/)?pave\.sh config-check',
-        f'python3 "{runtime}/adapters/codex/config.py" config-check',
-        text,
-    )
-    return text
+    return [Target(folder / "SKILL.md", skill), Target(script, runner, executable=True)]
 
 
-def replace_required(text: str, old: str, new: str, context: str) -> str:
-    if old not in text:
-        raise HostError(f"Codex rewrite anchor missing in {context}: {old!r}")
-    return text.replace(old, new)
-
-
-def sub_required(text: str, pattern: str, replacement: str, context: str, flags: int = 0) -> str:
-    rewritten, count = re.subn(pattern, replacement, text, flags=flags)
-    if not count:
-        raise HostError(f"Codex rewrite anchor missing in {context}: {pattern!r}")
-    return rewritten
-
-
-def codex_runtime_script(text: str, runtime: Path) -> str:
-    """Remove Claude-only settings writes from the installed Pave runtime."""
-    text = codex_text(text, runtime)
-    # A translated skill name is literal text in Bash diagnostics, not a
-    # variable expansion (the runtime uses set -u).
-    text = re.sub(
-        r'\bdie "[^"\n]*"',
-        lambda match: match.group().replace("$pave-", r"\$pave-"),
-        text,
-    )
-    text = replace_required(
-        text, '  local settings="$hub/.claude/settings.json"\n', "", "pave.sh settings"
-    )
-    text = sub_required(
-        text,
-        r"\n    if have_python; then\n"
-        r"      PAVE_DIR=.*?"
-        r"\n    fi\n",
-        "\n",
-        "pave.sh settings write",
-        flags=re.DOTALL,
-    )
-    text = sub_required(
-        text,
-        r"# agent <name>\n.*?(?=# find_config <hub>)",
-        """# agent <name>
-# Delegates host policy to the Codex adapter installed beside this runtime.
-cmd_agent() {
-  [ $# -eq 1 ] || die "usage: pave.sh agent <name>"
-  python3 "$SCRIPTS/../adapters/codex/config.py" agent "$1"
-}
-
-# config-check
-cmd_config_check() {
-  [ $# -eq 0 ] || die "usage: pave.sh config-check"
-  python3 "$SCRIPTS/../adapters/codex/config.py" config-check
-}
-
-""",
-        "pave.sh agent dispatch",
-        flags=re.DOTALL,
-    )
-    return text
-
-
-def codex_skill(source_skill: Path, runtime: Path, skill_root: Path) -> bytes:
-    meta, body = frontmatter(source_skill.read_text(encoding="utf-8"))
-    name = meta.get("name", source_skill.parent.name)
-    description = codex_host_text(meta.get("description", "Pave workflow"), runtime)
-    if name == "add":
-        description = replace_required(
-            description,
-            "and grants Claude access to it",
-            "for use by Pave on Codex",
-            "add skill description",
-        )
-        body = replace_required(
-            body,
-            "Run the script. It does the whole job:",
-            "Run the deterministic registration script. Codex access to sibling service\n"
-            "folders follows the sandbox and permission mode selected for this session:",
-            "add skill registration",
-        )
-        body = replace_required(
-            body,
-            "absolute path, append to `workspace.yaml`, merge into `additionalDirectories`.",
-            "absolute path and append to `workspace.yaml`. Filesystem access is controlled\n"
-            "by the current Codex permission profile.",
-            "add skill access",
-        )
-        body = sub_required(
-            body,
-            r"\| `WARN` \| `settings\.json`.*?\n",
-            "",
-            "add skill settings warning",
-        )
-        body = replace_required(
-            body,
-            "Do not edit `workspace.yaml` or `settings.json` yourself.",
-            "Do not edit `workspace.yaml` yourself.",
-            "add skill settings",
-        )
-        body += (
-            "\n## Codex access after registration\n\n"
-            "Run the following after the registration script, from the hub:\n\n"
-            "```bash\n"
-            f'python3 "{runtime}/adapters/codex/config.py" access\n'
-            "```\n\n"
-            "Pass its complete output to the user. The `--add-dir` flags are for a "
-            "new Codex CLI session; in the app or IDE, the same service roots "
-            "must be writable in the parent session. Registration does not "
-            "change Codex permissions. Never claim a service is writable "
-            "because `$pave-add` registered it.\n"
-        )
-    elif name == "build":
-        body = replace_required(
-            body,
-            "Set the feature to `building` before spawning anything.",
-            "Before changing the feature status or spawning a builder, confirm "
-            "the parent Codex session can write every target service repo. "
-            "Run this from the hub to list the required writable roots:\n\n"
-            "```bash\n"
-            f'python3 "{runtime}/adapters/codex/config.py" access\n'
-            "```\n\n"
-            "If a target repo is outside the active writable roots, stop and "
-            "pass on the command and paths printed by the script. Start a "
-            "new CLI session with its `--add-dir` flags, or add the paths to "
-            "the app/IDE session's writable roots. Subagents inherit the "
-            "parent's permissions; do not spawn a builder that cannot write "
-            "its repo. File existence or OS permissions alone do not prove "
-            "Codex sandbox access.\n\n"
-            "Set the feature to `building` before spawning anything.",
-            "build skill access gate",
-        )
-    elif name == "init":
-        body = sub_required(
-            body, r"\| `\.claude/settings\.json` \|.*?\n", "", "init skill settings row"
-        )
-        body = replace_required(
-            body,
-            "`.claude/settings.json` belongs to Claude Code, not to Pave. Merge into it;\n"
-            "never replace it.\n\n",
-            "",
-            "init skill settings prose",
-        )
-    elif name == "help":
-        body = replace_required(
-            body,
-            "`${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md`",
-            f"`{skill_root}/pave-*/SKILL.md`",
-            "help skill listing",
-        )
-    elif name == "learn":
-        body = replace_required(
-            body,
-            "${CLAUDE_PLUGIN_ROOT}/skills/query/SKILL.md",
-            str(skill_root / "pave-query" / "SKILL.md"),
-            "learn skill query procedure",
-        )
-    prefix = (
-        "\nCodex adapter rules:\n"
-        "- `{arguments}` in a command is a placeholder. Replace it with the "
-        "arguments from the user's invocation, shell-quoted safely; never run "
-        "the placeholder literally.\n"
-        "- For every Pave subagent spawn, select the `pave_<role>` custom "
-        "agent and run the command below for that role immediately before "
-        "spawning. Pass its `model` as an explicit spawn model and its "
-        "`effort` as the explicit reasoning effort (the spawn tool may name "
-        "that field `reasoning_effort` or `model_reasoning_effort`). "
-        "Do not rely on the parent model or a default in the agent file. "
-        "If either value cannot be passed, stop and report that this Codex "
-        "session cannot enforce the hub's `agents.<role>` policy; do not "
-        "spawn or continue the Pave phase with inherited values.\n"
-        f'- Role lookup: `python3 "{runtime}/adapters/codex/config.py" agent <role>`.\n'
-    )
-    rendered = (
-        "---\n"
-        f"name: pave-{name}\n"
-        f"description: {description}\n"
-        "---\n"
-        + prefix
-        + codex_host_text(body, runtime)
-    )
-    return rendered.encode()
-
-
-def toml_string(value: str) -> str:
-    return json.dumps(value, ensure_ascii=False)
-
-
-def codex_agent(source_agent: Path) -> bytes:
-    meta, body = frontmatter(source_agent.read_text(encoding="utf-8"))
-    role = meta.get("name", source_agent.stem)
-    description = codex_text(meta.get("description", f"Pave {role}"), Path("<PAVE_RUNTIME>"))
-    instructions = codex_text(body, Path("<PAVE_RUNTIME>"))
-    rows = [
-        f'name = "pave_{role}"',
-        f"description = {toml_string(description)}",
-    ]
-    if role in READ_ONLY_ROLES:
-        rows.append('sandbox_mode = "read-only"')
-    rows.extend(("developer_instructions = '''", instructions.rstrip(), "'''", ""))
-    return "\n".join(rows).encode()
-
-
-def install_paths(scope: str, project_root: Optional[Path]) -> tuple[Path, Path, Path, Path]:
-    if scope == "user":
-        home = Path(os.environ.get("HOME", "")).expanduser()
-        if not str(home):
-            raise HostError("HOME is not set")
-        codex_home = Path(os.environ.get("CODEX_HOME", str(home / ".codex"))).expanduser()
-        skill_root = home / ".agents" / "skills"
-        agent_root = codex_home / "agents"
-        state_root = codex_home / "pave"
-    else:
-        root = (project_root or Path.cwd()).resolve()
-        skill_root = root / ".agents" / "skills"
-        agent_root = root / ".codex" / "agents"
-        state_root = root / ".codex" / "pave"
-    return skill_root, agent_root, state_root / "runtime", state_root / "install.json"
-
-
-def native_plugin_path(scope: str, project_root: Optional[Path]) -> Path:
-    if scope == "user":
-        home = Path(os.environ.get("HOME", "")).expanduser()
-        codex_home = Path(os.environ.get("CODEX_HOME", str(home / ".codex"))).expanduser()
-        return codex_home / "plugins" / "pave"
-    return (project_root or Path.cwd()).resolve() / "plugins" / "pave"
-
-
-def codex_targets(source: Path, scope: str, project_root: Optional[Path]) -> tuple[list[Target], Path]:
-    skills, agents, runtime, manifest = install_paths(scope, project_root)
-    targets: list[Target] = []
-
-    for skill in sorted((source / "skills").glob("*/SKILL.md")):
-        if skill.parent.name in {"install", "uninstall"}:
-            continue
-        dest_dir = skills / f"pave-{skill.parent.name}"
-        targets.append(Target(dest_dir / "SKILL.md", codex_skill(skill, runtime, skills)))
-        for extra in sorted(skill.parent.rglob("*")):
-            if extra.is_file() and extra.name != "SKILL.md":
-                rel = extra.relative_to(skill.parent)
-                if extra.suffix in {".md", ".txt", ".yaml", ".yml", ".toml", ".json"}:
-                    content = codex_text(extra.read_text(encoding="utf-8"), runtime).encode()
-                else:
-                    content = extra.read_bytes()
-                targets.append(Target(dest_dir / rel, content))
-
-    for agent in sorted((source / "agents").glob("*.md")):
-        targets.append(Target(agents / f"pave_{agent.stem}.toml", codex_agent(agent)))
-
-    for folder in ("agents", "scripts", "templates", "reference"):
-        for item in sorted((source / folder).rglob("*")):
-            if not item.is_file() or "__pycache__" in item.parts:
-                continue
-            rel = item.relative_to(source)
-            content = item.read_bytes()
-            if folder == "scripts" and item.name == "pave.sh":
-                content = codex_runtime_script(content.decode(), runtime).encode()
-            elif folder == "scripts" and (item.suffix == ".py" or item.name in {
-                "toml-reader",
-                "yaml-reader",
-            }):
-                content = codex_text(content.decode(), runtime).encode()
-            elif folder == "templates" and (
-                item.name == "hub-AGENTS.md" or item.name.startswith("config.codex.")
-            ):
-                content = codex_host_text(content.decode(), runtime).encode()
-            elif folder == "reference" and item.suffix == ".md":
-                content = codex_host_text(content.decode(), runtime).encode()
-            targets.append(Target(runtime / rel, content, os.access(item, os.X_OK)))
-
-    installer = plugin_root()
-    codex_config = installer / "templates" / "config.codex.yaml"
-    config_adapter = installer / "adapters" / "codex" / "config.py"
-    targets.append(
-        Target(
-            runtime / "templates" / "config.codex.yaml",
-            codex_host_text(codex_config.read_text(encoding="utf-8"), runtime).encode(),
-        )
-    )
-    targets.append(
-        Target(
-            runtime / "adapters" / "codex" / "config.py",
-            config_adapter.read_bytes(),
-            executable=True,
-        )
-    )
-
-    portable_manifest = {
-        "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-        "name": "pave",
-        "version": plugin_version(source),
-        "description": "Plan cross-service features and build them with isolated agents.",
-    }
-    targets.append(
-        Target(
-            runtime / "plugin.json",
-            (json.dumps(portable_manifest, indent=2) + "\n").encode(),
-        )
-    )
-    return targets, manifest
-
-
-def load_manifest(path: Path) -> dict:
+def load_manifest(path: Path, version: int) -> dict:
     if not path.exists():
-        return {"manifest_version": MANIFEST_VERSION, "files": {}}
+        return {"manifest_version": version, "files": {}}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
         raise HostError(f"cannot read installation manifest {path}: {e}") from e
-    if data.get("manifest_version") != MANIFEST_VERSION or not isinstance(data.get("files"), dict):
+    if data.get("manifest_version") != version or not isinstance(data.get("files"), dict):
         raise HostError(f"unsupported installation manifest {path}")
     return data
+
+
+def write_manifest(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def beneath(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def state_of(path: Path, recorded: Optional[str]) -> str:
+    """How an installed file compares with what the manifest recorded."""
+    if path.is_symlink():
+        return "preserve"
+    if not path.exists():
+        return "missing"
+    return "remove" if sha256(path) == recorded else "preserve"
 
 
 def classify(target: Target, old_files: dict[str, dict]) -> str:
@@ -453,85 +223,6 @@ def classify(target: Target, old_files: dict[str, dict]) -> str:
     return "update" if previous and current == previous else "conflict"
 
 
-def install(source: Path, scope: str, project_root: Optional[Path], apply: bool) -> int:
-    targets, manifest_path = codex_targets(source, scope, project_root)
-    skills, agents, runtime, _ = install_paths(scope, project_root)
-    native = native_plugin_path(scope, project_root)
-    if not manifest_path.exists() and native.exists():
-        raise HostError(
-            f"Pave appears to be installed through the Codex plugin manager at {native}; "
-            "update it through that manager"
-        )
-    old = load_manifest(manifest_path)
-    old_files = old.get("files", {})
-    for raw in old_files:
-        if not managed_path(Path(raw), skills, agents, runtime):
-            raise HostError(f"manifest contains a path outside the Codex adapter: {raw}")
-    desired = {str(t.path): t for t in targets}
-    actions = [(classify(t, old_files), t) for t in targets]
-
-    obsolete: list[tuple[str, Path]] = []
-    for raw, info in old_files.items():
-        if raw in desired:
-            continue
-        path = Path(raw)
-        if path.is_symlink():
-            state = "preserve"
-        elif not path.exists():
-            state = "missing"
-        elif sha256(path) == info.get("sha256"):
-            state = "remove"
-        else:
-            state = "preserve"
-        obsolete.append((state, path))
-
-    verb = "install" if apply else "plan"
-    print(f"{verb}: codex ({scope})")
-    for action, target in actions:
-        print(f"{action:<9} {target.path}")
-    for action, path in obsolete:
-        print(f"{action:<9} {path} (obsolete)")
-
-    if not apply:
-        return 0
-
-    recorded = dict(old_files)
-    for action, target in actions:
-        if action in {"create", "update"}:
-            target.path.parent.mkdir(parents=True, exist_ok=True)
-            target.path.write_bytes(target.content)
-            if target.executable:
-                target.path.chmod(target.path.stat().st_mode | 0o111)
-        if action != "conflict":
-            recorded[str(target.path)] = {
-                "sha256": target.digest,
-                "executable": target.executable,
-            }
-    for action, path in obsolete:
-        if action in {"remove", "missing"}:
-            if action == "remove":
-                path.unlink()
-            recorded.pop(str(path), None)
-
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    data = {
-        "manifest_version": MANIFEST_VERSION,
-        "host": "codex",
-        "scope": scope,
-        "pave_version": plugin_version(source),
-        "source": str(source),
-        "files": recorded,
-    }
-    manifest_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"manifest  {manifest_path}")
-    conflicts = [str(t.path) for a, t in actions if a == "conflict"]
-    if conflicts:
-        print("result: installed with conflicts; preserved modified files", file=sys.stderr)
-        return 2
-    print("result: installed; start a new Codex session if the skills are not visible")
-    return 0
-
-
 def empty_parents(path: Path, stops: set[Path]) -> None:
     parent = path.parent
     while parent not in stops and parent != parent.parent:
@@ -542,58 +233,157 @@ def empty_parents(path: Path, stops: set[Path]) -> None:
         parent = parent.parent
 
 
-def uninstall(scope: str, project_root: Optional[Path], apply: bool) -> int:
-    skills, agents, runtime, manifest_path = install_paths(scope, project_root)
-    if not manifest_path.exists():
-        native = native_plugin_path(scope, project_root)
-        if native.exists():
-            raise HostError(
-                f"Pave appears to be installed through the Codex plugin manager at {native}; "
-                "uninstall it through that manager"
-            )
-        raise HostError(f"no Pave-managed Codex installation at {manifest_path}")
-    data = load_manifest(manifest_path)
-    files = data["files"]
-    actions: list[tuple[str, Path]] = []
-    for raw, info in sorted(files.items()):
-        path = Path(raw)
-        if not managed_path(path, skills, agents, runtime):
-            raise HostError(f"manifest contains a path outside the Codex adapter: {path}")
-        if path.is_symlink():
-            action = "preserve"
-        elif not path.exists():
-            action = "missing"
-        elif sha256(path) == info.get("sha256"):
-            action = "remove"
-        else:
-            action = "preserve"
-        actions.append((action, path))
+# Pave Installer 0.1 generated Codex skills, agents and a runtime itself. Its
+# manifest lives in $CODEX_HOME/pave/install.json; those files are removed
+# once, keeping any the user edited.
+def legacy_manifest(host: Host) -> Optional[Path]:
+    return host.home() / "pave" / "install.json" if host.name == "codex" else None
 
-    verb = "uninstall" if apply else "plan"
-    print(f"{verb}: codex ({scope})")
+
+def legacy_managed(path: Path, host: Host) -> bool:
+    skills, agents = host.skills(), host.home() / "agents"
+    if beneath(path, host.home() / "pave" / "runtime"):
+        return True
+    if path.parent == agents and path.name.startswith("pave_") and path.suffix == ".toml":
+        return True
+    try:
+        rel = path.relative_to(skills)
+    except ValueError:
+        return False
+    return len(rel.parts) >= 2 and rel.parts[0].startswith("pave-") and rel.parts[0] != "pave-setup"
+
+
+def legacy_actions(host: Host) -> list[tuple[str, Path]]:
+    path = legacy_manifest(host)
+    if path is None or not path.exists():
+        return []
+    files = load_manifest(path, LEGACY_MANIFEST_VERSION)["files"]
+    actions = []
+    for raw, info in sorted(files.items()):
+        file = Path(raw)
+        if not legacy_managed(file, host):
+            raise HostError(f"legacy manifest {path} contains a path outside the old Codex adapter: {raw}")
+        actions.append((state_of(file, info.get("sha256")), file))
+    return actions
+
+
+def apply_legacy(host: Host, actions: list[tuple[str, Path]]) -> list[Path]:
+    """Remove unchanged legacy files. Return the ones preserved."""
+    path = legacy_manifest(host)
+    if path is None or not actions:
+        return []
+    data = load_manifest(path, LEGACY_MANIFEST_VERSION)
+    stops = {host.skills(), host.home() / "agents", path.parent}
+    preserved = []
+    for action, file in actions:
+        if action == "preserve":
+            preserved.append(file)
+            continue
+        if action == "remove":
+            file.unlink()
+        empty_parents(file, stops)
+    if preserved:
+        data["files"] = {str(f): data["files"][str(f)] for f in preserved}
+        write_manifest(path, data)
+    else:
+        path.unlink()
+        empty_parents(path, {host.home()})
+    return preserved
+
+
+def print_legacy(actions: list[tuple[str, Path]]) -> None:
     for action, path in actions:
-        print(f"{action:<9} {path}")
+        print(f"{action:<9} {path} (Pave Installer 0.1)")
+
+
+def install(host: Host, local: Path, apply: bool) -> int:
+    source = read_source(local)
+    targets = setup_targets(host, source)
+    manifest = manifest_path(host)
+    old_files = load_manifest(manifest, MANIFEST_VERSION)["files"]
+    folder = setup_dir(host)
+    for raw in old_files:
+        if not beneath(Path(raw), folder):
+            raise HostError(f"manifest {manifest} contains a path outside {folder}: {raw}")
+    legacy = legacy_actions(host)
+    actions = [(classify(t, old_files), t) for t in targets]
+
+    print(f"{'install' if apply else 'plan'}: pave-setup for {host.title}")
+    print(f"source    Pave {source.version} at {source.local}")
+    print(f"fallback  {source.repository}" + (f" at {source.commit}" if source.commit else ""))
+    for action, target in actions:
+        print(f"{action:<9} {target.path}")
+    print_legacy(legacy)
     if not apply:
         return 0
 
-    remaining: dict[str, dict] = {}
-    managed_stops = {skills, agents, manifest_path.parent}
+    preserved = apply_legacy(host, legacy)
+    recorded = dict(old_files)
+    for action, target in actions:
+        if action in {"create", "update"}:
+            target.path.parent.mkdir(parents=True, exist_ok=True)
+            target.path.write_bytes(target.content)
+            if target.executable:
+                target.path.chmod(target.path.stat().st_mode | 0o111)
+        if action != "conflict":
+            recorded[str(target.path)] = {"sha256": target.digest}
+    write_manifest(
+        manifest,
+        {
+            "manifest_version": MANIFEST_VERSION,
+            "host": host.name,
+            "pave_version": source.version,
+            "files": recorded,
+        },
+    )
+    print(f"manifest  {manifest}")
+    conflicts = [str(t.path) for a, t in actions if a == "conflict"]
+    if conflicts or preserved:
+        print("result: installed; preserved files the user edited", file=sys.stderr)
+        return 2
+    print(f"result: installed; run {host.invoke} in {host.title} to build Pave")
+    return 0
+
+
+def uninstall(host: Host, apply: bool) -> int:
+    manifest = manifest_path(host)
+    legacy = legacy_actions(host)
+    if not manifest.exists() and not legacy:
+        raise HostError(f"no pave-setup installed by Pave Installer for {host.title} ({manifest})")
+    data = load_manifest(manifest, MANIFEST_VERSION)
+    folder = setup_dir(host)
+    actions = []
+    for raw, info in sorted(data["files"].items()):
+        path = Path(raw)
+        if not beneath(path, folder):
+            raise HostError(f"manifest {manifest} contains a path outside {folder}: {raw}")
+        actions.append((state_of(path, info.get("sha256")), path))
+
+    print(f"{'uninstall' if apply else 'plan'}: pave-setup for {host.title}")
     for action, path in actions:
+        print(f"{action:<9} {path}")
+    print_legacy(legacy)
+    if not apply:
+        return 0
+
+    preserved = apply_legacy(host, legacy)
+    remaining = {}
+    for action, path in actions:
+        if action == "preserve":
+            remaining[str(path)] = data["files"][str(path)]
+            continue
         if action == "remove":
             path.unlink()
-            empty_parents(path, managed_stops)
-        elif action == "preserve":
-            remaining[str(path)] = files[str(path)]
+        empty_parents(path, {host.skills()})
     if remaining:
         data["files"] = remaining
-        manifest_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print("result: partial uninstall; preserved modified files", file=sys.stderr)
+        write_manifest(manifest, data)
+    elif manifest.exists():
+        manifest.unlink()
+        empty_parents(manifest, {host.home()})
+    if remaining or preserved:
+        print("result: partial uninstall; preserved files the user edited", file=sys.stderr)
         return 2
-    manifest_path.unlink()
-    empty_parents(
-        manifest_path,
-        {skills, agents, agents.parent, Path.home(), Path.cwd().resolve()},
-    )
     print("result: uninstalled")
     return 0
 
@@ -601,26 +391,18 @@ def uninstall(scope: str, project_root: Optional[Path], apply: bool) -> int:
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("action", choices=("plan-install", "install", "plan-uninstall", "uninstall"))
-    p.add_argument("host", choices=("codex",))
-    p.add_argument("--scope", choices=("user", "project"), default="user")
-    p.add_argument("--project-root", type=Path)
+    p.add_argument("host", choices=tuple(HOSTS))
     p.add_argument("--source-root", type=Path, default=default_pave_source(), help=argparse.SUPPRESS)
     return p
 
 
 def main() -> int:
     args = parser().parse_args()
+    host = HOSTS[args.host]
     try:
-        if args.scope == "user" and args.project_root:
-            raise HostError("--project-root requires --scope project")
         if args.action in {"plan-install", "install"}:
-            return install(
-                args.source_root.resolve(),
-                args.scope,
-                args.project_root,
-                args.action == "install",
-            )
-        return uninstall(args.scope, args.project_root, args.action == "uninstall")
+            return install(host, args.source_root.resolve(), args.action == "install")
+        return uninstall(host, args.action == "uninstall")
     except HostError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

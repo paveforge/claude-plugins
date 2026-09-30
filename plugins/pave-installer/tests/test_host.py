@@ -1,60 +1,96 @@
 import hashlib
 import json
 import os
-import shlex
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 INSTALLER = Path(__file__).resolve().parents[1]
 PAVE = INSTALLER.parent / "pave"
 HOST = INSTALLER / "scripts" / "pave-host.py"
+VERSION = json.loads((PAVE / ".claude-plugin" / "plugin.json").read_text())["version"]
+GIT_ENV = {
+    "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com",
+    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_COUNT": "0",
+}
+SKILLS = {"codex": (".agents", "skills"), "kiro": (".kiro", "skills")}
+HOMES = {"codex": (".codex",), "kiro": (".kiro",)}
 
 
-def run_host(home, *args, source=PAVE, cwd=None):
-    env = {
-        **os.environ,
-        "HOME": str(home),
-        "CODEX_HOME": str(home / ".codex"),
-    }
+def run_host(home, *args, source=PAVE):
+    env = {**os.environ, **GIT_ENV, "HOME": str(home), "CODEX_HOME": str(home / ".codex")}
     return subprocess.run(
         [sys.executable, str(HOST), *args, "--source-root", str(source)],
-        capture_output=True,
-        text=True,
-        cwd=str(cwd or home),
-        env=env,
+        capture_output=True, text=True, cwd=str(home), env=env,
     )
 
 
-def installed_skill(home, name="spec"):
-    return home / ".agents" / "skills" / f"pave-{name}" / "SKILL.md"
+def setup_dir(home, host):
+    return home.joinpath(*SKILLS[host], "pave-setup")
 
 
-def manifest(home):
-    return home / ".codex" / "pave" / "install.json"
+def manifest(home, host):
+    return home.joinpath(*HOMES[host], "pave-installer", "install.json")
 
 
-def copy_source(tmp_path):
-    source = tmp_path / "source"
-    shutil.copytree(PAVE, source)
+def git(cwd, *args):
+    return subprocess.run(
+        ["git", *args], cwd=str(cwd), capture_output=True, text=True, check=True,
+        env={**os.environ, **GIT_ENV},
+    ).stdout.strip()
+
+
+def git_source(tmp_path, remote="https://github.com/example/pave.git"):
+    """A repository holding plugins/pave, as the marketplace download does."""
+    repo = tmp_path / "repo"
+    shutil.copytree(PAVE, repo / "plugins" / "pave", ignore=shutil.ignore_patterns("__pycache__"))
+    git(repo, "init", "--quiet")
+    git(repo, "add", ".")
+    git(repo, "commit", "--quiet", "-m", "pave")
+    git(repo, "remote", "add", "origin", remote)
+    return repo
+
+
+def plain_source(tmp_path, repository=None):
+    source = tmp_path / "plain" / "pave"
+    shutil.copytree(PAVE, source, ignore=shutil.ignore_patterns("__pycache__"))
+    if repository is not None:
+        meta_path = source / ".claude-plugin" / "plugin.json"
+        meta = json.loads(meta_path.read_text())
+        meta["repository"] = repository
+        meta_path.write_text(json.dumps(meta))
     return source
 
 
-def test_codex_template_has_same_config_keys_as_pave():
-    comparison = subprocess.run(
-        [
-            sys.executable,
-            str(PAVE / "scripts" / "pave-config.py"),
-            str(INSTALLER / "templates" / "config.codex.yaml"),
-            str(PAVE / "templates" / "config.yaml"),
-        ],
-        capture_output=True,
-        text=True,
-    )
-    assert comparison.returncode == 0, comparison.stderr
-    assert "result: nothing to fix" in comparison.stdout
+def script_values(script):
+    text = script.read_text()
+    return dict(re.findall(r"^(PAVE_[A-Z]+)=(.*)$", text, flags=re.M))
+
+
+def with_values(script, dest, **values):
+    """Copy an installed pave-installer.sh with some values replaced."""
+    text = script.read_text()
+    for key, value in values.items():
+        text = re.sub(rf"^{key}=.*$", f"{key}='{value}'", text, flags=re.M)
+    dest.write_text(text)
+    return dest
+
+
+def locate(script, env=None, tmpdir=None):
+    run_env = {**os.environ, **GIT_ENV, **(env or {})}
+    if tmpdir:
+        run_env["TMPDIR"] = str(tmpdir)
+    return subprocess.run(["/bin/bash", str(script), "locate"], capture_output=True, text=True, env=run_env)
+
+
+def reported(result):
+    return dict(line.split("=", 1) for line in result.stdout.splitlines())
 
 
 def test_marketplace_versions_match_sources():
@@ -65,304 +101,341 @@ def test_marketplace_versions_match_sources():
         assert listed["version"] == source["version"]
 
 
-def test_codex_install_generates_skills_agents_and_runtime(tmp_path):
+@pytest.mark.parametrize("host,title,invoke", [("codex", "Codex", "$pave-setup"), ("kiro", "Kiro", "/pave-setup")])
+def test_install_writes_only_pave_setup(tmp_path, host, title, invoke):
     home = tmp_path / "home"
     home.mkdir()
-    result = run_host(home, "install", "codex")
+    result = run_host(home, "install", host, source=git_source(tmp_path) / "plugins" / "pave")
     assert result.returncode == 0, result.stderr
+    assert f"run {invoke} in {title}" in result.stdout
 
-    skill = installed_skill(home)
-    text = skill.read_text()
-    assert "name: pave-spec" in text
-    assert "${CLAUDE_PLUGIN_ROOT}" not in text
-    assert "$pave-plan" in text
-    assert "{arguments}" in text
+    folder = setup_dir(home, host)
+    assert sorted(p.name for p in folder.iterdir()) == ["SKILL.md", "pave-installer.sh"]
+    skill = (folder / "SKILL.md").read_text()
+    script = folder / "pave-installer.sh"
+    for text in (skill, script.read_text()):
+        assert "@@" not in text
+    assert skill.startswith("---\nname: pave-setup\n")
+    assert f"Pave setup for {title}" in skill
+    assert f"config.{host}.yaml" in skill
+    assert str(script) in skill
+    assert str(home.joinpath(*HOMES[host])) in skill
+    assert script.stat().st_mode & 0o111
 
-    agent = home / ".codex" / "agents" / "pave_builder.toml"
-    agent_text = agent.read_text()
-    assert 'name = "pave_builder"' in agent_text
-    assert "task document" in agent_text
-    assert 'model = ' not in agent_text
-    assert 'model_reasoning_effort = ' not in agent_text
-    runtime = home / ".codex" / "pave" / "runtime"
-    assert (runtime / "scripts" / "pave.sh").stat().st_mode & 0o111
-    assert (runtime / "templates" / "config.yaml").exists()
-    assert (runtime / "templates" / "config.codex.yaml").exists()
-    assert (runtime / "adapters" / "codex" / "config.py").exists()
-    assert (runtime / "agents" / "builder.md").exists()
-    session = (runtime / "reference" / "session.md").read_text()
-    assert "SESSION_FEATURE_ID=<id> pave.sh" in session
-    assert "$pave-spec" in session
-    assert "/pave:" not in session
-    for name in ("plan", "build", "review", "learn"):
-        assert str(runtime / "reference" / "session.md") in installed_skill(home, name).read_text()
-    assert str(home / ".agents" / "skills" / "pave-query" / "SKILL.md") in installed_skill(home, "learn").read_text()
-    outside_hub = subprocess.run(
-        [str(runtime / "scripts" / "pave.sh"), "stale"],
-        capture_output=True,
-        text=True,
-        cwd=home,
-        env={**os.environ, "PAVE_HUB": ""},
-    )
-    assert outside_hub.returncode == 1
-    assert "Run $pave-init first" in outside_hub.stderr
-    assert "unbound variable" not in outside_hub.stderr
-    help_text = installed_skill(home, "help").read_text()
-    assert str(home / ".agents" / "skills" / "pave-*" / "SKILL.md") in help_text
-    assert "runtime/skills" not in help_text
-    assert "reference/session.md" not in help_text
-    init_text = installed_skill(home, "init").read_text()
-    assert "`.claude/settings.json`" not in init_text
-    assert "config.codex.yaml" in init_text
-    assert "templates/config.codex.yaml" in init_text
-    assert "adapters/codex/config.py\" config-check" in init_text
-    assert "config.yaml" not in init_text.replace("config.codex.yaml", "")
-    plan_text = installed_skill(home, "plan").read_text()
-    assert "Pass its `model` as an explicit spawn model" in plan_text
-    assert "do not spawn or continue the Pave phase with inherited values" in plan_text
-    build_text = installed_skill(home, "build").read_text()
-    assert "Before changing the feature status or spawning a builder" in build_text
-    assert "config.py\" access" in build_text
-    add_text = installed_skill(home, "add").read_text()
-    assert "Registration does not change Codex permissions" in add_text
-    assert "config.py\" access" in add_text
-
-    hub = tmp_path / "hub"
-    hub.mkdir()
-    (hub / ".pave-hub").write_text("")
-    shutil.copy(runtime / "templates" / "config.codex.yaml", hub / "config.codex.yaml")
-    lookup = subprocess.run(
-        [str(runtime / "scripts" / "pave.sh"), "agent", "builder"],
-        capture_output=True,
-        text=True,
-        cwd=hub,
-    )
-    assert lookup.returncode == 0, lookup.stderr
-    assert lookup.stdout == "model=gpt-6-sol\neffort=medium\n"
-    codex_config = hub / "config.codex.yaml"
-    codex_config.write_text(
-        codex_config.read_text().replace(
-            "builder:   { model: gpt-6-sol,   effort: medium }",
-            "builder:   { model: gpt-6-luna,  effort: high   }",
-        )
-    )
-    changed = subprocess.run(
-        [sys.executable, str(runtime / "adapters" / "codex" / "config.py"), "agent", "builder"],
-        capture_output=True,
-        text=True,
-        cwd=hub,
-    )
-    assert changed.returncode == 0, changed.stderr
-    assert changed.stdout == "model=gpt-6-luna\neffort=high\n"
-    check = subprocess.run(
-        [str(runtime / "scripts" / "pave.sh"), "config-check"],
-        capture_output=True,
-        text=True,
-        cwd=hub,
-    )
-    assert check.returncode == 0, check.stderr
-    assert "result: nothing to fix" in check.stdout
-
-    data = json.loads(manifest(home).read_text())
-    assert data["host"] == "codex"
-    assert data["pave_version"] == "0.8.0"
-    assert str(skill) in data["files"]
-    assert str(runtime / "reference" / "session.md") in data["files"]
+    data = json.loads(manifest(home, host).read_text())
+    assert data["host"] == host
+    assert data["pave_version"] == VERSION
+    assert sorted(data["files"]) == [str(folder / "SKILL.md"), str(script)]
+    # Nothing else: no converted skills, agents or runtime.
+    installed = {p for p in home.rglob("*") if p.is_file()}
+    assert installed == {folder / "SKILL.md", script, manifest(home, host)}
 
 
-def test_codex_install_refuses_missing_rewrite_anchor(tmp_path):
-    source = copy_source(tmp_path)
-    build = source / "skills" / "build" / "SKILL.md"
-    build.write_text(build.read_text().replace(
-        "Set the feature to `building` before spawning anything.",
-        "Start the builders now.",
-    ))
+def test_install_records_https_remote_and_commit(tmp_path):
+    repo = git_source(tmp_path, remote="https://user:secret@github.com/example/pave.git")
     home = tmp_path / "home"
     home.mkdir()
-    result = run_host(home, "install", "codex", source=source)
-    assert result.returncode != 0
-    assert "Codex rewrite anchor missing in build skill access gate" in result.stderr
-    assert not manifest(home).exists()
+    assert run_host(home, "install", "kiro", source=repo / "plugins" / "pave").returncode == 0
+    values = script_values(setup_dir(home, "kiro") / "pave-installer.sh")
+    assert values["PAVE_REPOSITORY"] == "https://github.com/example/pave.git"
+    assert values["PAVE_COMMIT"] == git(repo, "rev-parse", "HEAD")
+    assert values["PAVE_VERSION"] == VERSION
+    assert values["PAVE_LOCAL"] == str(repo / "plugins" / "pave")
+    assert values["PAVE_REINSTALL"] == "'/pave-installer:install kiro'"
 
 
-def test_codex_install_refuses_changed_runtime_dispatch(tmp_path):
-    source = copy_source(tmp_path)
-    script = source / "scripts" / "pave.sh"
-    script.write_text(script.read_text().replace("# find_config <hub>", "# locate config"))
+def test_install_falls_back_to_plugin_repository_without_git(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
-    result = run_host(home, "install", "codex", source=source)
-    assert result.returncode != 0
-    assert "Codex rewrite anchor missing in pave.sh agent dispatch" in result.stderr
-    assert not manifest(home).exists()
+    source = plain_source(tmp_path, "https://github.com/example/pave")
+    assert run_host(home, "install", "kiro", source=source).returncode == 0
+    values = script_values(setup_dir(home, "kiro") / "pave-installer.sh")
+    assert values["PAVE_REPOSITORY"] == "https://github.com/example/pave"
+    assert values["PAVE_COMMIT"] == "''"
 
 
-def test_codex_runtime_does_not_write_claude_settings(tmp_path):
+def test_install_refuses_a_repository_that_is_not_https(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
-    assert run_host(home, "install", "codex").returncode == 0
-    runtime = home / ".codex" / "pave" / "runtime"
-    hub = tmp_path / "hub"
-    service = tmp_path / "service"
-    hub.mkdir()
-    service.mkdir()
-    (hub / ".pave-hub").write_text("")
-    (hub / "workspace.yaml").write_text("services:\n")
-
-    result = subprocess.run(
-        [str(runtime / "scripts" / "pave.sh"), "add", str(service)],
-        capture_output=True,
-        text=True,
-        cwd=hub,
-    )
-    assert result.returncode == 0, result.stderr
-    assert not (hub / ".claude" / "settings.json").exists()
+    ssh = git_source(tmp_path, remote="git@github.com:example/pave.git")
+    meta = ssh / "plugins" / "pave" / ".claude-plugin" / "plugin.json"
+    meta.write_text(json.dumps({**json.loads(meta.read_text()), "repository": "git@github.com:example/pave.git"}))
+    result = run_host(home, "install", "kiro", source=ssh / "plugins" / "pave")
+    assert result.returncode == 1
+    assert "no HTTPS repository" in result.stderr
+    assert not setup_dir(home, "kiro").exists()
+    assert not manifest(home, "kiro").exists()
 
 
-def test_codex_access_lists_unique_writable_roots_without_changing_permissions(tmp_path):
+def test_install_is_idempotent(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
-    assert run_host(home, "install", "codex").returncode == 0
-    adapter = home / ".codex" / "pave" / "runtime" / "adapters" / "codex" / "config.py"
-    hub = tmp_path / "hub"
-    repo = tmp_path / "shared repo"
-    another = tmp_path / "other repo"
-    for directory in (hub, repo, another):
-        directory.mkdir()
-    (hub / ".pave-hub").write_text("")
-    (hub / "workspace.yaml").write_text(
-        f"services:\n  - name: one\n    path: {repo}/one\n    repo_root: {repo}\n"
-        f"  - name: two\n    path: {repo}/two\n    repo_root: {repo}\n"
-        f"  - name: other\n    path: {another}\n"
-    )
-    result = subprocess.run(
-        [sys.executable, str(adapter), "access"],
-        capture_output=True,
-        text=True,
-        cwd=hub,
-    )
-    assert result.returncode == 0, result.stderr
-    command = next(line for line in result.stdout.splitlines() if line.startswith("codex "))
-    assert shlex.split(command) == [
-        "codex", "--cd", str(hub),
-        "--add-dir", str(another), "--add-dir", str(repo),
-    ]
-    assert not (hub / ".codex").exists()
-    assert not (hub / ".claude").exists()
-
-
-def test_codex_install_is_idempotent(tmp_path):
-    home = tmp_path / "home"
-    home.mkdir()
-    first = run_host(home, "install", "codex")
-    assert first.returncode == 0
-    before = manifest(home).read_text()
-
-    second = run_host(home, "install", "codex")
+    assert run_host(home, "install", "kiro").returncode == 0
+    before = manifest(home, "kiro").read_text()
+    second = run_host(home, "install", "kiro")
     assert second.returncode == 0, second.stderr
     assert "unchanged" in second.stdout
-    assert manifest(home).read_text() == before
+    assert "create" not in second.stdout
+    assert manifest(home, "kiro").read_text() == before
 
 
-def test_codex_update_replaces_only_unchanged_managed_files(tmp_path):
+def test_update_replaces_only_unchanged_files(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
-    source = copy_source(tmp_path)
+    source = plain_source(tmp_path)
     assert run_host(home, "install", "codex", source=source).returncode == 0
-
-    spec = installed_skill(home)
-    build = installed_skill(home, "build")
-    spec.write_text(spec.read_text() + "\nuser edit\n")
-    source_spec = source / "skills" / "spec" / "SKILL.md"
-    source_spec.write_text(source_spec.read_text() + "\nnew release\n")
-    source_build = source / "skills" / "build" / "SKILL.md"
-    source_build.write_text(source_build.read_text() + "\nnew release\n")
+    skill = setup_dir(home, "codex") / "SKILL.md"
+    script = setup_dir(home, "codex") / "pave-installer.sh"
+    skill.write_text(skill.read_text() + "\nuser edit\n")
+    meta = source / ".claude-plugin" / "plugin.json"
+    meta.write_text(meta.read_text().replace(f'"version": "{VERSION}"', '"version": "9.9.9"'))
 
     result = run_host(home, "install", "codex", source=source)
     assert result.returncode == 2
-    assert f"conflict  {spec}" in result.stdout
-    assert f"update    {build}" in result.stdout
-    assert spec.read_text().endswith("user edit\n")
-    assert build.read_text().endswith("new release\n")
+    assert f"conflict  {skill}" in result.stdout
+    assert f"update    {script}" in result.stdout
+    assert skill.read_text().endswith("user edit\n")
+    assert script_values(script)["PAVE_VERSION"] == "9.9.9"
 
 
-def test_codex_uninstall_preserves_modified_files_and_hub(tmp_path):
+def test_existing_skill_not_written_by_installer_is_preserved(tmp_path):
+    home = tmp_path / "home"
+    skill = setup_dir(home, "kiro") / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("mine\n")
+    result = run_host(home, "install", "kiro")
+    assert result.returncode == 2
+    assert f"conflict  {skill}" in result.stdout
+    assert skill.read_text() == "mine\n"
+    assert str(skill) not in json.loads(manifest(home, "kiro").read_text())["files"]
+
+
+def test_uninstall_removes_pave_setup_and_keeps_edits(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
     hub = tmp_path / "hub"
     hub.mkdir()
-    feature = hub / "features" / "F-1" / "spec.md"
-    feature.parent.mkdir(parents=True)
-    feature.write_text("owned by the user\n")
-    assert run_host(home, "install", "codex").returncode == 0
+    (hub / "config.kiro.yaml").write_text("owned by the user\n")
+    assert run_host(home, "install", "kiro").returncode == 0
+    built = home / ".kiro" / "skills" / "pave-spec" / "SKILL.md"  # what the host built
+    built.parent.mkdir(parents=True)
+    built.write_text("host's own\n")
 
-    changed = installed_skill(home)
-    changed.write_text(changed.read_text() + "\nuser edit\n")
-    result = run_host(home, "uninstall", "codex")
+    skill = setup_dir(home, "kiro") / "SKILL.md"
+    skill.write_text(skill.read_text() + "\nuser edit\n")
+    result = run_host(home, "uninstall", "kiro")
     assert result.returncode == 2
-    assert f"preserve  {changed}" in result.stdout
-    assert changed.exists()
-    assert feature.read_text() == "owned by the user\n"
-    data = json.loads(manifest(home).read_text())
-    assert list(data["files"]) == [str(changed)]
+    assert f"preserve  {skill}" in result.stdout
+    assert not (setup_dir(home, "kiro") / "pave-installer.sh").exists()
+    assert list(json.loads(manifest(home, "kiro").read_text())["files"]) == [str(skill)]
 
-    changed.unlink()
-    result = run_host(home, "uninstall", "codex")
+    skill.unlink()
+    result = run_host(home, "uninstall", "kiro")
     assert result.returncode == 0, result.stderr
-    assert not manifest(home).exists()
-    assert not (home / ".codex" / "pave").exists()
-    assert (home / ".agents" / "skills").exists()
-    assert (home / ".codex" / "agents").exists()
+    assert not setup_dir(home, "kiro").exists()
+    assert not manifest(home, "kiro").exists()
+    assert built.read_text() == "host's own\n"
+    assert (hub / "config.kiro.yaml").read_text() == "owned by the user\n"
 
 
-def test_codex_project_scope_stays_inside_project(tmp_path):
+def test_uninstall_without_installation_fails(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
-    project = tmp_path / "project"
-    project.mkdir()
-    result = run_host(
-        home,
-        "install",
-        "codex",
-        "--scope",
-        "project",
-        "--project-root",
-        str(project),
-    )
-    assert result.returncode == 0, result.stderr
-    assert (project / ".agents" / "skills" / "pave-plan" / "SKILL.md").exists()
-    assert (project / ".codex" / "agents" / "pave_planner.toml").exists()
-    assert not (home / ".agents").exists()
+    result = run_host(home, "uninstall", "kiro")
+    assert result.returncode == 1
+    assert "no pave-setup installed" in result.stderr
 
 
-def test_uninstall_rejects_manifest_paths_outside_adapter(tmp_path):
+def test_manifest_paths_outside_pave_setup_are_rejected(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
-    assert run_host(home, "install", "codex").returncode == 0
+    assert run_host(home, "install", "kiro").returncode == 0
     unrelated = tmp_path / "unrelated.txt"
     unrelated.write_text("keep me\n")
-    data = json.loads(manifest(home).read_text())
-    data["files"][str(unrelated)] = {
-        "sha256": hashlib.sha256(unrelated.read_bytes()).hexdigest(),
-        "executable": False,
-    }
-    manifest(home).write_text(json.dumps(data))
+    data = json.loads(manifest(home, "kiro").read_text())
+    data["files"][str(unrelated)] = {"sha256": hashlib.sha256(unrelated.read_bytes()).hexdigest()}
+    manifest(home, "kiro").write_text(json.dumps(data))
 
-    result = run_host(home, "uninstall", "codex")
-    assert result.returncode == 1
-    assert "outside the Codex adapter" in result.stderr
+    for action in ("install", "uninstall"):
+        result = run_host(home, action, "kiro")
+        assert result.returncode == 1
+        assert "outside" in result.stderr
     assert unrelated.read_text() == "keep me\n"
 
 
-def test_native_codex_plugin_is_left_to_its_manager(tmp_path):
+def test_project_scope_is_not_accepted(tmp_path):
     home = tmp_path / "home"
-    native = home / ".codex" / "plugins" / "pave"
-    native.mkdir(parents=True)
+    home.mkdir()
+    result = run_host(home, "install", "kiro", "--scope", "project")
+    assert result.returncode == 2
+    assert not setup_dir(home, "kiro").exists()
 
-    install = run_host(home, "install", "codex")
-    assert install.returncode == 1
-    assert "update it through that manager" in install.stderr
-    uninstall = run_host(home, "uninstall", "codex")
-    assert uninstall.returncode == 1
-    assert "uninstall it through that manager" in uninstall.stderr
-    assert native.exists()
+
+def legacy_install(home):
+    """Files and manifest as Pave Installer 0.1 left them for Codex."""
+    kept = home / ".agents" / "skills" / "pave-spec" / "SKILL.md"
+    edited = home / ".codex" / "agents" / "pave_builder.toml"
+    runtime = home / ".codex" / "pave" / "runtime" / "scripts" / "pave.sh"
+    files = {}
+    for path in (kept, edited, runtime):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{path.name}\n")
+        files[str(path)] = {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "executable": False}
+    edited.write_text("user edit\n")
+    legacy = home / ".codex" / "pave" / "install.json"
+    legacy.write_text(json.dumps({"manifest_version": 1, "host": "codex", "files": files}))
+    return kept, edited, runtime, legacy
+
+
+@pytest.mark.parametrize("action", ["install", "uninstall"])
+def test_codex_legacy_files_are_removed_keeping_edits(tmp_path, action):
+    home = tmp_path / "home"
+    home.mkdir()
+    if action == "uninstall":
+        assert run_host(home, "install", "codex").returncode == 0
+    kept, edited, runtime, legacy = legacy_install(home)
+
+    plan = run_host(home, f"plan-{action}", "codex")
+    assert plan.returncode == 0, plan.stderr
+    assert f"remove    {kept} (Pave Installer 0.1)" in plan.stdout
+    assert f"preserve  {edited} (Pave Installer 0.1)" in plan.stdout
+    assert kept.exists()
+
+    result = run_host(home, action, "codex")
+    assert result.returncode == 2
+    assert not kept.exists()
+    assert not runtime.exists()
+    assert edited.read_text() == "user edit\n"
+    assert list(json.loads(legacy.read_text())["files"]) == [str(edited)]
+    assert (setup_dir(home, "codex") / "SKILL.md").exists() == (action == "install")
+
+    edited.unlink()
+    result = run_host(home, action, "codex")
+    assert result.returncode == 0, result.stderr
+    assert not legacy.exists()
+
+
+def test_codex_legacy_manifest_outside_old_adapter_is_rejected(tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    unrelated = tmp_path / "unrelated.txt"
+    unrelated.write_text("keep me\n")
+    legacy = home / ".codex" / "pave" / "install.json"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_text(json.dumps({"manifest_version": 1, "files": {
+        str(unrelated): {"sha256": hashlib.sha256(unrelated.read_bytes()).hexdigest()},
+    }}))
+    result = run_host(home, "install", "codex")
+    assert result.returncode == 1
+    assert "outside the old Codex adapter" in result.stderr
+    assert unrelated.exists()
+
+
+def test_kiro_install_ignores_codex_legacy_manifest(tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    kept, _, _, legacy = legacy_install(home)
+    assert run_host(home, "install", "kiro").returncode == 0
+    assert kept.exists()
+    assert legacy.exists()
+
+
+@pytest.fixture
+def installed(tmp_path):
+    repo = git_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+    assert run_host(home, "install", "kiro", source=repo / "plugins" / "pave").returncode == 0
+    work = tmp_path / "tmp"
+    work.mkdir()
+    return repo, setup_dir(home, "kiro") / "pave-installer.sh", work
+
+
+def test_locate_uses_the_local_source(installed):
+    repo, script, work = installed
+    result = locate(script, tmpdir=work)
+    assert result.returncode == 0, result.stderr
+    assert reported(result) == {"source": "local", "version": VERSION, "path": str(repo / "plugins" / "pave")}
+    assert list(work.iterdir()) == []
+
+
+@pytest.mark.parametrize("pinned", [True, False])
+def test_locate_clones_when_the_local_source_is_gone(installed, tmp_path, pinned):
+    repo, script, work = installed
+    commit = git(repo, "rev-parse", "HEAD") if pinned else ""
+    runner = with_values(script, tmp_path / "run.sh",
+                         PAVE_LOCAL=str(tmp_path / "gone"), PAVE_REPOSITORY=str(repo), PAVE_COMMIT=commit)
+    result = locate(runner, tmpdir=work)
+    assert result.returncode == 0, result.stderr
+    found = reported(result)
+    assert found["source"] == "clone"
+    assert found["version"] == VERSION
+    clone = Path(found["path"])
+    assert (clone / "skills" / "plan" / "SKILL.md").exists()
+    assert work in clone.parents
+
+    cleanup = subprocess.run(["/bin/bash", str(runner), "cleanup", str(clone)], capture_output=True, text=True)
+    assert cleanup.returncode == 0, cleanup.stderr
+    assert list(work.iterdir()) == []
+
+
+def test_locate_pins_the_installed_commit(installed, tmp_path):
+    repo, script, work = installed
+    commit = git(repo, "rev-parse", "HEAD")
+    meta = repo / "plugins" / "pave" / ".claude-plugin" / "plugin.json"
+    meta.write_text(meta.read_text().replace(f'"version": "{VERSION}"', '"version": "9.9.9"'))
+    git(repo, "commit", "--quiet", "-am", "next release")
+    runner = with_values(script, tmp_path / "run.sh",
+                         PAVE_LOCAL=str(tmp_path / "gone"), PAVE_REPOSITORY=str(repo), PAVE_COMMIT=commit)
+    result = locate(runner, tmpdir=work)
+    assert result.returncode == 0, result.stderr
+    assert reported(result)["version"] == VERSION
+
+
+def test_locate_rejects_a_clone_of_another_version(installed, tmp_path):
+    repo, script, work = installed
+    runner = with_values(script, tmp_path / "run.sh",
+                         PAVE_LOCAL=str(tmp_path / "gone"), PAVE_REPOSITORY=str(repo),
+                         PAVE_COMMIT="", PAVE_VERSION="9.9.9")
+    result = locate(runner, tmpdir=work)
+    assert result.returncode == 1
+    assert "holds version " + VERSION in result.stderr
+    assert "/pave-installer:install kiro" in result.stderr
+    assert list(work.iterdir()) == []
+
+
+def test_locate_rejects_a_local_source_of_another_version(installed, tmp_path):
+    repo, script, work = installed
+    runner = with_values(script, tmp_path / "run.sh", PAVE_REPOSITORY=str(tmp_path / "nowhere"), PAVE_VERSION="9.9.9")
+    result = locate(runner, tmpdir=work)
+    assert result.returncode == 1
+    assert "could not fetch" in result.stderr
+    assert list(work.iterdir()) == []
+
+
+def test_locate_without_git_says_what_to_do(installed, tmp_path):
+    _, script, work = installed
+    runner = with_values(script, tmp_path / "run.sh", PAVE_LOCAL=str(tmp_path / "gone"))
+    result = locate(runner, env={"PATH": str(tmp_path / "empty")}, tmpdir=work)
+    assert result.returncode == 1
+    assert "git is not installed" in result.stderr
+    assert "Run /pave-installer:install kiro in Claude Code again" in result.stderr
+
+
+def test_cleanup_refuses_folders_it_did_not_clone(installed, tmp_path):
+    repo, script, _ = installed
+    for target in (repo / "plugins" / "pave", tmp_path):
+        result = subprocess.run(["/bin/bash", str(script), "cleanup", str(target)], capture_output=True, text=True)
+        assert result.returncode == 1
+        assert "refusing to delete" in result.stderr
+    assert (repo / "plugins" / "pave" / ".claude-plugin" / "plugin.json").exists()
+
+
+def test_pave_setup_names_every_pave_skill_and_agent():
+    # pave-setup explains Pave's parts; a new skill or agent must not go unmentioned.
+    text = (INSTALLER / "templates" / "pave-setup" / "SKILL.md").read_text()
+    for skill in (PAVE / "skills").iterdir():
+        if (skill / "SKILL.md").exists():
+            assert f"`{skill.name}`" in text, skill.name
+    for agent in (PAVE / "agents").glob("*.md"):
+        assert f"`{agent.stem}`" in text, agent.stem
