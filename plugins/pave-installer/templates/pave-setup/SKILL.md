@@ -64,7 +64,7 @@ out.
 
 | Part | Where in the source | What it is |
 |---|---|---|
-| Skills | `skills/<name>/SKILL.md`, plus any other file in that folder | The commands a user runs. Flow: `init` → `add` → `analyse` → `spec` → `plan` → `build` → `review` → `learn`; `query`, `visualize` and `help` at any time. |
+| Skills | `skills/<name>/SKILL.md`, plus any other file in that folder | The commands a user runs. Flow: `init` → `add` → `analyse` → `spec` → `plan` → `build` → `review` → `learn`; `query`, `visualize`, `compact` and `help` at any time. |
 | Agents | `agents/<role>.md` | The roles skills spawn: `explorer`, `analyst`, `planner`, `builder`, `reviewer`, `retriever`. The frontmatter `tools` line lists what the role may use; the body is its instructions. |
 | Tools | `allowed-tools` and `tools` lines | Claude Code names: `Read` reads a file, `Glob` finds files by name, `Grep` searches inside files, `Write` creates a file, `Edit` changes part of a file, `Bash` runs a command, `Agent` spawns a subagent, `SendMessage` resumes one. |
 | Scripts | `scripts/` | `pave.sh` and its helpers do the deterministic work: finding the hub, registering services, hashing, sealing and checking plans, looking up agents, checking config. |
@@ -127,6 +127,13 @@ The result must hold all of this. Check each point before you report.
      resume, or the fallback the source describes when resuming is not
      possible
    - Claude's Artifact tool → the local HTML file the source falls back to
+   - Claude Code's `/compact` → @@HOST_TITLE@@'s own command that compacts
+     or summarises the conversation, given the same instruction to keep the
+     brief. If that command takes no instruction, `pave-compact` tells the
+     user to run it as it is, then to run `pave-spec <id>` if the summary
+     lost the `Working on` line. If it has none, `pave-compact` still writes
+     the brief, then tells the user to start a new session and run
+     `pave-spec <id>` there
    - `.claude/settings.json` (`additionalDirectories`) and `CLAUDE.md` →
      @@HOST_TITLE@@'s own mechanism for folder access and hub instructions,
      written under the hub's `.@@HOST@@/` folder if anywhere

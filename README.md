@@ -147,6 +147,7 @@ The philosophy is in how the steps relate:
 | `/pave:help` | Any time you have a question about using Pave |
 | `/pave:query` | Any time you have a question about your hub |
 | `/pave:visualize` | Any time you want a picture instead of tables |
+| `/pave:compact` | When the conversation is long — before you run `/compact` |
 
 ---
 
@@ -589,6 +590,36 @@ diagram and gives you the link; otherwise it writes a self-contained
 `diagram.html` you open locally.
 
 **What it asks you.** What to draw, if you ran it with no argument.
+
+---
+
+## `/pave:compact` — compact without losing your place
+
+Also not part of the sequence. Run it when the conversation gets long.
+
+```
+/pave:compact
+/pave:compact keep the two options we discussed for retries
+```
+
+**Why it exists.** The session's feature lives in the conversation — the
+`Working on <id> — <title>` line `/pave:spec` printed. A plain `/compact`
+can summarise that line away, and then `/pave:plan`, `/pave:build` and
+`/pave:review` stop with "No feature in this session".
+
+**What it does.** Writes a short *Pave brief*: the feature line, verbatim;
+the feature's state as its files say it (`README.md` status and `pave.sh
+check`); a few lines of recent work; and whatever is not on disk yet — a spec
+edit you have not approved, a question still open. Then it gives you the
+`/compact` command that keeps the brief word for word. A skill cannot run
+`/compact` itself, so you run it.
+
+The brief is memory, not a source of truth. After compacting, the commands
+that act on the feature — `/pave:spec`, `/pave:plan`, `/pave:build`,
+`/pave:review` and `/pave:learn` — still read its spec, plan and tasks from
+disk; the brief only tells them which feature, and you where you were.
+
+**What it asks you.** Nothing. An argument is anything else you want kept.
 
 ---
 
