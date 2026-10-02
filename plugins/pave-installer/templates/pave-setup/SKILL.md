@@ -64,7 +64,7 @@ out.
 
 | Part | Where in the source | What it is |
 |---|---|---|
-| Skills | `skills/<name>/SKILL.md`, plus any other file in that folder | The commands a user runs. Flow: `init` → `add` → `analyse` → `spec` → `plan` → `build` → `review` → `learn`; `query`, `visualize` and `help` at any time. |
+| Skills | `skills/<name>/SKILL.md`, plus any other file in that folder | The commands a user runs. Flow: `init` → `add` → `analyse` → `spec` → `plan` → `build` → `review` → `learn`; `query`, `visualize`, `compact` and `help` at any time. |
 | Agents | `agents/<role>.md` | The roles skills spawn: `explorer`, `analyst`, `planner`, `builder`, `reviewer`, `retriever`. The frontmatter `tools` line lists what the role may use; the body is its instructions. |
 | Tools | `allowed-tools` and `tools` lines | Claude Code names: `Read` reads a file, `Glob` finds files by name, `Grep` searches inside files, `Write` creates a file, `Edit` changes part of a file, `Bash` runs a command, `Agent` spawns a subagent, `SendMessage` resumes one. |
 | Scripts | `scripts/` | `pave.sh` and its helpers do the deterministic work: finding the hub, registering services, hashing, sealing and checking plans, looking up agents, checking config. |
