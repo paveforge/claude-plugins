@@ -127,6 +127,10 @@ The result must hold all of this. Check each point before you report.
      resume, or the fallback the source describes when resuming is not
      possible
    - Claude's Artifact tool → the local HTML file the source falls back to
+   - Claude Code's `/compact` → @@HOST_TITLE@@'s own command that compacts
+     or summarises the conversation, given the same instruction to keep the
+     brief. If it has none, `pave-compact` still writes the brief, then tells
+     the user to start a new session and run `pave-spec <id>` there
    - `.claude/settings.json` (`additionalDirectories`) and `CLAUDE.md` →
      @@HOST_TITLE@@'s own mechanism for folder access and hub instructions,
      written under the hub's `.@@HOST@@/` folder if anywhere
