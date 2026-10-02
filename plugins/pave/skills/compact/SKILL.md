@@ -17,9 +17,10 @@ keeps it.
 A skill cannot run `/compact` itself. The user runs it; this skill makes what
 survives worth having.
 
-The brief is memory, not a source of truth. The files are: every command
-re-reads `spec.md`, `plan.md` and its tasks from disk after a compaction, as
-it does at any other time. So the brief records **where the work is and what
+The brief is memory, not a source of truth. The files are: the commands
+that act on the feature - `/pave:spec`, `/pave:plan`, `/pave:build`,
+`/pave:review` and `/pave:learn` - read its `spec.md`, `plan.md` and tasks
+from disk after a compaction, as they do at any other time. So the brief records **where the work is and what
 is not on disk yet** - never a copy of a file.
 
 ## 1. The session's feature
@@ -78,5 +79,6 @@ feature, leave out the clause about the `Working on` line.
 /compact Keep the "Pave brief" block from the last message word for word, and end the summary with its "Working on" line exactly as written. Summarise the rest in a few lines.
 ```
 
-Then one line: after compacting, run the next command as normal - it finds
-the feature from the brief, and re-reads everything else from disk.
+Then one line: after compacting, run the next command as normal - a command
+that acts on the feature finds it from the brief, and reads the feature's
+files from disk.

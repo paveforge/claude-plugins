@@ -614,9 +614,10 @@ edit you have not approved, a question still open. Then it gives you the
 `/compact` command that keeps the brief word for word. A skill cannot run
 `/compact` itself, so you run it.
 
-The brief is memory, not a source of truth. After compacting, every command
-still re-reads the spec, plan and tasks from disk; the brief only tells them
-which feature, and you where you were.
+The brief is memory, not a source of truth. After compacting, the commands
+that act on the feature — `/pave:spec`, `/pave:plan`, `/pave:build`,
+`/pave:review` and `/pave:learn` — still read its spec, plan and tasks from
+disk; the brief only tells them which feature, and you where you were.
 
 **What it asks you.** Nothing. An argument is anything else you want kept.
 
