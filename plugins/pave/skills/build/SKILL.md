@@ -179,7 +179,7 @@ Give each agent, and nothing else:
   else about them - not their status, not why they exist, not the review
   report. Every task is worked the same way: the builder checks each item
   against the code and changes what does not hold. The document is its whole
-  brief
+  brief; what review found in a failed task is already in its Build notes
 
 - Its required reading, by absolute path:
   1. the hub's `AGENTS.md` — the user's rules, if it exists

@@ -102,4 +102,6 @@ into several divergent guesses.
 ## Build notes
 
 <!-- The builder's section: what it did, decisions within scope, why it is
-     blocked. Not hashed, not part of the specification. -->
+     blocked. /pave:review adds its findings here when the task fails, under
+     "### Review findings - <reviewed_at>". Not hashed, not part of the
+     specification. -->

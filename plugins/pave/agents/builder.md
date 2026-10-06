@@ -90,7 +90,9 @@ evidence, the code is.
 
 Take the items in order. For each one:
 
-1. **Read the code the item names.**
+1. **Read the code the item names.** If your Build notes hold review
+   findings for this item, read the latest ones first: they say where a
+   reviewer found it does not hold, and what was there instead.
 2. **If the item already holds**, tick it and move on. Change nothing.
 3. **If it does not**, untick it if it was ticked, make it hold, then tick it.
    An item that says something must not exist holds once it is gone: remove
@@ -178,7 +180,8 @@ summary. Either way, never merge, never push, never open a pull request.
 
 **What you may change in a task document:** `status`, checkboxes, and the
 `## Build notes` section at the end - what you did, in-scope decisions, why
-you are blocked. **Nothing else.** Everything above Build
+you are blocked. Add to Build notes; never remove review findings from it.
+**Nothing else.** Everything above Build
 notes was approved at the plan gate and is hashed; an edit there stops the
 next build and review until the feature is re-planned.
 

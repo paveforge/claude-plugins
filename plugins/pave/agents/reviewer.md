@@ -40,8 +40,8 @@ Missing and Different are both deviations. Say where you looked.
 An item that says something must not exist - a file, a route, a handler, a
 config key - is **Found** when it is gone. Still present is Different.
 
-The `## Build notes` section is the builder's own account. It is not
-evidence; the code is.
+The `## Build notes` section is the builder's own account, plus what earlier
+reviews found. It is not evidence; the code is.
 
 Unticked items are not your concern. The agent did not claim them.
 
