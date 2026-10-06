@@ -19,8 +19,9 @@ Next: `<the one command to run>`
   Written for a person deciding whether this is mergeable - they read the
   header, the Failed section, and stop. No builder reads this report: a
   re-run builder gets only its task document, where the failed items are
-  unticked. Each subsection names its task file, its repo, and quotes items
-  verbatim, so the reader can find them.
+  unticked and their findings are written into Build notes. Each subsection
+  names its task file, its repo, and quotes items verbatim, so the reader can
+  find them.
 
   Record what the reviewers reported. Do not soften a finding and do not
   add one - the orchestrator did not read the code.

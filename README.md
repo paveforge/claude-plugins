@@ -470,10 +470,12 @@ That restraint is the point: it makes the phase cheap, and it keeps your
 approval at the plan gate meaningful. Like build, it refuses to run against a
 plan that no longer matches the spec.
 
-**When something deviates**, review unchecks the specific items that were not
-real, unticks those items, marks that task `failed`, and writes a report for
-you. `/pave:build` then re-runs only the failed tasks; each builder sees only
-its task document, where the failed items are unticked.
+**When something deviates**, review unticks the specific items that were not
+real, writes what the reviewer found for each - where it looked and what was
+there instead - into that task's Build notes, marks the task `failed`, and
+writes a report for you. `/pave:build` then re-runs only the failed tasks;
+each builder sees only its task document, where the failed items are unticked
+and the findings sit in its Build notes.
 
 **Cleaning up.** After a successful review, if any obsolete tasks have been
 reverted, it asks whether to remove them. On yes, `pave.sh

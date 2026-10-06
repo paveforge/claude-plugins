@@ -120,8 +120,16 @@ green review read as a complete feature. Then go to §4.
 1. **Uncheck** the specific items it named, in that task document. The task
    document is the builder's whole brief: an unticked item is how it learns
    that item does not hold.
-2. Set that task document to `status: failed`.
-3. Leave conforming tasks untouched at `done`.
+2. **Write the findings into its `## Build notes`**, under a heading
+   `### Review findings - <reviewed_at>`, after anything already there: for
+   each item, the item quoted exactly, Missing or Different, and what the
+   reviewer found instead with file and line - plus any contract finding.
+   Only the deviations: improvements stay in the report. An unticked item
+   says that it does not hold; the finding says where and why, so the
+   re-run builder does not judge the same code the same way twice. Build
+   notes are not hashed, so this does not trip `pave.sh check`.
+3. Set that task document to `status: failed`.
+4. Leave conforming tasks untouched at `done`.
 
 If any task failed, set the feature to `failed`.
 
@@ -141,7 +149,8 @@ it checked, not to a branch or a commit.
 
 It is written for **a person** deciding whether this is mergeable: they read
 the header and the Failed section, and stop. No builder reads it - a re-run
-builder gets only its task document, where the failed items are unticked.
+builder gets only its task document, where the failed items are unticked and
+§2 has written their findings into Build notes.
 
 Three rules the template encodes, all of them load-bearing:
 
