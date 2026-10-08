@@ -6,23 +6,28 @@
 # and pass model and effort when the agent is spawned.
 agents:
   analyst:   { model: sonnet, effort: medium }   # reads business logic
-  builder:   { model: sonnet, effort: medium }   # executes one task document
+  builder:   { model: sonnet, effort: medium }   # writes the code of one task document
   explorer:  { model: haiku,  effort: low    }   # mechanical repo scanning
-  reviewer:  { model: sonnet, effort: low    }   # one per task: plan vs code
+  reviewer:  { model: sonnet, effort: low    }   # one per task: task vs code
   retriever: { model: sonnet, effort: low    }   # answers hub questions
 
-  # /pave:plan always runs the planner agent on exactly this model.
+  # The planner decides everything build and review then only execute, so a
+  # poor plan cannot be rescued later. The strongest model you have is
+  # recommended; /pave:plan runs it on exactly what is set here.
   planner:  { model: opus, effort: high }       # planning decides the feature
 
 execution:
+  # parallel: every task whose depends_on are done runs at once, in one
+  # service as well as across services - the plan's depends_on is what keeps
+  # tasks apart. sequential: one task at a time.
   mode: parallel                 # parallel | sequential
-  monorepo_strategy: sequential  # sequential | worktree | shared-tree
   max_parallel: 4
 
-# Only for service repos under git: a builder there works on this branch.
+# Only for service repos under git: builders there work on this branch.
 # A repo without git gets no branch; Pave never reads one back.
 branch:
   pattern: feature/{feature-id}
-  # true: a builder commits once, after every task in its queue passes.
-  # false: builders never commit; /pave:build asks you at the end.
+  # true: at the end of /pave:build, one commit per repo, made by the build
+  #       command - never by a builder.
+  # false: nothing is committed; /pave:build asks you at the end.
   autocommit: false

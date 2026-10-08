@@ -1,11 +1,11 @@
 {
   "name": "pave",
   "displayName": "Pave",
-  "version": "0.10.0",
-  "description": "Plan a feature once across every service it touches, freeze the contracts, then build each service in parallel from its own self-contained task document.",
+  "version": "1.0.0",
+  "description": "Plan a feature once across every service it touches, fix the interfaces between them, then build in parallel from self-contained task documents. spec.md and plan.md are the only sources of truth.",
   "author": {
     "name": "paveforge"
   },
   "repository": "https://github.com/paveforge/claude-plugins",
-  "keywords": ["microservices", "multi-repo", "planning", "contracts", "monorepo"]
+  "keywords": ["microservices", "multi-repo", "planning", "interfaces", "monorepo"]
 }

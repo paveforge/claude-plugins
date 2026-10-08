@@ -79,9 +79,10 @@ def test_pre_04_config(hub):
         "leftover  agents.designer = { model: fable, effort: max }",
         "missing   agents.retriever = { model: sonnet, effort: low }",
         "missing   agents.planner = { model: opus, effort: high }",
+        "leftover  execution.monorepo_strategy = sequential",
         "missing   branch.autocommit = false",
         "leftover  contracts = { land_before_fanout: true }",
-        "result: 7 to fix - run /pave:init",
+        "result: 8 to fix - run /pave:init",
     ]
 
 
@@ -96,7 +97,8 @@ def test_toml_config(hub):
     assert out == [
         "leftover  model_ranking = [haiku, sonnet]",
         "missing   agents.planner = { model: opus, effort: high }",
-        "result: 2 to fix - run /pave:init",
+        "leftover  execution.monorepo_strategy = sequential",
+        "result: 3 to fix - run /pave:init",
     ]
 
 

@@ -20,8 +20,8 @@ That split keeps each step doing one thing you can verify before moving on.
 
 ## 1. Choose the hub
 
-The hub is the central command folder. Every spec, plan, contract, task
-document and report lives here; service repos are only ever changed by a
+The hub is the central command folder. Every spec, plan, task document
+and report lives here; service repos are only ever changed by a
 `builder` agent.
 
 If `$1` was given, use it. Otherwise ask, with two options:

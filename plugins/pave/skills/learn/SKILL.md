@@ -63,8 +63,8 @@ Build it from the feature folder only:
 |---|---|
 | `spec.md` | Title, version, why and what, the acceptance criteria |
 | task frontmatter | Per service: its `done` tasks; per criterion, the tasks that satisfy it; one line per task outcome |
-| `plan.md` | The contracts, and the decisions a later feature is most likely to bump into - linked by anchor, not copied |
-| `contracts/` | Events emitted and consumed |
+| `plan.md` | The interfaces - fields, events emitted and consumed - and the decisions a later feature is most likely to bump into - linked by anchor, not copied |
+| `artifacts/contracts/` | The schema files as built, copied by a clean review - name them, do not copy them |
 
 `capabilities` are business phrases the feature added, the way someone would
 ask for them in a later spec - the planner matches specs against them. Use the

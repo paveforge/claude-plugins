@@ -21,11 +21,11 @@ underlying facts.
 The argument is one of two things:
 
 **A feature id** — `features/<id>/` exists → **blast radius mode**. Read
-that feature's `plan.md` (Service map, Flow table, Contracts table, State
+that feature's `plan.md` (Service map, Flow table, Interfaces table, State
 ownership). `read-only` services are drawn as context and `untouched` ones
 left out. If the feature has no `plan.md` yet, there is no blast radius to
 draw; say so and point at `/pave:plan`. The picture is a graph:
-nodes are services, edges are the Flow steps and the Contracts between them,
+nodes are services, edges are the Flow steps and the Interfaces between them,
 labelled with what's emitted or produced.
 
 **Anything else** — **freeform mode**. Treat the argument as a description

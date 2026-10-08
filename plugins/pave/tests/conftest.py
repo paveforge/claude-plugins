@@ -158,7 +158,6 @@ PLAN_ROW = "| {n:02d} | Task {n} | svc | low | S | AC-1 | - | - | new |\n"
 def make_feature(hub_path, feature_id, title="Test Feature", n_tasks=1):
     fdir = hub_path / "features" / feature_id
     (fdir / "tasks").mkdir(parents=True, exist_ok=True)
-    (fdir / "contracts").mkdir(parents=True, exist_ok=True)
     (fdir / "artifacts").mkdir(parents=True, exist_ok=True)
     (fdir / "spec.md").write_text(SPEC_TEMPLATE.format(feature_id=feature_id, title=title))
     rows = "".join(PLAN_ROW.format(n=i) for i in range(1, n_tasks + 1))
