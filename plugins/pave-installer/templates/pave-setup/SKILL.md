@@ -37,21 +37,46 @@ out.
 ### The mindset
 
 - **Two sources of truth, both files.** `spec.md` says what a feature must do;
-  the user owns it. `plan.md` and its task documents say how; the planner
-  writes them. Nothing else is a source of truth: not a conversation, a
-  report, a checkbox or a commit.
-- **Hashes hold them together, never a VCS.** Each step checks the content
-  hash of what it depends on and refuses when it does not match. A repo may
-  use git, another VCS or none; Pave never relies on one to decide anything.
-- **The planner knows the code.** Planning gets the strongest model. Before it
-  writes a plan it reads what the code does today, so every task names real
-  files, types and values.
-- **The builder and reviewer are cheap and simple.** The builder does what its
-  task document says, item by item, and stops and reports when the document
-  does not say. The reviewer checks the task document item by item against
-  the code. Neither decides, infers or searches beyond what it was told.
+  the user owns it. `plan.md` says how; the planner writes it. Nothing else is
+  a source of truth: not a conversation, a report, a checkbox, a commit - and
+  not the task documents, the seal, the approved-spec snapshot or the
+  contract copies either. Those are disposable and are rebuilt from
+  `spec.md`, `plan.md` and the code; losing one costs time, never
+  correctness.
+- **Every change goes into `plan.md` first.** Task documents are projections
+  of the plan. A change that lives only in a task is lost when the tasks are
+  rebuilt.
+- **Hashes hold them together, never a VCS.** `plan.md` records the hash of
+  the spec it answers; a disposable seal records the hash of every task. Each
+  step checks what it depends on and refuses when it does not match. A repo
+  may use git, another VCS or none; Pave never relies on one to decide
+  anything.
+- **The planner is the mastermind.** It is the only role that thinks: before
+  it writes a plan it reads what the code does today, and it decides every
+  place a change lives, every field of every interface between services, and
+  every ordering between tasks (`depends_on`). Nothing after it can rescue a
+  poor plan, so the strongest model is recommended for it - recommended,
+  because the model is the user's choice in the hub's config.
+- **The builder and reviewer are cheap and simple.** Each reads only its one
+  task document - never `plan.md`, the spec or another task. The builder
+  writes code, item by item, and runs nothing: no build, test, lint, codegen
+  or commit, so several builders can share one repo. The reviewer checks the
+  task document item by item against the code. Neither decides, infers or
+  searches beyond what it was told; each stops and reports when the document
+  does not say.
+- **Build executes the plan's ordering and review checks in two gates.**
+  Build runs every task whose `depends_on` are done at once and decides
+  nothing else, then commits at the end. Review first checks each task
+  against the code, then runs each service's own build, test and lint, and
+  sorts every failure to the task that names the file - or reports it as a
+  gap in the plan.
 - **A gap is the planner's to fix.** Never compensate by giving the builder or
   reviewer more judgement, more modes or more to search.
+- **The caller's choice is final.** An argument the user gives a command, or
+  an answer to a question, is done exactly. Pave recommends, warns and
+  explains, but never overrides, escalates or second-guesses it. The only
+  exception is a choice that needs information which does not exist, and
+  then Pave says so.
 - **The config template is the only source of truth for config.** Every
   setting comes from the hub's config file. Nothing else holds a default. A
   missing or empty setting stops the command and points to init; never guess.
@@ -67,7 +92,7 @@ out.
 | Skills | `skills/<name>/SKILL.md`, plus any other file in that folder | The commands a user runs. Flow: `init` → `add` → `analyse` → `spec` → `plan` → `build` → `review` → `learn`; `query`, `visualize`, `compact` and `help` at any time. |
 | Agents | `agents/<role>.md` | The roles skills spawn: `explorer`, `analyst`, `planner`, `builder`, `reviewer`, `retriever`. The frontmatter `tools` line lists what the role may use; the body is its instructions. |
 | Tools | `allowed-tools` and `tools` lines | Claude Code names: `Read` reads a file, `Glob` finds files by name, `Grep` searches inside files, `Write` creates a file, `Edit` changes part of a file, `Bash` runs a command, `Agent` spawns a subagent, `SendMessage` resumes one. |
-| Scripts | `scripts/` | `pave.sh` and its helpers do the deterministic work: finding the hub, registering services, hashing, sealing and checking plans, looking up agents, checking config. |
+| Scripts | `scripts/` | `pave.sh` and its helpers do the deterministic work: finding the hub, registering services, hashing knowledge, sealing and checking plans, finding which acceptance criteria changed (`diff`), finding tasks that share a file without an ordering (`overlaps`), sorting a failing file to its task (`attribute`), copying built contracts (`contracts`), looking up agents, checking config. |
 | Templates, reference | `templates/`, `reference/` | Files the skills copy into a hub or read. `templates/config.yaml` lists every config key. |
 
 ## 3. Convert
@@ -89,7 +114,14 @@ The result must hold all of this. Check each point before you report.
 1. **Self-contained.** Nothing you produce refers to the source `path`. It may be a
    temporary clone, or belong to Claude Code and change with its next update.
 2. **Every skill** follows its source step by step and keeps every refusal,
-   stop, approval gate and hash check.
+   stop, approval gate, hash check and question it asks the user. Where a
+   source skill takes an argument (its `argument-hint` line), the converted
+   skill accepts the same values and passes them on unchanged - `pave-plan`
+   takes `quick`, `scoped` or `full`, and that level is final. Where the
+   source pauses an agent to ask the user and then resumes it - `pave-plan`
+   asks the level after the planner's verdict - keep the pause; if
+   @@HOST_TITLE@@ cannot resume an agent, spawn a fresh one with the user's
+   answer, as the source does when resuming is not possible.
 3. **Every agent's** instructions are its source body, unchanged in meaning,
    with the tools its `tools` line allows. `explorer`, `retriever` and
    `reviewer` read only: they must not be able to write files or run

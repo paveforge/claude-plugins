@@ -5,11 +5,11 @@ spec_hash: <spec_hash from plan.md - the plan this build ran against>
 verdict: <complete | partial | blocked>
 tasks: { total: 0, done: 0, blocked: 0, failed: 0 }
 needs_human: <true | false>
-# plan.md's hash of every task this run marked done: the text it was built from.
+# The seal's hash of every task this run marked done: the text it was built from.
 built:
   "<NN>": <task hash>
 repos:
-  - { service: <name>, repo: <path>, branch: <branch, or none - not under git> }
+  - { service: <name>, repo: <path>, branch: <branch, or none - not under git>, commit: <made | asked, declined | not qualified - why | none> }
 ---
 
 # Build — <feature>
@@ -46,8 +46,8 @@ repos:
 <What the agent hit. Enough to decide here, without opening a file -
 having to go and dig is the intervention this section exists to avoid.>
 
-<Why it stopped instead of proceeding. For a contract: which services are
-built against it and would break.>
+<Why it stopped instead of proceeding. For an interface: which tasks
+provide or consume it and are at risk.>
 
 **Decide:** <the actual choice, as options>
 → `<the exact command>`
@@ -60,29 +60,11 @@ built against it and would break.>
 |---|---|---|---|---|
 | <service> | `<path>` | `<branch>` or — | <NN, NN, NN> | <done>/<total> |
 
-## Verification
+## Not yet verified
 
-<!--
-  Load-bearing, not decoration. /pave:review reads code and runs nothing,
-  so this is the only record that the commands ever passed.
-
-  A failing command means the task is not done. If a row below says fail
-  and its task says done, the report is wrong - go and find out which.
--->
-
-| Service | build | test | lint |
-|---|---|---|---|
-| <service> | <pass/fail> | <pass/fail (n tests)> | <pass/fail> |
-
-## Contracts landed
-
-Copied from the hub by each builder into its own repo before any of its own
-work. Copied and never regenerated, so every service built against the same
-bytes.
-
-| Contract | Service | Codegen |
-|---|---|---|
-| `<contract file>` | <service> | <command> |
+Builders write code and run nothing: nothing above has been compiled, tested
+or linted. `/pave:review` does that, service by service, once every task in a
+service is built.
 
 ## Decisions taken
 
@@ -92,8 +74,8 @@ bytes.
   anything. Surfacing beats asking: it keeps the workflow moving while
   leaving the work reviewable.
 
-  Only in-scope choices belong here. Anything that changed the plan or the
-  contract was an escalation and belongs under Needs you.
+  Only in-scope choices belong here. Anything that changed the plan or an
+  interface was an escalation and belongs under Needs you.
 -->
 
 - **<service>** <What was chosen, and what it was chosen over.>

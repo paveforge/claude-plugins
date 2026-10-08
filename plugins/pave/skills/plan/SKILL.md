@@ -1,6 +1,7 @@
 ---
 name: plan
-description: Turn the session's spec into a plan - the services touched and untouched, the frozen contracts, and one self-contained task document per unit of work. Detects whether an existing plan still matches the spec and re-plans only what changed. One approval gate. Always runs the planner agent.
+description: Turn the session's spec into a plan - the services touched and untouched, the exact interfaces between them, and one self-contained task document per unit of work. Detects whether an existing plan still matches the spec and re-plans only what changed, at a level the user chooses (quick, scoped or full). One approval gate. Always runs the planner agent.
+argument-hint: "[quick|scoped|full]"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, SendMessage
 ---
 
@@ -16,6 +17,15 @@ and a question about *what* goes back to the user through `/pave:spec`.
 
 This skill orchestrates. It owns the conversation, the knowledge checks and
 the gate. The `planner` agent does the thinking and writes the files.
+
+`spec.md` and `plan.md` are the feature's only sources of truth. The task
+documents, the seal and the approved-spec snapshot are disposable: when one
+is missing, it is rebuilt from the truth, never vouched for.
+
+The user's choices are final. A level given as an argument, or an answer to
+a question here, is done exactly - recommend and warn, never override. The
+one exception is §1's: a quick or scoped re-plan with no approved spec to
+compare against, which cannot be done, and says why.
 
 ## 0. The session's feature
 
@@ -44,10 +54,33 @@ SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check
 | `no-plan` / `unsealed` | Never planned, or a previous planning never reached approval | `initial` (or continue the unapproved `plan.md`) |
 | `spec.md changed` | The spec moved on since approval | `replan` |
 | `… edited outside /pave:plan` | Someone changed a task by hand | `replan` - the planner restores or re-derives it, and says which at the gate |
+| `unverified` | The seal is missing - a fresh clone, or a hub from before 1.0 - so no task can be vouched for | `rebuild-tasks` - every task document is written again from `plan.md`. If the spec also changed, it is a `replan` at `full` |
 | `ok` | The plan is current | Say so: `Plan is current with spec v<n>.` and ask whether to re-plan anyway. Stop on "no" |
 
 The user usually runs this command because they mean it; the check is cheap,
 and it is what lets a fresh session plan without trusting anyone's memory.
+
+**The level.** A re-plan runs at `quick`, `scoped` or `full`
+(`writing-rules.md` §4, which the planner reads). The argument, if given, is
+the level. An initial plan, and `rebuild-tasks`, ignore it - say so in one
+line if one was given. Anything else as an argument: stop and show the three.
+
+**What changed.** On a re-plan, run:
+
+```
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh diff
+```
+
+It lists the acceptance criteria added, changed or removed since approval,
+whether the guardrails or out-of-scope lines changed, and the tasks and
+services those criteria reach. If it reports `no-baseline`, the approved
+spec is gone and nothing can say what changed: the re-plan is `full`, whatever
+was chosen. Say so before going on:
+
+```
+No approved spec to compare against (artifacts/spec.approved.md is missing),
+so what changed cannot be known. Re-planning at full instead of quick.
+```
 
 **Refuse while the spec has open questions.** If its Open questions section
 lists anything, stop and send the user to `/pave:spec`. A planner facing an
@@ -87,12 +120,28 @@ A service the user adds here is worth more than three you inferred.
 **Re-plan.** The services are already in `plan.md`'s service map. Only look
 further if the spec change plainly reaches a capability none of them has.
 
-**Staleness.** For every candidate, run `pave.sh stale <service>`. Spawn
-`analyst` agents for anything missing or stale, with the `model` and `effort`
-that `pave.sh agent analyst` prints and the required reading `/pave:analyse`
-§3 gives them, stamp each README they write as that section says, and
-continue once they return. Say what you are doing in one
-line; do not ask permission. Never plan against stale knowledge.
+**Staleness.** Run `pave.sh stale <service>` - a cheap hash comparison - for:
+
+| Plan | Services checked |
+|---|---|
+| initial, `full`, `rebuild-tasks` | every candidate |
+| `quick`, `scoped`, or a re-plan whose level is not chosen yet | only the services `diff` reached |
+
+Then:
+
+- **`missing`** - there is no knowledge to fall back on. Spawn an `analyst`
+  for it, at every level, without asking.
+- **`stale`** - refresh it only at `full` (and for an initial plan or
+  `rebuild-tasks`). At `quick` and `scoped` it is kept: the planner confirms
+  in the code anything it relies on, and the brief names the service so it
+  knows to. Knowledge kept stale stays stale until a `full` plan or
+  `/pave:analyse` refreshes it.
+
+To refresh, spawn `analyst` agents with the `model` and `effort` that
+`pave.sh agent analyst` prints and the required reading `/pave:analyse` §3
+gives them, stamp each README they write as that section says, and continue
+once they return. Say what you are doing in one line; do not ask permission.
+Never plan against stale knowledge silently.
 
 Knowledge is where the planner starts, not where it stops: it reads the code
 its plan depends on, and asks for what it needs explained (§4). So do not
@@ -105,7 +154,10 @@ Write `features/<id>/artifacts/plan-brief.md` - the hand-off, so the planner
 never redoes discovery:
 
 - The feature id, title, and absolute paths to `spec.md` and the feature folder
-- The mode: `initial` or `replan`
+- The mode: `initial`, `replan` or `rebuild-tasks`
+- On a re-plan: the level, if the user gave one - "chosen by the user" - and
+  the output of `pave.sh diff`
+- Every service whose stale knowledge was kept, by name
 - The confirmed candidate services, each with its role, your confidence, and
   its repo path and `path` from `workspace.yaml` - the planner reads the code
   there - and any the user added or removed
@@ -150,9 +202,46 @@ Give it only:
 
 - the absolute path to `plan-brief.md`
 - the absolute path to `writing-rules.md`, next to this skill
-- which stage to produce: **stage 1** (the plan)
+- what to produce: **stage 1** (the plan); **quick** (plan and tasks in one
+  pass); **rebuild-tasks** (every task again, from the plan); or, on a
+  re-plan with no level chosen, **a verdict**
 
 Do not read `writing-rules.md` yourself; the planner reads it.
+
+### Choosing the level
+
+On a re-plan with no level given, ask the planner for a verdict first. It
+traces the change and returns `unaffected`, `quick`, `scoped` or `full`
+before writing anything. Then:
+
+| Verdict | Do |
+|---|---|
+| `unaffected` | The re-seal question below |
+| `quick` | Ask once: `quick` (recommended) / `scoped` / `full` |
+| `scoped` | Ask once: `scoped` (recommended) / `full` |
+| `full` | Do not ask. Say why in one line, and re-plan at `full` |
+
+One question, with what it rests on:
+
+```
+Spec v3 → v4: AC-3 changed → task 04 (order-service)
+order-service knowledge is stale (files changed under internal/api)
+Planner: quick - the change stays within task 04 and plan.md#order-response
+
+Re-plan level?
+  quick  (recommended) - stale knowledge kept; the planner checks the code itself
+  scoped               - same, for changes to decisions, interfaces or tasks
+  full                 - refreshes stale knowledge first, then a full re-plan
+```
+
+The answer is final, like an argument. If the level is `full` - chosen, or
+the verdict - check and refresh stale knowledge for every candidate now (§2) and tell the planner which knowledge files changed - it
+re-reads only those. Then resume the planner with the level: `quick` → one
+pass; `scoped` or `full` → stage 1.
+
+With a level given as an argument, skip all of this: put it in the brief,
+and the planner plans at it. If it thinks the change goes beyond the level,
+it says so at the gate; it never changes the level, and neither do you.
 
 ### Questions from the planner
 
@@ -202,12 +291,12 @@ as an open point.
 
 On a re-plan, the planner may find the spec changed without affecting the
 plan - a typo, a reworded sentence, a clarified example: no acceptance
-criterion, guardrail, out-of-scope line or behaviour changed. It then returns
+criterion, guardrail or out-of-scope line changed. It then returns
 `verdict: unaffected` with the spec differences it compared, and writes
 nothing.
 
 This path is open **only** when `check` reported nothing but
-`spec.md changed`. A task edited outside `/pave:plan` always needs the full
+`spec.md changed`. A task edited outside `/pave:plan` always needs a real
 re-plan.
 
 Show the differences and ask:
@@ -216,7 +305,7 @@ Show the differences and ask:
 Spec changed (v3 → v4), but no criterion, guardrail or scope line did:
   ~ What: "checkout page" → "checkout flow"
   ~ AC-2: typo "recieve" → "receive"
-The plan, contracts and tasks still hold. Re-seal without re-planning? (yes / no)
+The plan and tasks still hold. Re-seal without re-planning? (yes / no)
 ```
 
 - **yes** — run `SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh seal`.
@@ -228,21 +317,27 @@ The plan, contracts and tasks still hold. Re-seal without re-planning? (yes / no
   Skip §5–§6. Mention that a feature record written by `/pave:learn` is now
   stale, and `/pave:learn` refreshes it without a rebuild if the feature is
   still reviewed and done.
-- **no** — the user thinks the change matters. Continue with a full re-plan:
-  resume the planner, tell it the user wants the plan revisited, and go on to
-  the gate.
+- **no** — the user thinks the change matters. Unless they already gave a
+  level, ask it as for a `quick` verdict (§4, Choosing the level) - `quick` /
+  `scoped` / `full`, no recommendation - and resume the planner with the
+  level and with the fact that the user wants the plan revisited.
 
 The judgement is the planner's and the decision is the user's; this skill
 never re-seals on its own.
 
 ## 5. The gate — one approval
 
-The planner's stage 1 writes `plan.md` (from `templates/plan.md`) and
-`contracts/`. `plan.md` holds the whole plan in one place: the approach, the
-service map, every decision with the criterion it serves, the contracts, and
-the task table - every task in one line with its service, priority, size,
-the criteria it satisfies and the tasks it reverts, plus what this revision
-does to it.
+The planner's stage 1 writes `plan.md` (from `templates/plan.md`). It holds
+the whole plan in one place: the approach, the service map, every decision
+with the criterion it serves, the exact interfaces between services, and the
+task table - every task in one line with its service, priority, size, the
+criteria it satisfies, what it depends on and the tasks it reverts, plus
+what this revision does to it.
+
+At `quick` the planner has also re-projected the tasks the change reaches:
+the gate approves both at once. For `rebuild-tasks` it has written every
+task again; the gate shows the task table, and any change to `plan.md` the
+rebuild needed.
 
 Present a summary, not the files:
 
@@ -259,12 +354,15 @@ Present a summary, not the files:
 - the decisions, assumptions and "how" questions the user must rule on, and
   anything that cannot be reverted automatically (dropped data, a published
   event, a migration that already ran)
+- on a re-plan, the level and who chose it - and the planner's line, if it
+  thinks the change goes beyond a level the user chose. That is information;
+  the level stands
 
 Do not read the files back into this session to present them. The user opens
 the files; you open one only when they ask. Stop and wait.
 
-**On approval the contracts are frozen.** From here they change only by
-re-planning, never by an agent in a repo. A contract change on a re-plan
+**On approval the interfaces are frozen.** From here they change only by
+re-planning, never by an agent in a repo. An interface change on a re-plan
 reopens every built task that provides or consumes it.
 
 ## 6. Task documents and readiness
@@ -272,7 +370,21 @@ reopens every built task that provides or consumes it.
 After approval, resume the planner for **stage 2**: tell it the gate is
 approved and which files the user changed, if any. It writes or rewrites the
 task documents as a projection of the approved `plan.md` and runs the
-readiness check in `writing-rules.md` §6.
+readiness check in `writing-rules.md` §6. At `quick` and for
+`rebuild-tasks` the documents already exist: resume it only if the user
+changed a file at the gate.
+
+Then check that no two tasks able to run at once name the same place:
+
+```
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh overlaps
+```
+
+Build runs every task whose `depends_on` are done at the same time, so two
+tasks that change one file with nothing ordering them would overwrite each
+other. Each line it prints is a readiness failure: resume the planner with
+the lines. It orders the tasks in `plan.md`'s `Depends on` column and
+re-projects them. Run it again until it reports `ok`.
 
 The planner cannot delete files. Delete each task document it lists under
 **Delete** - unbuilt tasks the plan dropped, which have nothing to revert -
@@ -290,9 +402,11 @@ Once every task document passes readiness:
 SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh seal
 ```
 
-It records the spec's hash and every task document's hash in `plan.md`,
-advances `next_task`, and snapshots the approved spec to
-`artifacts/spec.approved.md` for the next re-plan to diff against. It also
+It records the spec's hash and `next_task` in `plan.md`, every task
+document's hash in the seal, `artifacts/seal.yaml`, and snapshots the
+approved spec to `artifacts/spec.approved.md` for the next re-plan to diff
+against. The seal and the snapshot are disposable: losing one costs a
+rebuild of the tasks, or a `full` re-plan, never correctness. It also
 reopens any `done` task whose hash differs from the one the previous seal
 recorded - the text it was built from - because the planner rewrote it
 without reopening it, and prints a `reopened:` line

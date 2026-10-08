@@ -4,7 +4,8 @@ reviewed_at: <timestamp>
 spec_hash: <spec_hash from plan.md - the plan this review checked against>
 verdict: <passed | failed>
 tasks: { total: 0, passed: 0, failed: 0, unreviewed: 0 }
-# plan.md's hash of every task reviewed: the document each was checked against.
+plan_gaps: 0          # gate 2 failures no single task explains
+# The seal's hash of every task reviewed: the document each was checked against.
 reviewed:
   "<NN>": <task hash>
 ---
@@ -13,13 +14,15 @@ reviewed:
 
 **<PASSED | FAILED>** · <n> tasks · <n> passed · <n> failed · <n> unreviewed
 
+Gate 1 (tasks vs code): <passed | n failed> · Gate 2 (build, test, lint): <passed | n failed | waiting>
+
 Next: `<the one command to run>`
 
 <!--
   Written for a person deciding whether this is mergeable - they read the
   header, the Failed section, and stop. No builder reads this report: a
-  re-run builder gets only its task document, where the failed items are
-  unticked and their findings are written into Build notes. Each subsection
+  re-run builder gets only its task document, where gate 1's failed items
+  are unticked and every finding of both gates is written into Build notes. Each subsection
   names its task file, its repo, and quotes items verbatim, so the reader can
   find them.
 
@@ -48,17 +51,51 @@ that the fix does not start with a search.>
 <What it does instead, with file and line. This class matters more than
 Missing: the code is there, so it is easy to skim past.>
 
-**Contract** — `<contract file>` (<producer | consumer>)
+**Interface** — `<element>` (<provides | consumes>)
 
-<How this side diverges from the frozen contract. Say whether the generated
-stubs match the contract file, so it is clear whether the implementation
-diverged or the codegen is stale.>
+<How this side diverges from the fields its task's Interfaces table gives.>
+
+**Gate 2** — `<command>` failed in a file only this task names
+
+> <file>:<line>: <the error, quoted>
+
+---
+
+## Plan gaps
+
+<!-- Gate 2 failures no single task explains: a file no task names, or one
+     several tasks name. Not a task failure - the plan did not cover it.
+     The next command is /pave:plan, and it is the user's call. -->
+
+### <service> · `<command>`
+`<file>` · <unnamed | shared by NN, NN>
+
+> <file>:<line>: <the error, quoted>
+
+Suggested: `/pave:plan <scoped | full>` - <why, in one line>
+
+## Gate 2
+
+| Service | codegen | build | test | lint |
+|---|---|---|---|---|
+| <service> | <pass/fail/-> | <pass/fail> | <pass/fail (n tests)> | <pass/fail> |
+
+<!-- A service waiting for gate 2 - an unfinished, failed or unreviewed task
+     - is listed under Not reviewed, never here. An environment failure (no
+     file named) is written here, with its output. -->
+
+## Contracts
+
+<!-- Only after a clean review of a finished feature: what
+     `pave.sh contracts` printed, verbatim. -->
+
+- copied: <service> `<path>` (<kind>)
 
 ---
 
 ## Passed
 
-- `<NN-task-slug>` · <service> · <n> items verified, contract OK
+- `<NN-task-slug>` · <service> · <n> items verified, interfaces OK
 
 ## Cleaned up
 
@@ -72,6 +109,8 @@ diverged or the codegen is stale.>
 
 - `<NN-task-slug>` · <service> · <why - reviewer returned nothing, errored,
   repo unavailable>. **This task was not checked.** Status unchanged.
+- **<service>** · gate 2 waited · <which tasks are not done or did not pass
+  gate 1>. **This service was not built or tested.**
 
 <!--
   Never omit this section when it applies. A task with no section reads as
@@ -87,9 +126,10 @@ Not deviations. Nothing here fails a task, and no builder reads it.
 - **<service>** <An improvement. The agent followed the plan; this is what
   you might do differently, noted only.>
 
-- **Plan gap** <Something the plan does not cover. Not a deviation, because
-  the plan never asked for it. If the spec requires it: `/pave:plan`. If the
-  spec does not say: `/pave:spec` first - it is the user's decision.>
+- **Plan gap** <Something a reviewer noticed the plan does not cover. Not a
+  deviation, because the plan never asked for it. If the spec requires it:
+  `/pave:plan`. If the spec does not say: `/pave:spec` first - it is the
+  user's decision.>
 
 <!--
   This separation is load-bearing. Suggestions must never reach a builder:

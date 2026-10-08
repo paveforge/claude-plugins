@@ -40,10 +40,10 @@ consumes: [<events newly consumed>]
 |---|---|---|
 | <service> | <one line per task outcome> | <NN, NN> |
 
-## Contracts
-| Contract | Producer | Consumers |
-|---|---|---|
-| `features/<feature-id>/contracts/<file>` | <service> | <services> |
+## Interfaces
+| Interface | Producer | Consumers | Built schema |
+|---|---|---|---|
+| `features/<feature-id>/plan.md#interfaces` - <element> | <service> | <services> | `features/<feature-id>/artifacts/contracts/<service>/<path>` |
 
 ## Decisions worth knowing
 <The plan decisions a later feature is most likely to bump into - state

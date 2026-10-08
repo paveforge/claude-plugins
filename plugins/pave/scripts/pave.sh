@@ -8,10 +8,14 @@
 #   pave.sh feature create <id> [title] create a confirmed feature's folder
 #   pave.sh seal                        record spec and task hashes at the plan gate
 #   pave.sh check                       is the plan still the one approved for this spec?
+#   pave.sh diff                        which criteria changed since approval, and what they reach
+#   pave.sh overlaps                    tasks naming the same place with no depends_on between them
+#   pave.sh attribute <service> <file>...   which tasks name each failing file
+#   pave.sh contracts                   copy built producer contracts into the feature
 #   pave.sh prune-obsoleted-tasks       remove reverted obsolete tasks
 #
-# seal, check and prune-obsoleted-tasks act on the session's feature, given
-# only as SESSION_FEATURE_ID=<id> - never as an argument:
+# These act on the session's feature, given only as SESSION_FEATURE_ID=<id> -
+# never as an argument:
 #   SESSION_FEATURE_ID=FEAT-8888 pave.sh check
 #
 #   pave.sh agent <name>        model and effort to spawn an agent with
@@ -157,7 +161,7 @@ cmd_feature_create() {
   local hub; hub="$(find_hub)"
   local path="$hub/features/$id" status="new"
   [ -d "$path" ] && status="exists"
-  mkdir -p "$path/contracts" "$path/tasks" "$path/artifacts"
+  mkdir -p "$path/tasks" "$path/artifacts"
   local title="$*"
   [ -z "$title" ] && title="$(spec_title "$path")"
   printf 'id: %s\ntitle: %s\nstatus: %s\npath: %s\n' "$id" "$title" "$status" "$path"
@@ -176,21 +180,30 @@ next_feat() {
   printf 'feat-%s' "$((n+1))"
 }
 
-# seal | check | prune-obsoleted-tasks
-# Plan integrity for the session's feature. See pave-plan.py. The feature is
-# taken only from SESSION_FEATURE_ID, set by the caller from the feature
-# /pave:spec chose for its session - each session passes its own, so parallel
-# sessions on different features never share state.
+# seal | check | diff | overlaps | attribute | contracts | prune-obsoleted-tasks
+# Plan integrity and plan-derived reports for the session's feature. See
+# pave-plan.py. The feature is taken only from SESSION_FEATURE_ID, set by the
+# caller from the feature /pave:spec chose for its session - each session
+# passes its own, so parallel sessions on different features never share
+# state. Only attribute takes arguments: a service and the failing files.
 cmd_plan() {
   local op="$1" py="$2"; shift 2
-  [ $# -eq 0 ] || die "$op takes no arguments. Pass the feature as SESSION_FEATURE_ID=<id> pave.sh $op"
+  if [ "$op" = attribute ]; then
+    [ $# -ge 2 ] || die "usage: SESSION_FEATURE_ID=<id> pave.sh attribute <service> <file>..."
+  else
+    [ $# -eq 0 ] || die "$op takes no arguments. Pass the feature as SESSION_FEATURE_ID=<id> pave.sh $op"
+  fi
   local id="${SESSION_FEATURE_ID:-}"
   [ -n "$id" ] || die "SESSION_FEATURE_ID is not set. Run /pave:spec <feature-id> to choose this session's feature."
   have_python || die "python3 is required for '$op'"
   local hub; hub="$(find_hub)"
   [ -d "$hub/features/$id" ] || die "SESSION_FEATURE_ID=$id: no such feature in $hub/features"
   printf 'feature: %s\n' "$id"
-  python3 "$SCRIPTS/pave-plan.py" "$py" "$hub/features/$id"
+  if [ "$op" = attribute ]; then
+    python3 "$SCRIPTS/pave-plan.py" attribute "$hub/features/$id" "$@"
+  else
+    python3 "$SCRIPTS/pave-plan.py" "$py" "$hub/features/$id"
+  fi
 }
 
 # agent <name>
@@ -261,9 +274,13 @@ case "${1:-}" in
     esac ;;
   seal)  shift; cmd_plan seal seal "$@" ;;
   check) shift; cmd_plan check check "$@" ;;
+  diff)  shift; cmd_plan diff diff "$@" ;;
+  overlaps)  shift; cmd_plan overlaps overlaps "$@" ;;
+  attribute) shift; cmd_plan attribute attribute "$@" ;;
+  contracts) shift; cmd_plan contracts contracts "$@" ;;
   prune-obsoleted-tasks) shift; cmd_plan prune-obsoleted-tasks prune "$@" ;;
   agent) shift; cmd_agent "$@" ;;
   config-check) shift; cmd_config_check "$@" ;;
-  ""|-h|--help) sed -n '4,20p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
+  ""|-h|--help) sed -n '4,24p' "${BASH_SOURCE[0]}" | sed 's/^# *//' ;;
   *) die "unknown command: $1" ;;
 esac

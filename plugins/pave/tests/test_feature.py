@@ -51,8 +51,10 @@ def test_create_is_idempotent(hub):
     r2 = hub.run("feature", "create", "feat-1")
     assert r2.returncode == 0
     assert "status: exists" in r2.stdout
-    for sub in ("contracts", "tasks", "artifacts"):
+    for sub in ("tasks", "artifacts"):
         assert (hub.path / "features" / "feat-1" / sub).is_dir()
+    # Contracts are a disposable record under artifacts/, never planned input.
+    assert not (hub.path / "features" / "feat-1" / "contracts").exists()
 
 
 def test_create_reads_title_from_existing_spec(hub):

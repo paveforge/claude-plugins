@@ -143,8 +143,9 @@ Record per service: `kind` (service | library | app | infra), `language`,
 `commands`, `contracts`, `consumes` where imports make it clear, the repo's own
 `CLAUDE.md` if it has one, and `repo_root` — the root of the repository the
 service lives in (its VCS root, or the top folder of the project when there
-is no VCS), so that two services sharing one are recognised as a monorepo and `execution.monorepo_strategy`
-applies to them.
+is no VCS), so that two services sharing one are recognised as a monorepo:
+`/pave:review` runs their build, test and lint one after another, and
+`/pave:build` commits each repo once.
 
 ### Filling in workspace.yaml
 

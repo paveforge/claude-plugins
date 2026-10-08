@@ -1,33 +1,34 @@
 ---
 name: review
-description: Check that the build agents did exactly what the plan said, for the session's feature. Refuses if the spec or plan changed since approval. Spawns one reviewer per task, marks tasks that deviate as failed, writes a report, and after a clean review offers to clean up reverted obsolete tasks. Use on demand after /pave:build, before merging.
+description: Check the session feature's build in two gates - first that each builder did exactly what its task said (one reviewer per task), then that every service builds, tests and lints. Refuses if the spec or plan changed since approval. Marks tasks that deviate, or whose own files fail, as failed; reports failures no task explains as a gap in the plan; after a clean review records the built contracts and offers to clean up reverted obsolete tasks. Use on demand after /pave:build, before merging.
 ---
 
 # Pave — review
 
-Compare the plan against the execution. Nothing else.
+Check what was built, in two gates.
 
-Build agents tick their own checkboxes and report their own success. This
-phase is the independent check on those claims: **did each agent actually do
-what its task document said, or did it claim work it did not do?**
+Builders only write code: they compile nothing, test nothing, and tick their
+own checkboxes. This phase is the independent check:
 
-This skill is an orchestrator. It spawns the reviewers, collects what they
-found, and records the outcome. The comparing happens in the agents.
+1. **Gate 1 - did each builder do what its task said?** One cheap reviewer
+   per task compares the task document with the code.
+2. **Gate 2 - does it build?** Each service's own `codegen`, `build`, `test`
+   and `lint`, run once all its tasks are written.
+
+This skill is an orchestrator. It spawns the reviewers, runs the commands,
+and records the outcome. The comparing happens in the agents; sorting a
+failure to a task happens in a script.
 
 ## What this phase is not
 
-It does not verify the feature works. It does not ask whether the plan was
-right or whether a case was missed.
+It does not judge whether the plan was right. That restraint is what makes it
+cheap, and it has two consequences:
 
-That restraint is the point, and it is what makes the phase cheap. Two
-consequences, both deliberate:
-
-**A gap in the plan is not a review failure.** If the plan said A, B and C and
-every agent did A, B and C, this passes — even if the feature needs D. A
-missing case is a spec or planning problem, so it goes in the report as a
-comment and **the user decides** - `/pave:spec` to change what the feature
-must do, then `/pave:plan` and `/pave:build`. Never mark a task failed because
-the plan was wrong.
+**A gap in the plan is not a task failure.** If the plan said A, B and C and
+every builder did A, B and C, gate 1 passes - even if the feature needs D.
+When gate 2 then fails somewhere no task is responsible for, that is the same
+gap showing up: it is reported as a plan gap, with a re-plan suggested, and
+**the user decides**. Never mark a task failed because the plan was wrong.
 
 **Improvements never change status.** Note them, clearly marked non-blocking.
 
@@ -43,9 +44,9 @@ SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh check
 ```
 
 **Anything but `ok` is a refusal.** Print what it reported and stop. Review
-compares code against task documents; if the spec moved on or a task was
-edited since the plan was approved, there is no approved document to compare
-against - only `/pave:plan` can make one.
+compares code against task documents; if the spec moved on or a task cannot
+be vouched for, there is no approved document to compare against - only
+`/pave:plan` can make one.
 
 Locate the hub. Read the hub's config file (`config.yaml`, `config.yml` or `config.toml`), `workspace.yaml`, `features/<id>/`,
 and the hub's own `AGENTS.md` if it has one — the user's
@@ -66,7 +67,7 @@ code that claims to match its document yet, so a reviewer would report items
 missing — which is true and useless. `obsolete` tasks are never reviewed:
 the task that reverts one is, like any other `done` task.
 
-## 1. Fan out, one reviewer per task
+## 1. Gate 1 - one reviewer per task
 
 Spawn a `reviewer` for **every `done` task** in the feature, in parallel up to
 `execution.max_parallel`, passing the `model` and `effort` printed by
@@ -88,32 +89,26 @@ Give each reviewer:
 
 - Its **one** task document
 - The repo path for that task's service
-- The frozen contract files that task names
 - The absolute path to the hub's `AGENTS.md`, if it exists —
   the user's rules
 
 Nothing else about the feature. The user's rules say how this team wants a
-review done; they are not feature context. A reviewer still does not need the
-spec, the architecture, the other task documents, or any notion of the feature
-as a whole. It is answering one narrow question about one document, and keeping
+review done; they are not feature context. A reviewer does not need the
+spec, the plan, the other task documents, or any notion of the feature as a
+whole. It is answering one narrow question about one document, and keeping
 its input narrow is what keeps it accurate.
 
 Those rules can add something to look for. They cannot add something to fail
 on: a finding that comes from them is a non-blocking improvement. `failed`
-means an agent claimed work it did not do, and §2 unchecks the specific items
-a reviewer names — a finding with no ticked item behind it has nothing to
-uncheck, and would send a builder back with nothing to act on.
+means a builder claimed work it did not do, and §2 unchecks the specific
+items a reviewer names — a finding with no ticked item behind it has nothing
+to uncheck, and would send a builder back with nothing to act on.
 
-Contracts decompose the same way. Both sides are checked against the same
-frozen file, so if the producer conforms to it and the consumer conforms to
-it, they conform to each other — no reviewer needs to see both.
+Interfaces decompose the same way. Producer and consumer tasks carry the same
+fields, projected from one table in the plan, so if each side conforms to its
+task, they conform to each other — no reviewer needs to see both.
 
-## 2. Record the outcome
-
-**If every reviewer reports clean**, leave the feature status as it is. A
-clean review confirms what was built; it does not finish what was not. A
-`blocked` or `building` feature stays that way — say so rather than letting a
-green review read as a complete feature. Then go to §4.
+## 2. Record gate 1
 
 **For each reviewer reporting a deviation:**
 
@@ -123,15 +118,13 @@ green review read as a complete feature. Then go to §4.
 2. **Write the findings into its `## Build notes`**, under a heading
    `### Review findings - <reviewed_at>`, after anything already there: for
    each item, the item quoted exactly, Missing or Different, and what the
-   reviewer found instead with file and line - plus any contract finding.
+   reviewer found instead with file and line - plus any interface finding.
    Only the deviations: improvements stay in the report. An unticked item
    says that it does not hold; the finding says where and why, so the
    re-run builder does not judge the same code the same way twice. Build
    notes are not hashed, so this does not trip `pave.sh check`.
 3. Set that task document to `status: failed`.
 4. Leave conforming tasks untouched at `done`.
-
-If any task failed, set the feature to `failed`.
 
 **If a reviewer returns nothing or errors**, that task is unreviewed, not
 passed. Leave its status untouched, record it in the report, and say so in
@@ -140,39 +133,113 @@ your summary. Never let a missing result read as a clean one.
 Record exactly what the reviewers reported. Do not soften a finding, and do
 not add one of your own — you did not read the code.
 
-## 3. Report
+## 3. Gate 2 - build, test, lint
+
+A service goes through gate 2 when **every** task of it that is not
+`obsolete` is `done` and passed gate 1. A service with an unfinished, failed
+or unreviewed task waits: its code is not all written yet, and its failures
+would say nothing. Name each service that waits, and why.
+
+For each service that goes through, run its commands from `workspace.yaml`,
+in its `path`, in this order, skipping any it does not have:
+
+1. `codegen` - builders run none, so generated code is brought up to date here
+2. `build`
+3. `test`
+4. `lint`
+
+Run every command even when an earlier one fails, and keep each one's output.
+Services in different repos may run at the same time. Services that share a
+repo (`repo_root` in `workspace.yaml`) run one after another: two builds in
+one checkout overwrite each other's output.
+
+**A failure is sorted, never judged.** For every failing command, take the
+files its output names, and ask which tasks name them:
+
+```
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh attribute <service> <file>...
+```
+
+It prints one line per file: the file, then `task` with the one task that
+names it, `shared` with the tasks that all name it, or `unnamed`.
+
+| Failure | Means | Do |
+|---|---|---|
+| In a file exactly one task names (`task`) | That builder's slip - a typo, a missing import, a broken test | Write it into that task's Build notes under `### Review findings - <reviewed_at>`: the command, the file and line, and the error, quoted. Set the task `failed`. Leave its ticks - which item the error belongs to is the builder's to find |
+| In a file no task names (`unnamed`), or several do (`shared`) | The plan did not cover it: a place it did not name, a consumer it missed, two tasks it did not order | A plan gap. No task fails. Report it, and suggest `/pave:plan` - `scoped` or `full` if the last plan was `quick` and the failure lies beyond what it touched. The user decides |
+| Naming no file at all | The environment: a database not running, a tool not installed | Report it, with the output. No task fails. Fix it and run `/pave:review` again |
+
+A command that fails with no output to sort is the environment row.
+
+## 4. Status
+
+Set the feature status from both gates:
+
+| Condition | Feature status |
+|---|---|
+| Any task `failed` (either gate), or any plan-gap or environment failure in gate 2 | `failed` |
+| Otherwise | Unchanged |
+
+A clean review confirms what was built; it does not finish what was not. A
+`blocked` or `building` feature stays that way — say so rather than letting a
+green review read as a complete feature.
+
+## 5. Record the contracts
+
+**Only after a clean review of a finished feature**: every task `done` or
+`obsolete`, every `done` task passed gate 1, every service passed gate 2,
+none unreviewed.
+
+```
+SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh contracts
+```
+
+It copies the `producer` contract files `workspace.yaml` records for every
+service the plan modifies into `features/<id>/artifacts/contracts/` - the
+schemas as they were actually built and verified. Nothing is built against
+the copy; it is a record, and running the command again rebuilds it. Add what
+it printed to the report.
+
+## 6. Report
 
 Write `features/<feature-id>/artifacts/review-report.md` from
 `templates/review-report.md`. Record `spec_hash` from `plan.md` and the hash
-`plan.md` holds for every task reviewed: the report is tied to the documents
-it checked, not to a branch or a commit.
+the seal (`artifacts/seal.yaml`) holds for every task reviewed: the report is
+tied to the documents it checked, not to a branch or a commit.
 
 It is written for **a person** deciding whether this is mergeable: they read
 the header and the Failed section, and stop. No builder reads it - a re-run
-builder gets only its task document, where the failed items are unticked and
-§2 has written their findings into Build notes.
+builder gets only its task document, where gate 1's failed items are
+unticked and every finding of both gates is written into Build notes.
 
-Three rules the template encodes, all of them load-bearing:
+Four rules the template encodes, all of them load-bearing:
 
 **Quote items exactly** as they appear in the task document, and name the
 task file and repo, so the reader can find each one.
 
 **Never omit the Not reviewed section** when a reviewer returned nothing or
-errored. A task with no section reads as a pass, and silence must never mean
-approval.
+errored, or a service waited for gate 2. A task with no section reads as a
+pass, and silence must never mean approval.
+
+**Keep plan gaps apart from task failures.** A gate 2 failure no task
+explains is the plan's, and the next command is `/pave:plan`, not
+`/pave:build`.
 
 **Keep improvements apart from failures.** A suggestion is not a deviation;
 mixed in with the failed items, it reads as one. The builder's authority is
 the task document, not a reviewer's opinion.
 
 Then summarise in the session: what failed, in which service, and the single
-command to run next — `/pave:build` for execution drift, or `/pave:spec` when
-what the feature must do needs to change. Lead with what failed.
+command to run next — `/pave:build` for task failures, `/pave:plan` for a
+plan gap, or `/pave:spec` when what the feature must do needs to change.
+Lead with what failed. When both task failures and plan gaps exist, name
+the plan gap first: a re-plan may rewrite the failed tasks anyway.
 
-## 4. Clean up reverted obsolete tasks
+## 7. Clean up reverted obsolete tasks
 
 **Only after a successful review**: every `done` task reviewed, none failed,
-none unreviewed. A failed or partial review never offers clean-up.
+none unreviewed, gate 2 clean. A failed or partial review never offers
+clean-up.
 
 An obsolete task whose revert is `done` and has just passed review describes
 nothing left in the code - and neither does its revert. Both are noise in the
@@ -198,15 +265,15 @@ SESSION_FEATURE_ID=<id> "${CLAUDE_PLUGIN_ROOT}"/scripts/pave.sh prune-obsoleted-
 ```
 
 It removes each obsolete task and its reverts, and drops their entries from
-`plan.md`'s task hashes. It leaves `spec_hash` and every other task's hash
-untouched, and never lowers `next_task`, so numbers are still never reused.
-It refuses - removing nothing - if any obsolete task's revert is not `done`.
+the seal. It leaves `spec_hash` and every other task's hash untouched, and
+never lowers `next_task`, so numbers are still never reused. It refuses -
+removing nothing - if any obsolete task's revert is not `done`.
 
 Add what it printed to the review report under **Cleaned up**, then rewrite
 `features/<id>/README.md` and `features/README.md` from the remaining task
 frontmatter.
 
-## 5. Suggest recording it
+## 8. Suggest recording it
 
 After a successful review of a feature whose every task is `done`, say once
 that `/pave:learn` records it in the knowledge base, so the next feature in

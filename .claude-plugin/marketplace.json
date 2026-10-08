@@ -9,13 +9,13 @@
       "name": "pave",
       "source": "./plugins/pave",
       "displayName": "Pave",
-      "description": "Plan a feature once across every service it touches, freeze the contracts, then build each service in parallel from its own self-contained task document.",
-      "version": "0.10.0",
+      "description": "Plan a feature once across every service it touches, fix the interfaces between them, then build in parallel from self-contained task documents. spec.md and plan.md are the only sources of truth.",
+      "version": "1.0.0",
       "author": {
         "name": "paveforge"
       },
       "repository": "https://github.com/paveforge/claude-plugins",
-      "keywords": ["microservices", "multi-repo", "planning", "contracts", "monorepo"],
+      "keywords": ["microservices", "multi-repo", "planning", "interfaces", "monorepo"],
       "category": "workflow"
     },
     {
@@ -23,7 +23,7 @@
       "source": "./",
       "displayName": "Pave Installer",
       "description": "Install pave-setup for Codex or Kiro, which builds Pave natively on that platform without changing the Pave plugin.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": {
         "name": "paveforge"
       },

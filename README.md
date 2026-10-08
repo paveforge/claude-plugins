@@ -27,8 +27,8 @@ plugin itself stays Claude-specific. Remove the skill with
 
 # Pave
 
-**Specify a feature once, plan it across every service it touches, freeze the
-contracts, then build each service in parallel.**
+**Specify a feature once, plan it across every service it touches, fix the
+interfaces between them, then build in parallel.**
 
 When a feature spans several services, the usual approach is to go service by
 service, designing each in isolation. The cross-service picture — which
@@ -36,11 +36,23 @@ services are affected, what the interfaces between them are, what order things
 ship in — never exists anywhere except in someone's head.
 
 Pave inverts that. A **hub** folder sits beside your service repos and holds
-the planning. A feature is specified and planned once, across all of it, with the contracts
-between services defined and generated before any implementation starts.
-Freezing the contracts is what makes the next step safe: the services stop
-depending on each other's in-flight code, so they can be built at the same time
-by separate agents, each working from a self-contained task document.
+the planning. A feature is specified and planned once, across all of it, with
+every interface between services fixed field by field before any
+implementation starts. That is what makes the next step safe: the services
+stop depending on each other's in-flight code, so they can be built at the
+same time by separate agents, each working from a self-contained task
+document.
+
+**Two files are the truth: `spec.md` (what) and `plan.md` (how).** Everything
+else Pave writes for a feature - the task documents, the seal, the contract
+copies, the reports - is rebuilt from those two and the code. A hub can keep
+only those two files per feature and lose nothing that matters.
+
+**The planner thinks; everything after it executes.** The planner decides
+every place a change lives, every field of every interface and every
+ordering, and writes it into task documents. Builders write code from their
+one task and run nothing; reviewers check one task against the code. That is
+why the planner gets the strongest model you have, and the rest stay cheap.
 
 It is stack-agnostic. Build commands are discovered per repo — CI config
 first, since that says how *your team* builds *this repo* — so nothing in the
@@ -68,8 +80,8 @@ claude
 /pave:analyse                          # work out what they are, and what they do
 /pave:spec build checkout              # pick an id, then agree what it must do
 /pave:plan                             # → one approval gate
-/pave:build                            # fan out, one agent per service
-/pave:review                           # did the agents follow the plan?
+/pave:build                            # fan out, every task that can run at once
+/pave:review                           # did the agents follow the tasks, and does it build?
 /pave:learn                            # record what the feature added
 ```
 
@@ -82,18 +94,19 @@ share it with a team, commit `config.yaml`, `AGENTS.md`, `CLAUDE.md`,
 teammate generates their own with `/pave:init`.
 
 **So is git in the service repos.** Pave never reads a branch or a commit to
-decide anything. The plan's task hashes record what each task was built
+decide anything. The seal's task hashes record what each task was built
 from, and knowledge records a hash of the source it read. In a repo
 under git, builders work on a branch; in a repo without one, they build in
-the folder as it is. Only `execution.monorepo_strategy: worktree` needs git.
+the folder as it is.
 
-**Commits.** With `branch.autocommit: false`, the default, builders are told
-not to commit, and `/pave:build` asks at the end whether to commit what it
-built. With `true`, a builder makes one commit on its branch once every task
-in its queue is done and verification passes. Either way, only a repo that
-had no uncommitted changes before the build is ever committed, and nothing
-is merged or pushed. This is enforced by the agents' instructions, not by a
-guard: a builder can run shell commands, so it is not a hard boundary.
+**Commits.** Builders never commit. At the end of `/pave:build`, with
+`branch.autocommit: false`, the default, it asks whether to commit what it
+built; with `true`, it makes one commit per repo without asking. Either way,
+only a repo that had no uncommitted changes before the build is ever
+committed, the commit comes before `/pave:review` has compiled or tested
+anything, and nothing is merged or pushed. This is enforced by the agents'
+instructions, not by a guard: a builder can run shell commands, so it is not
+a hard boundary.
 
 ---
 
@@ -111,8 +124,8 @@ question:
 |---|---|---|
 | **spec** | What must be true when this is done? | You — nothing is written without your yes |
 | **plan** | What has to change, in which services, to make it true? | The planner — one gate, your approval |
-| **build** | Make the change | Builders, one per repo, in parallel |
-| **review** | Did the code do what the plan said? | Reviewers, one per task |
+| **build** | Write the code | Builders, every task whose dependencies are done, in parallel - they run nothing |
+| **review** | Did the code do what each task said, and does it build? | Reviewers, one per task; then each service's build, test and lint |
 | **learn** | What does the platform know now that it didn't before? | The knowledge base |
 
 The philosophy is in how the steps relate:
@@ -124,8 +137,11 @@ The philosophy is in how the steps relate:
   or a repo. A builder that finds a gap stops; a planner that meets a "what"
   question sends it back. Nothing downstream decides what upstream left open.
 - **Drift is detected, not trusted away.** The plan records the spec it
-  answers and the tasks it approved, by hash. Change either, and build and
-  review refuse until the feature is re-planned.
+  answers, and the seal the tasks it approved, by hash. Change either, and
+  build and review refuse until the feature is re-planned.
+- **Your choices are final.** A level you give `/pave:plan`, or any answer
+  you give, is done as given. Pave recommends and warns, but never overrides
+  you.
 - **The loop closes.** What a feature added, and what a question dug out of
   the code, goes back into the knowledge base — so the next spec is written,
   and the next plan is made, against the platform as it now is.
@@ -184,6 +200,31 @@ config afterwards to keep it). The config
 records no Pave version; the template is what Pave reads now, which is right
 however old the hub is.
 
+**Upgrading to 1.0.** 1.0 makes `spec.md` and `plan.md` a feature's only
+sources of truth, and a hub from 0.x notices it in four places:
+
+- **Task hashes move out of `plan.md`** into a disposable seal,
+  `features/<id>/artifacts/seal.yaml`. A feature sealed under 0.x has no
+  seal, so `pave.sh check` reports it `unverified` and build and review
+  refuse. The next `/pave:plan` rebuilds its task documents from `plan.md` -
+  updating `plan.md` first if it lacks something the tasks need, such as the
+  new Interfaces table - and you approve once. Rebuilt tasks start `pending`;
+  the next build finds what already holds in the code, and review checks
+  everything again.
+- **Contracts are no longer planned files.** `plan.md` holds the exact
+  interfaces, and each task carries its side of them. The old
+  `features/<id>/contracts/` folder is no longer read; delete it when you
+  like. After a clean review, the built schema files are copied into
+  `artifacts/contracts/` as a record.
+- **Builders only write code.** They run no build, test, lint or codegen,
+  and never commit. `/pave:review` runs the commands as a second gate, and
+  `/pave:build` makes the commits. The `monorepo_strategy` setting under
+  `execution` is gone: `/pave:init` reports it as a leftover and removes it.
+- **`depends_on` is the only ordering.** Tasks in one service run in
+  parallel unless the plan orders them. A plan from 0.x relied on one
+  builder per service; its rebuild adds the `depends_on` that tasks sharing
+  a file need.
+
 **Upgrading from 0.6.** 0.7 adds `branch.autocommit`, and builders no longer
 commit by default. `/pave:build` stops until the key is in the config: run
 `/pave:init` to add it as `false`, or set it to `true` to have each builder
@@ -204,8 +245,8 @@ from 0.5 notices it in three places:
   feature records list tasks per service instead of commits. Anything outside
   Pave that reads `commit:` from them must change.
 
-Plans and tasks carry over as they are: a feature sealed and built under 0.5
-still passes `pave.sh check`, and its `done` tasks stay done.
+Plans and tasks carry over to 0.6 as they are: a feature sealed and built
+under 0.5 still passes `pave.sh check` there, and its `done` tasks stay done.
 
 ---
 
@@ -287,7 +328,9 @@ the code only for what the question needs. A scan never rewrites or deletes
 on-demand knowledge (below); it only rebuilds the index that lists it.
 
 **You rarely run it by hand after the first time.** `/pave:plan` spawns analysts
-itself for any service whose knowledge is missing or stale.
+itself for any service whose knowledge is missing, and refreshes stale
+knowledge on a `full` plan. Before a `quick` re-plan that you want planned
+against fresh knowledge, run `/pave:analyse <service>` first.
 
 ---
 
@@ -327,7 +370,15 @@ whether to re-plan.
 
 ## `/pave:plan` — plan it across services
 
-Always runs the `planner` agent, on the model `config.yaml` names for it.
+```
+/pave:plan                   # plan; on a re-plan, asks the level once
+/pave:plan quick             # re-plan at this level, no question
+```
+
+Always runs the `planner` agent, on the model `config.yaml` names for it. The
+planner is the only agent that thinks - every place a change lives, every
+interface field, every ordering is decided here - so the strongest model you
+have is recommended for it.
 
 **Is a plan needed?** It first compares the spec's hash with the one recorded
 in the approved plan. Same → the plan is current, and it says so. Different →
@@ -341,16 +392,22 @@ open questions.
 2. **plan.md** — the approach, a **service map** (every service as `modify`,
    `read-only` or `untouched`), each decision with the criteria it serves and
    the alternative it rejected, the flow, failure behaviour, state ownership,
-   and every task in one line: service, priority, size, the criteria it
-   satisfies, and the obsolete tasks it reverts.
-3. **Contracts** — the interfaces between services.
+   the **interfaces** between services field by field, and every task in one
+   line: service, priority, size, the criteria it satisfies, what it depends
+   on, and the obsolete tasks it reverts.
 
-   **→ The gate.** You approve `plan.md` and the contracts together.
-   **Contracts freeze here.**
+   **→ The gate.** You approve `plan.md`. **Interfaces freeze here.**
 
-4. **Task documents** — one per task, each naming a single service, then a
-   readiness check. The plan is then **sealed**: the spec's hash and each
-   task's hash are recorded in `plan.md`.
+3. **Task documents** — one per task, each naming a single service and
+   carrying everything its builder needs, interface fields included, then a
+   readiness check - with `pave.sh overlaps` making sure no two tasks that can
+   run at once name the same file. The plan is then **sealed**: the spec's
+   hash goes into `plan.md`, each task's hash into the seal.
+
+**`spec.md` and `plan.md` are the truth; tasks are projections.** Every
+change goes into `plan.md` first, and the tasks are written from it. Lose
+the task documents - or keep only the two truth files in git - and the next
+`/pave:plan` writes them again from the plan.
 
 **It never decides what the spec leaves open.** A question about *how* — an
 event or a call, which service owns the state — it settles or asks you. A
@@ -360,15 +417,41 @@ decision: settle it with `/pave:spec`, then re-plan.
 **Always tasks, even for one change.** A task is the unit that is built,
 rebuilt, reviewed and reverted on its own. Task numbers only ever increase.
 
-**Re-planning.** Tasks describe the end state, never a change from a previous
-version. When the spec changes:
+**The planner owns every ordering.** Build runs every task whose `depends_on`
+are done at the same time - two tasks in one service as readily as two in
+different services. So the plan gives a `depends_on` to any two tasks that
+name the same file, or where one needs the other's result, and none to the
+rest.
+
+**Re-planning, at the level you choose.** A small change should not cost a
+full plan. `pave.sh diff` works out, for free, which acceptance criteria
+changed since the approved spec and which tasks and services they reach -
+the Why and What prose never count. Then the re-plan runs at one of three
+levels:
+
+| Level | For a change that… | Knowledge | Passes | Readiness checks |
+|---|---|---|---|---|
+| `quick` | stays within the plan sections behind the tasks it reaches | stale kept; the planner checks the code | one: plan and tasks together, one gate | the re-projected tasks |
+| `scoped` | changes decisions, interfaces or the task set | stale kept; the planner checks the code | plan, gate, tasks | changed tasks and their interface partners |
+| `full` | does anything else | stale refreshed | plan, gate, tasks | every task |
+
+Give the level as the argument and it is used as given. Give none, and the
+planner traces the change first and recommends one; you are asked once,
+offered only the levels the change fits. **Your choice is final**: the
+planner may say at the gate that it would have chosen differently, but it
+plans at your level. The one exception: with no approved spec to compare
+against - a fresh clone of the hub, say - nothing can tell what changed, so
+the re-plan is `full`, and it says why.
+
+Whatever the level, tasks describe the end state, never a change from a
+previous version:
 
 | The task is… | …and the spec | The plan |
 |---|---|---|
 | not built | still needs it, differently | rewrites it in place |
 | not built | no longer needs it | drops it |
 | built | still needs it, differently | rewrites it and **reopens** it, naming every place in the code the change reaches |
-| built | no longer needs it | marks it **obsolete** and adds a new, high-priority task that removes its work |
+| built | no longer needs it | marks it **obsolete** and adds a new task that removes its work |
 
 **The planner reads the code.** Knowledge tells it where to look; the code
 tells it what is true. It looks up precise things itself — every place a value
@@ -388,12 +471,11 @@ It's always your call; a changed word in a criterion counts as a change.
 respawned, so a re-plan costs only the difference. Across sessions it
 recovers from small files: `plan.md` as the index from criteria to decisions
 to tasks, a snapshot of the spec it was approved against, and the list of
-knowledge files and findings it relied on. A re-plan diffs the spec, follows
-the index to the affected tasks, and reads knowledge and code only for their
-services.
+knowledge files and findings it relied on. A `quick` re-plan reads the plan
+and the code behind the tasks it reaches, and nothing else.
 
-**What it asks you.** To confirm the services, any *how* questions, and the
-one gate.
+**What it asks you.** To confirm the services, the level on a re-plan, any
+*how* questions, and the one gate.
 
 ---
 
@@ -408,9 +490,21 @@ one gate.
 spec's hash and every task's hash against the sealed plan. A spec changed
 since, or a task edited by hand, stops it: run `/pave:plan`.
 
-**What it does.** Groups the tasks by service and fans out one agent per
-service. Inside each service's queue, `high` tasks — the ones removing obsolete
-work — run before `low` ones, then by number; `depends_on` always comes first.
+**What it does.** Runs the plan's `depends_on` graph and decides nothing
+else: every task whose dependencies are done is built at once, in one service
+or many, up to `execution.max_parallel`. Tasks linked by `depends_on` in one
+service form a chain that one builder works through, keeping its context.
+Priority only picks which ready chain starts first when the limit holds
+others back.
+
+**Builders only write code.** A builder reads its task document and makes
+each item hold in the code - nothing else. It runs no build, test, lint or
+codegen, and never commits: several builders can share a repo, and none of
+them runs anything that could collide with another or read another's
+half-written files. `/pave:review` compiles and tests once everything is
+built. The cost is honest: a cheap builder that cannot compile will
+sometimes slip - a typo, a missing import - and review sends that task back.
+The plan's precision is what keeps those slips rare.
 
 **One way of building.** Every task is built the same way, whatever its
 status: for each item, the builder reads the code the item names, leaves it
@@ -424,47 +518,50 @@ if a re-plan rewrites a done task without reopening it, `pave.sh seal` sees
 its hash differ from the previous seal's and reopens it.
 
 **Pave writes in the hub; builders write in the repos.** The skill itself never
-touches a service repository — it reads the hub, spawns agents, and writes
-reports back. Each builder owns exactly one repo: it copies the frozen
-contracts in, runs codegen and then starts work - in a repo under git, on the
-feature's branch. One writer per repo is what makes parallel agents safe.
+edits a service repository — it reads the hub, spawns agents, and writes
+reports back. Builders write the code, in a repo under git on the feature's
+branch.
 
-**Commits.** A builder commits only if `branch.autocommit` is `true`, its
-repo had no uncommitted changes before the build and no other builder works
-there - and then only once, after every task in its queue is done and
-`build`, `test` and `lint` pass. With `false`, the default, builders are told
-not to commit; when the build ends, `/pave:build` offers to commit each repo
-that was clean before the build and whose tasks are all done, and commits
-only on an explicit yes.
-
-Contracts are copied, never regenerated from the spec, so every service builds
-against the same bytes.
-
-Tasks targeting the same service run sequentially in one agent — two agents in
-one repo is a write conflict. Different services run in parallel.
+**Commits.** Made by `/pave:build` itself, once every builder has returned -
+never by a builder. With `branch.autocommit: true`, each repo that had no
+uncommitted changes before the build and whose tasks are all done gets one
+commit, without asking. With `false`, the default, it offers those repos and
+commits only on an explicit yes. Either way the commit comes before review
+has compiled anything.
 
 **What it asks you.** Ideally nothing. The build report is triaged by *who must
 act*: an in-scope judgement an agent made goes under **Decisions taken**, where
 you can skim it; only what genuinely cannot be resolved without you reaches
 **Needs you**, and each of those carries the decision and the exact command.
 
-**Escalation.** An agent that finds the contract wrong stops rather than fixing
-it locally — other services are built against that contract, and a local fix
-turns one error into several divergent guesses. That becomes a decision for
-you, usually a re-plan.
+**Escalation.** An agent that finds an interface wrong stops rather than
+fixing it locally — the other side is being built from the same fields, and a
+local fix turns one error into several divergent guesses. That becomes a
+decision for you, usually a re-plan.
 
 ---
 
-## `/pave:review` — check the agents followed the plan
+## `/pave:review` — check what was built, in two gates
 
-**What it does.** Spawns one reviewer per task. Each takes a single task
-document and one repo, and finds every ticked item in the code — not in the
-agent's report, in the code.
+**Gate 1 - did each builder do what its task said?** Spawns one reviewer per
+task. Each takes a single task document and one repo, and finds every ticked
+item in the code — not in the agent's report, in the code.
 
-**What it does not do.** It does not verify the feature works, or ask whether
-the plan was right. If the plan said A, B and C and the agents did A, B and
-C, it passes — even if the feature needs D. A missing case is a planning
-problem, so it goes in the report as a comment and you decide.
+**Gate 2 - does it build?** For every service whose tasks are all done and
+passed gate 1, it runs the service's own `codegen`, `build`, `test` and
+`lint` - one service at a time within a repo. A failure is sorted, not
+judged: `pave.sh attribute` says which tasks name each failing file.
+
+| The failure is in… | Means | Next |
+|---|---|---|
+| a file exactly one task names | that builder's slip | the task is marked `failed`, with the error in its Build notes → `/pave:build` |
+| a file no task names, or several do | a gap in the plan - a place it did not name, two tasks it did not order | reported as a plan gap → `/pave:plan`, your call |
+| no file at all | the environment | reported → fix it, review again |
+
+**What it does not do.** It does not ask whether the plan was right. If the
+plan said A, B and C and the agents did A, B and C, gate 1 passes — even if
+the feature needs D. When the gap shows up in gate 2, it is reported as the
+plan's, never as a task's, and you decide.
 
 That restraint is the point: it makes the phase cheap, and it keeps your
 approval at the plan gate meaningful. Like build, it refuses to run against a
@@ -477,11 +574,17 @@ writes a report for you. `/pave:build` then re-runs only the failed tasks;
 each builder sees only its task document, where the failed items are unticked
 and the findings sit in its Build notes.
 
+**Contracts, as a record.** After a clean review of a finished feature,
+`pave.sh contracts` copies every `producer` contract file `workspace.yaml`
+records for the services the plan modified - the schemas as actually built
+and verified - into `features/<id>/artifacts/contracts/`. Nothing is built
+against the copy; run it again and it is rebuilt.
+
 **Cleaning up.** After a successful review, if any obsolete tasks have been
 reverted, it asks whether to remove them. On yes, `pave.sh
 prune-obsoleted-tasks` deletes each obsolete task together with the task that
-reverted it (from the `Reverts` column of `plan.md`) and drops their hashes from `plan.md`, leaving the spec hash and every
-other task untouched.
+reverted it (from the `Reverts` column of `plan.md`) and drops their hashes
+from the seal, leaving the spec hash and every other task untouched.
 
 ---
 
@@ -552,7 +655,7 @@ passed review against its current plan — the plan matches the spec, every task
 is done, every acceptance criterion is satisfied by a done task, and the review
 is of this build — it writes a **feature record** to
 `artifacts/knowledge/on-demand/features/<feature-id>.md`: what the feature
-added, per service with the tasks built there, its contracts, the decisions a
+added, per service with the tasks built there, its interfaces, the decisions a
 later feature will bump into, and links back to `features/<feature-id>/`.
 
 Its capabilities join the knowledge index, so the next spec in the same area is
@@ -580,7 +683,7 @@ Also not part of the sequence. Run it any time.
 
 **What it does.** Given a feature id, or none when the session has one,
 draws that feature's blast radius — services from its `plan.md` service map as
-nodes, its Flow steps and Contracts as edges. Given anything else, treats it as a description and pulls what's
+nodes, its Flow steps and Interfaces as edges. Given anything else, treats it as a description and pulls what's
 relevant from the knowledge index.
 
 It draws only from files other phases already wrote — never from scanning a
@@ -648,10 +751,10 @@ platform/
     └── build-checkout/
         ├── README.md        one row per task
         ├── spec.md          what it must do — yours
-        ├── plan.md          how, plus the spec and task hashes
-        ├── contracts/       frozen at the plan gate
-        ├── tasks/           one self-contained document per unit of work
-        └── artifacts/       spec snapshot, planner context, reports, diagram.html
+        ├── plan.md          how, with its interfaces and the spec's hash — the truth, with spec.md
+        ├── tasks/           one self-contained document per unit of work, projected from plan.md
+        └── artifacts/       disposable: the seal, spec snapshot, planner context,
+                             reports, built contracts, diagram.html
 ```
 
 `config.yaml` holds nothing machine-specific, so it commits and the team shares
@@ -716,20 +819,19 @@ wanted; a new, high-priority task removes its work).
 ```yaml
 agents:
   analyst:   { model: sonnet, effort: medium }   # reads business logic
-  builder:   { model: sonnet, effort: medium }   # executes one task document
+  builder:   { model: sonnet, effort: medium }   # writes the code of one task document
   explorer:  { model: haiku,  effort: low    }   # mechanical repo scanning
-  reviewer:  { model: sonnet, effort: low    }   # one per task: plan vs code
-  planner:   { model: opus,   effort: high   }   # planning decides the feature
+  reviewer:  { model: sonnet, effort: low    }   # one per task: task vs code
+  planner:   { model: opus,   effort: high   }   # planning decides the feature - strongest recommended
   retriever: { model: sonnet, effort: low    }   # answers hub questions
 
 execution:
   mode: parallel                 # parallel | sequential
-  monorepo_strategy: sequential  # sequential | worktree | shared-tree
   max_parallel: 4
 
 branch:
   pattern: feature/{feature-id}  # the branch in every service repo under git
-  autocommit: false              # true: builders commit once, after every task passes
+  autocommit: false              # true: /pave:build commits each repo once, at the end
 ```
 
 Every model is enforced when its agent is spawned, planning included. Skills
@@ -767,10 +869,11 @@ effort=low
 A config file that can't be parsed stops the command with an error rather than
 falling back to defaults.
 
-**Monorepos.** When several services share a repo, `execution.monorepo_strategy` decides
-whether their tasks run one at a time (the template's choice, safe), in separate git
-worktrees (parallel, costs disk, needs git - build refuses it for a repo
-without), or concurrently in one checkout (fastest, will eventually collide).
+**Monorepos.** Several services - or several tasks of one service - may be
+built in one repo at once. That is safe because the plan keeps them on
+different files and builders run nothing. Review's second gate runs build,
+test and lint one service at a time within a repo, and `/pave:build` commits
+each repo once.
 
 ---
 
@@ -801,7 +904,7 @@ by `/pave:analyse` from your repos, narrowed to a language or a service. The
 hub file is **prescriptive** — what you are telling the agents to do.
 
 Nothing you write there relaxes the plugin's own doctrine. A rule cannot send a
-builder into another repo, edit a frozen contract, or let it fill a gap the
+builder outside its task's files, change a frozen interface, or let it fill a gap the
 plan left open, and it cannot make a reviewer fail a task the plan never asked
 for. Where one of your rules and a task document disagree, the document wins
 and the agent says so in its summary rather than quietly picking.
@@ -815,19 +918,23 @@ your approval, and the planner sends back any question whose answer would
 change what the feature does. So every plan decision traces to something you
 wrote down.
 
-**Nothing is built against a stale plan.** The plan records the spec's hash
-and every task's hash at its gate; build and review check both before doing
-anything. A spec change or a hand-edited task stops them until the feature is
-re-planned.
+**Two files are the truth.** `spec.md` and `plan.md` are all a feature needs
+to be rebuilt; every other file is a projection of them or a record. Every
+change goes into the plan first, so nothing true lives only in a task.
 
-**Planning is the expensive phase and gets the strong model.** Build agents
-get a cheaper one — not because they do the same job with less care, but
-because their job is genuinely smaller: contracts are frozen, tasks are
-concrete, out-of-scope is explicit, and anything ambiguous escalates instead of
-being improvised.
+**Nothing is built against a stale plan.** The plan records the spec's hash,
+and the seal every task's hash, at its gate; build and review check both
+before doing anything. A spec change or a hand-edited task stops them until
+the feature is re-planned.
 
-**Every task traces in both directions.** Tasks cite the plan sections and
-contracts they come from and the acceptance criteria they satisfy, and the
+**Planning is the expensive phase and is recommended the strong model.**
+Build agents get a cheaper one — not because they do the same job with less
+care, but because their job is genuinely smaller: interfaces are fixed field
+by field, tasks name every file, orderings are decided, out-of-scope is
+explicit, and anything ambiguous escalates instead of being improvised.
+
+**Every task traces in both directions.** Tasks cite the plan sections they
+come from and the acceptance criteria they satisfy, and the
 planner checks coverage every way: no task without a decision behind it, no
 decision without a task, no criterion without a task that satisfies it. The
 missing ones are the expensive ones — a criterion with no task is never built,

@@ -2,7 +2,7 @@
 feature: <feature-id>
 spec_version: <n>        # the spec version this plan answers
 next_task: 1             # the next task number to allocate. Numbers are never reused
-# spec_hash and tasks: are written by `pave.sh seal` at the gate. Never by hand.
+# spec_hash is written by `pave.sh seal` at the gate. Never by hand.
 ---
 
 # <Feature Name> - Plan
@@ -11,13 +11,18 @@ next_task: 1             # the next task number to allocate. Numbers are never r
   The forecast of what must change for spec.md to become true, and the index
   every task is cut from. Written by the planner, approved at the plan gate.
 
+  This file and spec.md are the feature's only sources of truth. The task
+  documents are projections of it and can be thrown away and written again
+  from it, so every change goes here first - a change that lives only in a
+  task is lost when the tasks are rebuilt.
+
   Every decision here serves an acceptance criterion or a guardrail in
   spec.md, and says which. A decision that serves none is invented scope. A
   question whose answer would change behaviour, scope or a criterion is not a
   plan decision - it goes back to /pave:spec.
 
   Sufficiency test: could someone write every task document from this file
-  and the contracts alone, without asking a question? Write down the reasoning,
+  alone, and the code, without asking a question? Write down the reasoning,
   not only the conclusion.
 
   Use stable headings. Tasks cite plan.md#<section> in derives_from.
@@ -57,10 +62,20 @@ task-writer quietly re-deriving the option you ruled out>
 |---|---|---|
 | <thing> | <service> | <services> |
 
-## Contracts
-| Contract | Producer | Consumers | Compatibility |
-|---|---|---|---|
-| `contracts/<file>` | <service> | <services> | additive-only / versioned path / new topic |
+## Interfaces
+
+<!-- Every interface between services this feature adds or changes, exactly:
+     what a producer task writes and a consumer task reads, field by field.
+     Only what this feature defines - not the whole API. Tasks quote these
+     rows into their items; builders never read this file, so a field that is
+     not projected into a task is not built. A schema file it lives in is
+     named by its path in the producer's repo, as workspace.yaml records it.
+     After a clean review those files are copied into artifacts/contracts/
+     as a record; nothing is built against the copy. -->
+
+| Interface | Element | Field | Type | Wire name / No. | Producer | Consumers | Compatibility |
+|---|---|---|---|---|---|---|---|
+| `proto/order/v1/order.proto` | `OrderResponse` | tracking_url | string, optional | `tracking_url` = 3 | order-service | billing-service | additive-only |
 
 ## Unhappy paths
 
@@ -91,8 +106,11 @@ what the user wants is an open question for /pave:spec.>
 
 ## Build order
 
-<!-- Derived from the table: which tasks can run at once, and why anything
-     waits. More than one wave means real depends_on edges; say why each one
-     exists. -->
+<!-- Derived from the table. Build decides nothing: it runs every task whose
+     `Depends on` are done, in parallel - in one service as well as across
+     services. So `Depends on` is the only thing that keeps two tasks apart:
+     give one wherever two tasks name the same place, or one needs the
+     other's result, and say why each one exists. -->
 
-- Wave 1: <tasks> - parallel, one builder per service
+- Wave 1: <tasks> - parallel
+- Wave 2: <task> - after <task>: <both change internal/api/order.go>

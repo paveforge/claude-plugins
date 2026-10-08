@@ -7,7 +7,7 @@ depends_on: []
 satisfies: []              # acceptance criteria from spec.md, e.g. [AC-1, AC-3]
 derives_from:              # the plan this task projects. No source = invented.
   - plan.md#<section>
-  - contracts/<file>
+  - plan.md#interfaces
 ---
 
 # <What this task achieves, as an outcome>
@@ -23,12 +23,13 @@ derives_from:              # the plan this task projects. No source = invented.
   know - what it said before.
 
   The test for every line below: could a competent stranger do this without
-  asking a question? The agent executing it has not seen the plan discussion
-  and cannot read the other task documents.
+  asking a question? The agent executing it reads this document and nothing
+  else - not plan.md, not the spec, not the other task documents.
 
-  Everything above "## Build notes" is the planner's and is hashed at the plan
-  gate; an edit anywhere else stops build and review. Builders change only the
-  status, checkboxes, and the Build notes section.
+  This document is a projection of plan.md and can be written again from it.
+  Everything above "## Build notes" is the planner's and is hashed into the
+  seal at the plan gate; an edit anywhere else stops build and review.
+  Builders change only the status, checkboxes, and the Build notes section.
 -->
 
 ## Objective & Context
@@ -41,17 +42,19 @@ derives_from:              # the plan this task projects. No source = invented.
 - Do not refactor <existing thing>; <why>.
 - Do not upgrade dependencies or reformat files you did not otherwise change.
 
-## Architecture & Data Contracts
+## Architecture
 **Data structures / schema:** <entities, migrations, DTOs>
-**API contracts:** <path to the contract file>
-**Contract status:** FROZEN at the plan gate. Do not edit the contract or its
-generated files.
 
-## Cross-Service Dependencies
-| Direction | Service | Contract | Note |
-|---|---|---|---|
-| provides | <service> | <contract> | you own this |
-| consumes | <service> | <contract> | stub landed; being built in parallel |
+## Interfaces
+<!-- Every field this task provides to, or reads from, another service -
+     exactly as the plan fixed it. The other side is built from the same
+     values, possibly at the same time, so these are not yours to change.
+     Write the schema file itself as an item under Tasks when this task
+     provides it. -->
+| Direction | Service | Element | Field | Type | Wire name / No. |
+|---|---|---|---|---|---|
+| provides | <consumer service> | `OrderResponse` (proto/order/v1/order.proto) | tracking_url | string, optional | `tracking_url` = 3 |
+| consumes | <producer service> | <element> | <field> | <type> | <wire name> |
 
 ## Tasks
 
@@ -75,10 +78,13 @@ generated files.
 - [ ] Test: <what it must prove, stated as a property>
 
 ## Verification
+<!-- The builder runs none of these: it only writes code. /pave:review runs
+     the service's codegen, build, test and lint once every task in it is
+     built. -->
 Build `<command>` · Test `<command>` · Lint `<command>`
 
-**Done when:** <criteria visible by reading the repo. /pave:review runs
-nothing, so anything that needs the app running cannot be checked here.>
+**Done when:** <criteria visible by reading the repo, or in the output of the
+commands above. Anything that needs the app running cannot be checked here.>
 
 ## If something is not specified
 
@@ -94,9 +100,9 @@ ships unexamined.
 Set `status: blocked`, say which item is underspecified and what this document
 would need to say, and return.
 
-## If the contract is wrong
-Stop and report to the hub. Do not change the contract locally - other
-services are building against it, and a local fix turns one contract error
+## If an interface is wrong
+Stop and report to the hub. Do not change a field locally - the other side is
+being built from the same values, and a local fix turns one interface error
 into several divergent guesses.
 
 ## Build notes
