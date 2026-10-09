@@ -31,6 +31,8 @@ hold afterwards, for example:
 - the orchestrator starts each agent with the model and effort from the hub's
   `config.<host>.yaml`, and stops rather than guess when they are missing
 - the hub stays independent of the platform
+- in Kiro, every agent is written twice: a JSON file for Kiro CLI and a
+  Markdown file for the Kiro IDE, which cannot spawn an agent from JSON
 
 The result lives under the host's own folder (`~/.codex`, `~/.kiro`) and does
 not depend on the source after setup. Run `pave-setup` again after every

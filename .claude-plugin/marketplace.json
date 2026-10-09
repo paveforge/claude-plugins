@@ -23,7 +23,7 @@
       "source": "./",
       "displayName": "Pave Installer",
       "description": "Install pave-setup for Codex or Kiro, which builds Pave natively on that platform without changing the Pave plugin.",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "author": {
         "name": "paveforge"
       },
