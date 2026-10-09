@@ -43,6 +43,20 @@ def codex_home() -> Path:
     return Path(os.environ.get("CODEX_HOME", str(home() / ".codex"))).expanduser()
 
 
+# Kiro CLI reads an agent from a JSON file and the Kiro IDE spawns one only
+# from a Markdown file; a host left to itself writes the JSON alone.
+KIRO_NOTES = """
+**Kiro agents need two files.** Kiro CLI reads an agent from a JSON file; the
+Kiro IDE spawns an agent only from a Markdown file with YAML frontmatter. An
+agent written only as JSON works in the CLI and cannot be spawned from the IDE.
+For every role write both, side by side in Kiro's user-wide agents folder:
+`pave-<role>.json` for the CLI and `pave-<role>.md` for the IDE. Both carry the
+same name `pave-<role>`, the same instructions and the same tool restrictions;
+check Kiro's own documentation for each format rather than guessing its
+fields. A role with only one of the two files is not converted.
+"""
+
+
 @dataclass(frozen=True)
 class Host:
     name: str
@@ -50,11 +64,19 @@ class Host:
     invoke: str
     home: Callable[[], Path]
     skills: Callable[[], Path]
+    notes: str = ""
 
 
 HOSTS = {
     "codex": Host("codex", "Codex", "$pave-setup", codex_home, lambda: home() / ".agents" / "skills"),
-    "kiro": Host("kiro", "Kiro", "/pave-setup", lambda: home() / ".kiro", lambda: home() / ".kiro" / "skills"),
+    "kiro": Host(
+        "kiro",
+        "Kiro",
+        "/pave-setup",
+        lambda: home() / ".kiro",
+        lambda: home() / ".kiro" / "skills",
+        KIRO_NOTES,
+    ),
 }
 
 
@@ -161,6 +183,7 @@ def setup_targets(host: Host, source: Source) -> list[Target]:
             "HOST_HOME": str(host.home()),
             "SKILLS_DIR": str(host.skills()),
             "SCRIPT": str(script),
+            "HOST_NOTES": host.notes,
         },
     )
     runner = render(

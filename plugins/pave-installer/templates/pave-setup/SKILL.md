@@ -104,7 +104,7 @@ Put everything you produce under `@@HOST_HOME@@` or `@@SKILLS_DIR@@`:
   user-wide agents
 - everything the skills need at run time (scripts, templates, reference and
   any other file they read) under `@@HOST_HOME@@/pave/`
-
+@@HOST_NOTES@@
 Pave is installed user-wide only. Never write into a hub or a service repo
 during setup, into `@@HOST_HOME@@/pave-installer/`, or into this `pave-setup`
 skill.
@@ -171,7 +171,7 @@ The result must hold all of this. Check each point before you report.
      written under the hub's `.@@HOST@@/` folder if anywhere
 8. **Re-runs replace the previous run.** Replace what an earlier setup created:
    - every `pave-*` skill except `pave-setup`
-   - every `pave-*` agent
+   - every `pave-*` agent, in every file @@HOST_TITLE@@ keeps it in
    - `@@HOST_HOME@@/pave/`
 
    Ask the user before replacing a file they edited.
@@ -181,7 +181,7 @@ The result must hold all of this. Check each point before you report.
 Say:
 
 - which Pave version you built and from which source
-- what you created, and where
+- what you created, and where - for each agent, every file it was written to
 - anything you could not carry over, and why
 - what the user does next: start a new session if the skills do not appear,
   then run `pave-init` once in each hub and fill in the models and efforts

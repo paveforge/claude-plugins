@@ -121,6 +121,8 @@ def test_install_writes_only_pave_setup(tmp_path, host, title, invoke):
     assert str(script) in skill
     assert str(home.joinpath(*HOMES[host])) in skill
     assert script.stat().st_mode & 0o111
+    # Kiro IDE spawns agents only from Markdown; Kiro CLI reads JSON.
+    assert ("pave-<role>.json" in skill and "pave-<role>.md" in skill) == (host == "kiro")
 
     data = json.loads(manifest(home, host).read_text())
     assert data["host"] == host

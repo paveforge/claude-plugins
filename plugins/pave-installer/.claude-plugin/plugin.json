@@ -1,7 +1,7 @@
 {
   "name": "pave-installer",
   "displayName": "Pave Installer",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Install pave-setup, which builds Pave natively on other agentic coding platforms.",
   "author": {
     "name": "paveforge"
